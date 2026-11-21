@@ -38,7 +38,7 @@
     var m = (e && e.message) || '';
     var map = {
       duplicate: 'هذا الرقم مسجل من قبل', forbidden: 'غير مسموح', weak: 'كلمة السر قصيرة (6 أحرف أو أرقام على الأقل)',
-      invalid: 'بيانات غير صحيحة', wrong_password: 'كلمة السر الحالية غير صحيحة', in_use: 'لا يمكن الحذف: الخدمة مستخدمة عند صنايعية، يمكنك إخفاؤها بدل ذلك',
+      invalid: 'بيانات غير صحيحة', invalid_phone: 'رقم الهاتف غير صحيح (مثال: 0912345678)', wrong_password: 'كلمة السر الحالية غير صحيحة', in_use: 'لا يمكن الحذف: الخدمة مستخدمة عند صنايعية، يمكنك إخفاؤها بدل ذلك',
       not_found: 'غير موجود', locked: 'تم إيقاف المحاولات مؤقتا، حاول بعد 15 دقيقة', already: 'تم هذا من قبل'
     };
     if (map[m]) return map[m];
@@ -131,5 +131,57 @@
     var a = 'abcdefghjkmnpqrstuvwxyz23456789', o = '';
     for (var i = 0; i < 8; i++) o += a.charAt(Math.floor(Math.random() * a.length));
     return o;
+  };
+  /* تصحيح رقم الهاتف تلقائيا عند مغادرة الحقل: يقبل 09x / 9x / 01x / +249 / 249 / 00249 ويعرضه بالشكل المحلي */
+  document.addEventListener('focusout', function (e) {
+    var i = e.target;
+    if (!i || i.tagName !== 'INPUT' || !i.closest || !i.closest('.phone-wrap') || !i.value.trim()) return;
+    var n = SQ.util.normalizePhone(i.value);
+    i.classList.toggle('bad', !n);
+    if (n) i.value = SQ.util.localPhone(n);
+  });
+
+  /* الصورة الشخصية: تُصغَّر في المتصفح إلى 128px تقريبا (حوالي 5 كيلوبايت) */
+  U.avatar = function (p, cls) {
+    var ini = U.esc(String(p.name || '').replace(/^م\.\s*/, '').charAt(0));
+    return '<div class="ava ' + (cls || '') + '">' + (p.photo ? '<img alt="" src="' + U.esc(p.photo) + '">' : ini) + '</div>';
+  };
+  U.shrinkImage = function (file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () {
+        try {
+          var S = 128, side = Math.min(img.width, img.height), cv = document.createElement('canvas');
+          cv.width = cv.height = S;
+          var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, S, S);
+          g.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, S, S);
+          var q = 0.62, out = cv.toDataURL('image/jpeg', q);
+          while (out.length > 14000 && q > 0.3) { q -= 0.08; out = cv.toDataURL('image/jpeg', q); }
+          URL.revokeObjectURL(url); resolve(out);
+        } catch (e) { reject(e); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('img')); };
+      img.src = url;
+    });
+  };
+  U.photoHtml = function (id, name) {
+    return '<div class="field photofield"><span>الصورة الشخصية (اختياري، تزيد ثقة الزبائن وترفع ترتيبك)</span><div class="photorow">' +
+      '<div id="' + id + 'Prev"></div><div><label class="btn ghost small" for="' + id + 'In">📷 اختيار صورة</label>' +
+      '<input id="' + id + 'In" type="file" accept="image/*" hidden><button type="button" class="btn ghost small" id="' + id + 'Del" style="margin-top:6px">إزالة</button></div></div></div>';
+  };
+  // state = { photo: '', name: '' } يُعدَّل في مكانه
+  U.bindPhoto = function (id, state, onChange) {
+    function paint() {
+      document.getElementById(id + 'Prev').innerHTML = U.avatar({ name: state.name || '؟', photo: state.photo }, 'big');
+      var d = document.getElementById(id + 'Del'); if (d) d.style.display = state.photo ? '' : 'none';
+    }
+    paint();
+    U.on(id + 'In', 'change', async function () {
+      var f = this.files && this.files[0]; if (!f) return;
+      try { state.photo = await U.shrinkImage(f); paint(); if (onChange) onChange(state.photo); }
+      catch (e) { U.toast('تعذر قراءة الصورة، جرّب صورة أخرى'); }
+      this.value = '';
+    });
+    U.on(id + 'Del', 'click', function () { state.photo = ''; paint(); if (onChange) onChange(''); });
   };
 })();

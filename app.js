@@ -150,7 +150,7 @@
     var dist = p.distance_km != null ? 'حوالي ' + (p.distance_km < 1 ? 'أقل من 1' : p.distance_km) + ' كم' : '';
     var em = p.distance_km != null ? SQ.geo.eta(p.distance_km) : null;
     var eta = em != null ? 'يصل في حوالي ' + em + (em <= 10 ? ' دقائق' : ' دقيقة') : '';
-    return '<div class="card click pcard-wrap" data-id="' + p.id + '"><div class="pcard"><div class="ava">' + esc(p.name.replace(/^م\.\s*/, '').charAt(0)) + '</div>' +
+    return '<div class="card click pcard-wrap" data-id="' + p.id + '"><div class="pcard">' + U.avatar(p) + '' +
       '<div class="pinfo"><div class="pname">' + esc(p.name) + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' +
       '<div class="psvc">' + esc(svcNames(p.services)) + '</div>' +
       '<div class="meta">' +
@@ -170,7 +170,7 @@
     page({
       title: p.name, back: '#/c/list/' + sid,
       body: demoNote() +
-        '<div class="phead"><div class="ava">' + esc(p.name.replace(/^م\.\s*/, '').charAt(0)) + '</div><div class="h2" style="margin:0">' + esc(p.name) + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
+        '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
         '<div class="stats"><div class="stat"><b>' + (p.rating != null ? '★ ' + p.rating : 'جديد') + '</b><small>' + p.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + p.ok + ' - ' + p.fail + '</b><small>ناجحة - فاشلة</small></div>' +
         '<div class="stat"><b>' + p.experience + '</b><small>سنة خبرة</small></div></div>' +
@@ -288,7 +288,7 @@
   function sessionExpired() { signOut(); toast('انتهت جلستك، ادخل من جديد'); go('#/p/login'); }
   function stepsBar(n) { return '<div class="steps">' + [1, 2, 3, 4].map(function (i) { return '<i class="' + (i <= n ? 'on' : '') + '"></i>'; }).join('') + '</div><div class="stepno">الخطوة ' + n + ' من 4</div>'; }
   function regBack(n) { return n === 1 ? '#/p/start' : '#/p/' + (n - 1); }
-  function localPhone(p) { return String(p || '').replace(SQ.COUNTRY.dial, ''); }
+  function localPhone(p) { return SQ.util.localPhone(p); }
   var STATUS = { pending: ['قيد المراجعة', 'st-pending'], approved: ['معتمد', 'st-approved'], rejected: ['مرفوض', 'st-rejected'], suspended: ['موقوف', 'st-rejected'] };
 
   /* بوابة مقدم الخدمة: تسجيل جديد أو دخول */
@@ -391,6 +391,7 @@
       var s = document.getElementById('st').value, c = document.getElementById('ct').value;
       if (!reg.services.length) return toast('اختر خدمة واحدة على الأقل');
       if (!s || !c) return toast('اختر الولاية والمدينة');
+      if (/_other$/.test(c) && !document.getElementById('hd').value.trim()) return toast('اكتب اسم منطقتك أو قريتك في خانة الحي');
       reg.state_id = s; reg.city_id = c; reg.hood = document.getElementById('hd').value.trim(); regSave(); go('#/p/3');
     });
   }
@@ -402,11 +403,13 @@
       body: stepsBar(3) + '<div class="h2">الخبرة والسعر</div>' +
         '<label class="field"><span>سنوات الخبرة</span><input id="ex" type="number" inputmode="numeric" min="0" max="60" value="' + esc(reg.experience == null ? '' : reg.experience) + '"></label>' +
         '<label class="field"><span>سعر الكشف (' + esc(SQ.COUNTRY.currency) + ')</span><input id="pr" type="number" inputmode="numeric" min="0" value="' + esc(reg.price == null ? '' : reg.price) + '"><small>اكتب 0 لو الكشف مجاني</small></label>' +
-        '<label class="field"><span>وصف قصير لمهارتك</span><textarea id="bio" maxlength="200" placeholder="مثال: تركيب ألواح شمسية وبطاريات وصيانة">' + esc(reg.bio || '') + '</textarea></label>' +
+        '<label class="field"><span>وصف قصير لمهارتك</span><textarea id="bio" maxlength="200" placeholder="مثال: تركيب ألواح شمسية وبطاريات وصيانة (20 حرفا فأكثر ترفع ترتيبك)">' + esc(reg.bio || '') + '</textarea></label>' + U.photoHtml('pp') +
         '<div class="row2"><label class="field"><span>من الساعة</span><input id="fr" type="time" class="ltr" value="' + esc(reg.from) + '"></label><label class="field"><span>إلى الساعة</span><input id="to" type="time" class="ltr" value="' + esc(reg.to) + '"></label></div>',
       foot: '<button class="btn primary" id="next">التالي</button>'
     });
     bindMenu();
+    var ps = { name: reg.name, photo: reg.photo || '' };
+    U.bindPhoto('pp', ps, function (v) { reg.photo = v; regSave(); });
     on('next', 'click', function () {
       var ex = document.getElementById('ex').value, pr = document.getElementById('pr').value, bio = document.getElementById('bio').value.trim();
       if (ex === '' || +ex < 0) return toast('اكتب سنوات الخبرة');
@@ -437,7 +440,7 @@
         var r = await db.registerProvider({
           name: reg.name, phone: reg.phone, whatsapp: reg.whatsapp, password: regPw, state_id: reg.state_id, city_id: reg.city_id, hood: reg.hood,
           lat: reg.lat || city.lat, lng: reg.lng || city.lng, radius: reg.radius, services: reg.services, experience: reg.experience, price: reg.price,
-          bio: reg.bio, from: reg.from, to: reg.to
+          bio: reg.bio, from: reg.from, to: reg.to, photo: reg.photo || ''
         });
         signIn(r.id, r.token); store.del('reg'); reg = { services: [], radius: '10', from: '08:00', to: '20:00', waSame: true }; regPw = '';
         go('#/p/home');
@@ -502,6 +505,21 @@
   }
 
   /* الملف الشخصي */
+  /* اكتمال الملف: الملفات المكتملة والنشطة تظهر أولا للزبائن */
+  function completeCard(me) {
+    var todo = [];
+    if (!me.photo) todo.push('📷 أضف صورة شخصية (+30%)');
+    if (!me.bio || me.bio.trim().length < 20) todo.push('✍️ اكتب وصفا لمهارتك بـ 20 حرفا فأكثر (+25%)');
+    if (!me.hood) todo.push('📍 اكتب اسم حيك (+15%)');
+    if (!me.price) todo.push('💰 حدد سعر الكشف (+10%)');
+    if (!me.experience) todo.push('🛠️ اكتب سنوات خبرتك (+10%)');
+    if (!me.has_password) todo.push('🔐 أضف كلمة سر (+10%)');
+    var pct = me.pct != null ? me.pct : 100 - 0;
+    return '<div class="card"><b>اكتمال ملفك: ' + pct + '%</b><div class="pbar"><i style="width:' + pct + '%"></i></div>' +
+      (todo.length ? '<ul class="todo">' + todo.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul><p class="note">الملفات المكتملة والأكثر نشاطا تظهر أولا للزبائن. <a href="#/p/edit" class="linkbtn">أكمل الآن</a></p>'
+        : '<p class="note">ملفك مكتمل ✔. حافظ على نشاطك (فعّل "متاح" وردّ على الزبائن) ليبقى ترتيبك متقدما.</p>') + '</div>';
+  }
+
   async function viewProfile() {
     var pid = getPid(), tk = getTok();
     if (!pid) return go('#/p/start');
@@ -512,8 +530,9 @@
     var st = STATUS[me.status] || STATUS.pending;
     page({
       title: 'ملفي الشخصي', menu: true, tab: 'profile',
-      body: demoNote() + '<div class="phead"><div class="ava">' + esc(me.name.replace(/^م\.\s*/, '').charAt(0)) + '</div><div class="h2" style="margin:0">' + esc(me.name) + '</div>' +
+      body: demoNote() + '<div class="phead">' + U.avatar(me) + '<div class="h2" style="margin:0">' + esc(me.name) + '</div>' +
         '<div class="muted">' + esc(svcNames(me.services)) + '</div><span class="badge ' + st[1] + '">' + st[0] + '</span></div>' +
+        completeCard(me) +
         '<div class="stats"><div class="stat"><b>' + (me.rating != null ? '★ ' + me.rating : 'جديد') + '</b><small>' + me.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + me.ok + ' - ' + me.fail + '</b><small>ناجحة - فاشلة</small></div><div class="stat"><b>' + me.experience + '</b><small>سنة خبرة</small></div></div>' +
         '<div class="card"><div class="cardhead"><b>بياناتي</b><button class="linkbtn" id="edit">✏️ تعديل</button></div>' +
@@ -574,10 +593,10 @@
     loading('تعديل ملفي');
     var me;
     try { me = await db.providerSelf(pid, tk); } catch (e) { return sessionExpired(); }
-    var ed = { services: me.services.slice(), radius: String(me.radius || '10'), lat: null, lng: null };
+    var ed = { services: me.services.slice(), radius: String(me.radius || '10'), lat: null, lng: null, name: me.name, photo: me.photo || '' };
     page({
       title: 'تعديل ملفي', back: '#/p/profile',
-      body: '<label class="field"><span>الاسم الكامل</span><input id="nm" value="' + esc(me.name) + '"></label>' +
+      body: U.photoHtml('pe') + '<label class="field"><span>الاسم الكامل</span><input id="nm" value="' + esc(me.name) + '"></label>' +
         '<label class="field"><span>رقم الهاتف</span><input class="ltr" value="' + esc(me.phone) + '" disabled><small>لتغيير الرقم تواصل مع الدعم</small></label>' +
         '<label class="field"><span>رقم الواتساب</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="wa" class="ltr" inputmode="tel" value="' + esc(localPhone(me.whatsapp)) + '"></div></label>' +
         U.svcFieldHtml('sv') +
@@ -594,7 +613,7 @@
         '<div class="row2"><label class="field"><span>من الساعة</span><input id="fr" type="time" class="ltr" value="' + esc(me.from) + '"></label><label class="field"><span>إلى الساعة</span><input id="to" type="time" class="ltr" value="' + esc(me.to) + '"></label></div>',
       foot: '<button class="btn primary" id="save">حفظ التعديلات</button>'
     });
-    bindStateCity('st', 'ct'); U.bindSvcField('sv', ed.services);
+    bindStateCity('st', 'ct'); U.bindSvcField('sv', ed.services); U.bindPhoto('pe', ed);
     U.each('#rd .chip', function (c) {
       c.addEventListener('click', function () { ed.radius = c.getAttribute('data-r'); U.each('#rd .chip', function (x) { x.classList.toggle('on', x === c); }); });
     });
@@ -613,7 +632,7 @@
       if (ex === '' || pr === '') return toast('اكتب الخبرة وسعر الكشف');
       if (bio.length < 5) return toast('اكتب وصفا قصيرا لمهارتك');
       var o = { name: nm, whatsapp: wa, services: ed.services, state_id: st, city_id: ct, hood: document.getElementById('hd').value.trim(), radius: ed.radius,
-        experience: +ex, price: +pr, bio: bio, from: document.getElementById('fr').value || '08:00', to: document.getElementById('to').value || '20:00' };
+        experience: +ex, price: +pr, bio: bio, photo: ed.photo, from: document.getElementById('fr').value || '08:00', to: document.getElementById('to').value || '20:00' };
       if (ed.lat != null) { o.lat = ed.lat; o.lng = ed.lng; }
       else if (ct !== me.city_id) { var cc = SQ.findCity(ct).city; o.lat = cc.lat; o.lng = cc.lng; }
       var b = document.getElementById('save'); b.disabled = true;

@@ -105,6 +105,18 @@
     return isOpen(p.from, p.to);
   }
 
+  function pct(p) {
+    return (p.photo ? 30 : 0) + (String(p.bio || '').trim().length >= 20 ? 25 : 0) + (String(p.hood || '').trim() ? 15 : 0) +
+      (p.price > 0 ? 10 : 0) + (p.experience > 0 ? 10 : 0) + (p.password ? 10 : 0);
+  }
+  function nph(x) { var n = SQ.util.normalizePhone(x); if (!n) throw new Error('invalid_phone'); return n; }
+
+  // أولوية الظهور: اكتمال الملف + نشاط آخر 30 يوما (حتى 10 طلبات)
+  function score(p) {
+    var since = Date.now() - 30 * 86400000, n = L.d.requests.filter(function (q) { return q.provider_id === p.id && q.ts > since; }).length;
+    return pct(p) + Math.min(n, 10) * 5;
+  }
+
   var L = {
     d: null,
     init: function () {
@@ -122,7 +134,7 @@
         experience: p.experience, price: p.price, bio: p.bio, from: p.from, to: p.to, available: isAvail(p),
         distance_km: d == null ? null : Math.round(d * 10) / 10,
         rating: p.stats.n >= C.minReviewsForStars ? p.stats.avg : null, rating_n: p.stats.n,
-        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo
+        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || ''
       };
     },
     find: function (id) { return this.d.providers.filter(function (p) { return p.id === id; })[0]; },
@@ -140,8 +152,10 @@
         .map(function (p) { return { p: p, d: hasLoc ? G.haversine(q.lat, q.lng, p.lat, p.lng) : null, av: isAvail(p) }; });
       // الأقرب أولا (بتقريب لأقرب كيلو)، وعند التساوي الأعلى تقييما ثم الأكثر شغلانات ناجحة
       var cmp = function (a, b) {
-        var da = a.d == null ? 1e9 : Math.floor(a.d), db = b.d == null ? 1e9 : Math.floor(b.d);
+        var da = a.d == null ? 1e9 : Math.floor(a.d / 3), db = b.d == null ? 1e9 : Math.floor(b.d / 3);
         if (da !== db) return da - db;
+        var sa = score(a.p), sb = score(b.p);
+        if (sa !== sb) return sb - sa;
         var ra = a.p.stats.n >= C.minReviewsForStars ? a.p.stats.avg : 0;
         var rb = b.p.stats.n >= C.minReviewsForStars ? b.p.stats.avg : 0;
         if (rb !== ra) return rb - ra;
@@ -171,10 +185,13 @@
     },
 
     registerProvider: async function (x) {
+      x.phone = nph(x.phone); x.whatsapp = x.whatsapp ? nph(x.whatsapp) : x.phone;
       if (this.d.providers.some(function (p) { return p.phone === x.phone; })) throw new Error('duplicate');
       if (String(x.password || '').length < 6) throw new Error('weak');
       if (!x.services || !x.services.length) throw new Error('invalid');
+      if (x.photo && (x.photo.indexOf('data:image/jpeg;base64,') !== 0 || x.photo.length > 60000)) throw new Error('invalid');
       var p = {
+        photo: x.photo || '',
         password: x.password, fails: 0, locked_until: 0, admin_note: '',
         id: uid(), token: uid(), name: x.name, phone: x.phone, whatsapp: x.whatsapp, state_id: x.state_id, city_id: x.city_id,
         hood: x.hood, lat: x.lat, lng: x.lng, radius: String(x.radius), services: x.services, experience: Number(x.experience) || 0,
@@ -190,7 +207,7 @@
       p.last_seen = Date.now(); save(this.d);
       var week = Date.now() - 7 * 86400000;
       var r = this.pub(p, null);
-      r.status = p.status; r.flag = !!p.available; r.in_hours = isOpen(p.from, p.to); r.radius = p.radius; r.has_password = !!p.password;
+      r.status = p.status; r.flag = !!p.available; r.in_hours = isOpen(p.from, p.to); r.radius = p.radius; r.has_password = !!p.password; r.pct = pct(p);
       r.requests_week = this.d.requests.filter(function (q) { return q.provider_id === id && q.ts > week; }).length;
       return r;
     },
@@ -299,7 +316,8 @@
 
     /* ===== حسابات الصنايعية ===== */
     providerLogin: async function (phone, pw) {
-      var p = this.d.providers.filter(function (x) { return x.phone === phone && !x.demo; })[0];
+      var np = SQ.util.normalizePhone(phone);
+      var p = this.d.providers.filter(function (x) { return x.phone === np && !x.demo; })[0];
       if (!p) throw new Error('invalid');
       if (p.locked_until && p.locked_until > Date.now()) throw new Error('locked');
       if (!p.password) throw new Error('no_password');
@@ -324,8 +342,12 @@
     applyProfile: function (p, o, admin) {
       if (o.services && !o.services.length) throw new Error('invalid');
       if (o.name && String(o.name).trim()) p.name = String(o.name).trim().slice(0, 80);
-      if (o.whatsapp) p.whatsapp = o.whatsapp;
-      if (admin && o.phone) p.phone = o.phone;
+      if (o.whatsapp) p.whatsapp = nph(o.whatsapp);
+      if (admin && o.phone) p.phone = nph(o.phone);
+      if (o.photo != null) {
+        if (o.photo && (o.photo.indexOf('data:image/jpeg;base64,') !== 0 || o.photo.length > 60000)) throw new Error('invalid');
+        p.photo = o.photo;
+      }
       if (o.state_id) p.state_id = o.state_id;
       if (o.city_id) p.city_id = o.city_id;
       if (o.hood != null) p.hood = String(o.hood).slice(0, 60);
@@ -353,7 +375,8 @@
         radius: p.radius, experience: p.experience, price: p.price, bio: p.bio, from: p.from, to: p.to, status: p.status,
         available: p.status === 'approved' && isAvail(p), flag: !!p.available, has_password: !!p.password, admin_note: p.admin_note || '',
         last_seen: p.last_seen, created: p.created, requests_total: rq.length, requests_week: rq.filter(function (q) { return q.ts > week; }).length,
-        rating_n: p.stats.n, rating: p.stats.n > 0 ? p.stats.avg : null, ok: p.stats.ok, fail: p.stats.fail
+        rating_n: p.stats.n, rating: p.stats.n > 0 ? p.stats.avg : null, ok: p.stats.ok, fail: p.stats.fail,
+        photo: p.photo || '', pct: pct(p)
       };
     },
     adminOverview: async function (code) {
@@ -406,11 +429,12 @@
     },
     adminCreateProvider: async function (code, o) {
       this.admin(code);
+      o.phone = nph(o.phone); o.whatsapp = o.whatsapp ? nph(o.whatsapp) : o.phone;
       if (this.d.providers.some(function (p) { return p.phone === o.phone; })) throw new Error('duplicate');
       if (String(o.password || '').length < 6) throw new Error('weak');
       if (!o.services || !o.services.length) throw new Error('invalid');
       var city = SQ.findCity(o.city_id), p = {
-        id: uid(), token: uid(), password: o.password, fails: 0, locked_until: 0, admin_note: o.admin_note || '',
+        photo: o.photo || '', id: uid(), token: uid(), password: o.password, fails: 0, locked_until: 0, admin_note: o.admin_note || '',
         name: o.name, phone: o.phone, whatsapp: o.whatsapp || o.phone, state_id: o.state_id, city_id: o.city_id, hood: o.hood || '',
         lat: o.lat != null ? o.lat : (city ? city.city.lat : 0), lng: o.lng != null ? o.lng : (city ? city.city.lng : 0),
         radius: String(o.radius || '10'), services: o.services, experience: Number(o.experience) || 0, price: Number(o.price) || 0, bio: o.bio || '',

@@ -76,6 +76,33 @@
 
   var COUNTRY = (SQ.COUNTRY = SQ.COUNTRIES[SQ.CONFIG.countryCode]);
 
+  // مدن ومناطق إضافية لكل ولاية (الإحداثيات تقريبية لمركز المنطقة، ودقة GPS أفضل عند السماح بالموقع)
+  var MORE = {
+    khartoum: [['kh_riyadh', 'الرياض', 15.5735, 32.576], ['kh_sahafa', 'الصحافة', 15.539, 32.556], ['kh_jabra', 'جبرة', 15.5, 32.53], ['kh_jereif', 'الجريف', 15.55, 32.58],
+      ['kh_kalakla', 'الكلاكلة', 15.43, 32.5], ['kh_azhari', 'الأزهري', 15.46, 32.5], ['kh_mayo', 'مايو', 15.43, 32.55], ['kh_souba', 'سوبا', 15.5, 32.65],
+      ['kh_jebel_awlia', 'جبل أولياء', 15.25, 32.5], ['kh_east_nile', 'شرق النيل', 15.62, 32.62], ['kh_haj_yousif', 'الحاج يوسف', 15.62, 32.67], ['kh_bari', 'بري', 15.6, 32.6],
+      ['kh_umbada', 'أم بدة', 15.65, 32.42], ['kh_karari', 'كرري', 15.72, 32.45], ['kh_thawra', 'الثورة', 15.62, 32.47], ['kh_shambat', 'شمبات', 15.65, 32.53],
+      ['kh_droshab', 'الدروشاب', 15.72, 32.55], ['kh_halfaya', 'الحلفايا', 15.7, 32.5], ['kh_kadro', 'الكدرو', 15.78, 32.55]],
+    red_sea: [['rs_tokar', 'طوكر', 18.43, 37.73], ['rs_haya', 'هيا', 18.33, 36.33], ['rs_arkawit', 'أركويت', 18.78, 37.07]],
+    gezira: [['gz_kamlin', 'الكاملين', 15.1, 32.98], ['gz_umalqura', 'أم القرى', 14.75, 33.1], ['gz_abunaama', 'أبو نعامة', 13.5, 33.9]],
+    river_nile: [['rn_berber', 'بربر', 18.02, 33.98], ['rn_abuhamad', 'أبو حمد', 19.53, 33.33], ['rn_metema', 'المتمة', 16.72, 33.43]],
+    northern: [['nr_karima', 'كريمة', 18.55, 31.85], ['nr_delgo', 'دلقو', 20.13, 30.58]],
+    white_nile: [['wn_jabalain', 'الجبلين', 12.47, 32.78], ['wn_qutaina', 'القطينة', 13.17, 32.43]],
+    blue_nile: [['bn_kurmuk', 'الكرمك', 10.55, 34.28], ['bn_geissan', 'قيسان', 10.27, 34.28]],
+    gedaref: [['gd_doka', 'دوكة', 13.52, 35.77], ['gd_galabat', 'القلابات', 12.97, 36.15]],
+    kassala: [['ks_newhalfa', 'حلفا الجديدة', 15.32, 35.6]],
+    n_kordofan: [['nk_bara', 'بارا', 13.7, 30.4], ['nk_umrawaba', 'أم روابة', 12.9, 31.2], ['nk_rahad', 'الرهد', 12.7, 30.65]],
+    w_kordofan: [['wk_babanusa', 'بابنوسة', 11.33, 27.8], ['wk_muglad', 'المجلد', 11.03, 27.73]],
+    n_darfur: [['nd_mellit', 'مليط', 14.1, 25.58], ['nd_tina', 'الطينة', 15.4, 23.8]],
+    s_darfur: [['sd_kass', 'كاس', 12.5, 24.3]],
+    e_darfur: [['ed_adila', 'عديلة', 11.1, 26.1]]
+  };
+  COUNTRY.states.forEach(function (st) {
+    (MORE[st.id] || []).forEach(function (r) { st.cities.push(c(r[0], r[1], r[2], r[3])); });
+    var f = st.cities[0];
+    st.cities.push(c(st.id + '_other', 'منطقة أخرى في الولاية', f.lat, f.lng)); // اكتب اسم الحي في خانة الحي
+  });
+
   var cityIdx = {};
   COUNTRY.states.forEach(function (s) {
     s.cities.forEach(function (ct) { cityIdx[ct.id] = { state: s, city: ct }; });
@@ -97,10 +124,13 @@
     normalizePhone: function (raw) {
       var d = String(raw || '').replace(/[٠-٩]/g, function (x) { return String(x.charCodeAt(0) - 1632); }).replace(/\D/g, '');
       var dial = COUNTRY.dial.replace('+', '');
+      if (d.indexOf('00') === 0) d = d.slice(2);
       if (d.indexOf(dial) === 0) d = d.slice(dial.length);
       if (d.charAt(0) === '0') d = d.slice(1);
       return COUNTRY.phoneRegex.test(d) ? COUNTRY.dial + d : null;
     },
+    // الشكل المحلي للعرض: 09xxxxxxxx أو 01xxxxxxxx
+    localPhone: function (phone) { var n = SQ.util.normalizePhone(phone); return n ? '0' + n.slice(COUNTRY.dial.length) : String(phone || ''); },
     digits: function (phone) { return String(phone || '').replace(/\D/g, ''); }
   };
 })();

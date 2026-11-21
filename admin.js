@@ -14,7 +14,7 @@
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
   function appUrl() { return location.origin + location.pathname.replace(/admin\.html$/, ''); }
-  function localPhone(p) { return String(p || '').replace(SQ.COUNTRY.dial, ''); }
+  function localPhone(p) { return SQ.util.localPhone(p); }
   function fmtDate(ts) { var d = new Date(ts); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
   function pill(t, cls) { return '<span class="pill ' + (cls || '') + '">' + esc(t) + '</span>'; }
   function logout() { code = ''; try { sessionStorage.removeItem('sq_admin'); } catch (e) {} render(); }
@@ -133,7 +133,7 @@
     if (p.status === 'pending') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ موافقة</button><button class="btn danger" data-act="rejected" data-id="' + p.id + '">✖ رفض</button>');
     if (p.status === 'approved') act.push('<button class="btn danger" data-act="suspended" data-id="' + p.id + '">⛔ إيقاف</button>');
     if (p.status === 'suspended' || p.status === 'rejected') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ اعتماد</button>');
-    return '<div class="card acard"><div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + '</div>' +
+    return '<div class="card acard"><div class="top2">' + U.avatar(p) + '<div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + '</div></div>' +
       '<div class="psvc">' + esc(U.svcNames(p.services)) + '</div>' +
       '<div class="meta"><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + p.experience + ' سنة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
       '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
@@ -168,6 +168,7 @@
     var isNew = !p, d = p || { services: [], radius: '10', from: '08:00', to: '20:00', state_id: '', city_id: '' }, services = (d.services || []).slice();
     modal('<h3>' + (isNew ? 'إضافة صنايعي' : 'تعديل ' + esc(p.name)) + '</h3>' +
       '<label class="field"><span>الاسم الكامل</span><input id="f_nm" value="' + esc(d.name || '') + '"></label>' +
+      U.photoHtml('f_ph_') +
       '<label class="field"><span>رقم الهاتف</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="f_ph" class="ltr" inputmode="tel" value="' + esc(localPhone(d.phone)) + '" placeholder="' + SQ.COUNTRY.phoneHint + '"></div></label>' +
       '<label class="field"><span>رقم الواتساب (اتركه فارغا إن كان نفس الهاتف)</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="f_wa" class="ltr" inputmode="tel" value="' + esc(d.whatsapp && d.whatsapp !== d.phone ? localPhone(d.whatsapp) : '') + '"></div></label>' +
       U.svcFieldHtml('f_sv') +
@@ -180,7 +181,8 @@
       '<label class="field"><span>ملاحظة خاصة بك (لا يراها الصنايعي)</span><textarea id="f_nt" maxlength="500">' + esc(d.admin_note || '') + '</textarea></label>' +
       (isNew ? '<label class="field"><span>كلمة سر مؤقتة للصنايعي</span><div class="row2" style="gap:6px"><input id="f_pw" class="ltr" value="' + U.randomPassword() + '"><button type="button" class="btn ghost small" id="f_gen">🎲 جديدة</button></div><small>يغيرها بنفسه من ملفه الشخصي. يُنشأ حسابه معتمدا مباشرة.</small></label>' : '') +
       '<div class="row2"><button class="btn ghost" id="f_cancel">إلغاء</button><button class="btn primary" id="f_save">' + (isNew ? 'إنشاء الحساب' : 'حفظ') + '</button></div>');
-    U.bindStateCity('f_st', 'f_ct'); U.bindSvcField('f_sv', services);
+    var photoSt = { name: d.name || '', photo: d.photo || '' };
+    U.bindStateCity('f_st', 'f_ct'); U.bindSvcField('f_sv', services); U.bindPhoto('f_ph_', photoSt);
     on('f_gen', 'click', function () { document.getElementById('f_pw').value = U.randomPassword(); });
     on('f_cancel', 'click', closeModal);
     on('f_save', 'click', async function () {
@@ -194,7 +196,7 @@
       if (!st || !ct) return toast('اختر الولاية والمدينة');
       if (g('f_ex') === '' || g('f_pr') === '') return toast('اكتب الخبرة وسعر الكشف');
       var o = { name: nm, phone: ph, whatsapp: wa, services: services, state_id: st, city_id: ct, hood: g('f_hd').trim(), radius: g('f_rd'), experience: +g('f_ex'), price: +g('f_pr'),
-        bio: g('f_bio').trim(), from: g('f_fr') || '08:00', to: g('f_to') || '20:00', admin_note: g('f_nt').trim() };
+        bio: g('f_bio').trim(), photo: photoSt.photo, from: g('f_fr') || '08:00', to: g('f_to') || '20:00', admin_note: g('f_nt').trim() };
       var cc = SQ.findCity(ct).city;
       if (isNew || ct !== d.city_id) { o.lat = cc.lat; o.lng = cc.lng; }
       var b = document.getElementById('f_save'); b.disabled = true;
