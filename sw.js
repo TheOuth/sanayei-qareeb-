@@ -1,5 +1,5 @@
 /* خدمة العمل دون إنترنت: الملفات الثابتة من الذاكرة، وطلبات Supabase دائما من الشبكة */
-var CACHE = 'sq-v11';
+var CACHE = 'sq-v12';
 var FILES = ['./', 'index.html', 'styles.css', 'data.js', 'db.js', 'icons.js', 'theme.css', 'common.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png'];
 
 self.addEventListener('install', function (e) {
@@ -14,7 +14,7 @@ self.addEventListener('fetch', function (e) {
   var r = e.request;
   if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
   // الشبكة أولا ثم الذاكرة: يحصل المستخدم على آخر نسخة ويعمل دون إنترنت
-  e.respondWith(fetch(r).then(function (res) {
+  e.respondWith(fetch(r, { cache: 'no-cache' }).then(function (res) {
     var copy = res.clone();
     caches.open(CACHE).then(function (c) { c.put(r, copy); });
     return res;
