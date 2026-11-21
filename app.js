@@ -10,17 +10,18 @@
   var anon = store.get('anon', null);
   if (!anon) { anon = SQ.uid(); store.set('anon', anon); }
   function go(h) { if (location.hash === h) route(); else location.hash = h; }
-  var SVG_LOGO = '<svg viewBox="0 0 96 96" aria-hidden="true"><circle cx="48" cy="48" r="46" fill="#0f766e"/><path d="M48 18c-11 0-19 8-19 18 0 14 19 34 19 34s19-20 19-34c0-10-8-18-19-18z" fill="#f5efe6"/><path d="M41 33l14 14m0-14L41 47" stroke="#0f766e" stroke-width="5" stroke-linecap="round" opacity="0"/><path d="M52 29a7 7 0 0 0-8 9L33 49a3 3 0 0 0 4 4l11-11a7 7 0 0 0 9-8l-4 4-4-1-1-4z" fill="#0f766e"/></svg>';
+  var SVG_LOGO = '<svg viewBox="0 0 96 96" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6E2A3"/><stop offset="1" stop-color="#C79A36"/></linearGradient></defs><circle cx="48" cy="48" r="45" fill="none" stroke="#E4C46F" stroke-opacity=".6" stroke-width="1.5"/><path d="M48 17c-11.5 0-20 8.3-20 19 0 15 20 35 20 35s20-20 20-35c0-10.7-8.5-19-20-19z" fill="url(#lg1)"/><path d="M52.5 28.5a7.5 7.5 0 0 0-8.6 9.7L32.5 49.5a3.2 3.2 0 0 0 4.5 4.5l11.3-11.300a7.5 7.5 0 0 0 9.7-8.600l-4.400 4.400-4.300-1.100-1.100-4.300z" fill="#0A2E2B"/></svg>';
 
   /* ---------- هيكل الصفحة ---------- */
   function page(o) {
-    var back = o.back ? '<a class="back" href="' + o.back + '" aria-label="رجوع">›</a>' : '<span class="back ghost"></span>';
-    var menu = o.menu ? '<button class="back" id="menuBtn" aria-label="القائمة">⋮</button>' : '<span class="back ghost"></span>';
-    var tabbar = o.tab ? '<nav class="tabbar"><a class="' + (o.tab === 'home' ? 'on' : '') + '" href="#/p/home"><i>🏠</i><small>الرئيسية</small></a><a class="' + (o.tab === 'profile' ? 'on' : '') + '" href="#/p/profile"><i>👤</i><small>ملفي</small></a></nav>' : '';
+    var back = o.back ? '<a class="back" href="' + o.back + '" aria-label="رجوع">' + SQ.I('back', 22) + '</a>' : '<span class="back ghost"></span>';
+    var menu = o.menu ? '<button class="back" id="menuBtn" aria-label="القائمة">' + SQ.I('dots', 22) + '</button>' : '<span class="back ghost"></span>';
+    var tabbar = o.tab ? '<nav class="tabbar"><a class="' + (o.tab === 'home' ? 'on' : '') + '" href="#/p/home"><i>' + SQ.I('home', 24) + '</i><small>الرئيسية</small></a><a class="' + (o.tab === 'profile' ? 'on' : '') + '" href="#/p/profile"><i>' + SQ.I('user', 24) + '</i><small>ملفي</small></a></nav>' : '';
     var bottom = (o.foot || tabbar) ? '<div class="bottom">' + (o.foot ? '<div class="foot">' + o.foot + '</div>' : '') + tabbar + '</div>' : '';
     $app.innerHTML = '<header class="top">' + back + '<h1>' + esc(o.title || C.appName) + '</h1>' + menu + '</header><main class="main">' + o.body + '</main>' + bottom;
-    window.scrollTo(0, 0);
+    window.scrollTo(0, 0); enter();
   }
+  function enter() { $app.classList.remove('enter'); void $app.offsetWidth; $app.classList.add('enter'); }
   function loading(t) { page({ title: t || C.appName, body: '<div class="spin">جاري التحميل...</div>' }); }
   function demoNote() { return SQ.demo ? '<div class="banner">نسخة تجريبية: البيانات تُحفظ على جهازك فقط والصنايعية المعروضون أسماء وهمية للتجربة.</div>' : ''; }
 
@@ -54,22 +55,22 @@
     var list = U.activeServices(), cats = SQ.CATEGORIES.filter(function (c) { return list.some(function (s) { return SQ.catOf(s).id === c.id; }); });
     var tiles = cats.map(function (c) {
       var items = list.filter(function (s) { return SQ.catOf(s).id === c.id; });
-      return '<div class="cat" data-c="' + c.id + '"><div class="cathead" style="--c:' + c.color + '"><i>' + c.icon + '</i><b>' + esc(c.name) + '</b><small>' + items.length + ' خدمة</small></div><div class="grid">' +
+      return '<div class="cat" data-c="' + c.id + '"><div class="cathead" style="--c:' + c.color + '"><i>' + SQ.catIcon(c, 20) + '</i><b>' + esc(c.name) + '</b><small>' + items.length + ' خدمة</small></div><div class="grid">' +
         items.map(function (s) {
-          return '<button class="tile" data-s="' + s.id + '" data-n="' + esc(normAr(s.name + ' ' + (SQ.KEYWORDS[s.id] || '') + ' ' + c.name)) + '" style="--c:' + c.color + '"><span class="ti">' + esc(s.icon) + '</span><span class="tn">' + esc(s.name) + '</span></button>';
+          return '<button class="tile" data-s="' + s.id + '" data-n="' + esc(normAr(s.name + ' ' + (SQ.KEYWORDS[s.id] || '') + ' ' + c.name)) + '" style="--c:' + c.color + '"><span class="ti">' + SQ.svcIcon(s, 27) + '</span><span class="tn">' + esc(s.name) + '</span></button>';
         }).join('') + '</div></div>';
     }).join('');
-    var chips = '<div class="catchips"><button class="chip on" data-c="">الكل</button>' + cats.map(function (c) { return '<button class="chip" data-c="' + c.id + '">' + c.icon + ' ' + esc(c.name) + '</button>'; }).join('') + '</div>';
+    var chips = '<div class="catchips"><button class="chip on" data-c="">الكل</button>' + cats.map(function (c) { return '<button class="chip" data-c="' + c.id + '">' + SQ.catIcon(c, 16) + ' ' + esc(c.name) + '</button>'; }).join('') + '</div>';
     $app.innerHTML =
       '<div class="home"><header class="hero"><div class="herotop"><div class="logo sm">' + SVG_LOGO + '</div><div class="hname"><b>' + esc(C.appName) + '</b><small>' + esc(C.tagline) + '</small></div>' +
-      '<button class="back" id="menuBtn" aria-label="القائمة">⋮</button></div>' +
-      '<div class="searchbar"><span>🔍</span><input id="hq" type="search" placeholder="ابحث: سباك، كهربائي، تكييف..." autocomplete="off" enterkeyhint="search"><button id="hqx" hidden aria-label="مسح">✕</button></div>' +
-      '<button class="locchip2" id="chLoc">📍 ' + (loc ? esc(locLabel()) + ' · تغيير' : 'حدد موقعك ليظهر لك الأقرب') + '</button></header>' +
-      '<div class="sides"><button class="side' + (side === 'client' ? ' on' : '') + '" data-side="client"><i>🔍</i><b>أحتاج خدمة</b><small>تصفح الخدمات واطلب الأقرب</small></button>' +
-      '<button class="side' + (side === 'prov' ? ' on' : '') + '" data-side="prov"><i>🛠️</i><b>أنا صنايعي</b><small>سجّل واعرض خدماتك مجانا</small></button></div>' +
+      '<button class="back" id="menuBtn" aria-label="القائمة">' + SQ.I('dots', 22) + '</button></div>' +
+      '<div class="searchbar"><span class="sico">' + SQ.I('search', 22) + '</span><input id="hq" type="search" placeholder="ابحث: سباك، كهربائي، تكييف..." autocomplete="off" enterkeyhint="search"><button id="hqx" hidden aria-label="مسح">✕</button></div>' +
+      '<button class="locchip2" id="chLoc">' + SQ.I('pin', 17) + ' ' + (loc ? esc(locLabel()) + ' · تغيير' : 'حدد موقعك ليظهر لك الأقرب') + '</button></header>' +
+      '<div class="sides"><div class="seg" id="seg" data-side="' + side + '"><i class="thumb"></i><button class="side' + (side === 'client' ? ' on' : '') + '" data-side="client">' + SQ.I('client', 21) + '<b>أحتاج خدمة</b></button>' +
+      '<button class="side' + (side === 'prov' ? ' on' : '') + '" data-side="prov">' + SQ.I('wrench', 21) + '<b>أنا صنايعي</b></button></div></div>' +
       '<div class="panels s-' + side + '"><section class="panel pclient" id="pClient">' + demoNote() + '<div id="dueBox"></div>' + chips + '<div id="tiles">' + tiles +
       '</div><div class="empty" id="noRes" hidden><div class="big">🔎</div><p>ما لقينا خدمة بهذا الاسم.</p><p class="note">جرّب كلمة أخرى، أو أخبرنا بالخدمة التي تحتاجها عبر الدعم.</p></div>' +
-      '<div class="sechead" id="pgHead"><b>🌟 الصنايعية</b><small>الأقرب والأعلى تقييما أولا</small></div><div class="pgrid" id="pgrid"></div><div id="pgMore" class="center mt"></div><div id="pgSentinel" style="height:1px"></div></section>' +
+      '<div class="sechead" id="pgHead"><b>' + SQ.I('star', 20, 'sf') + ' الصنايعية</b><small>الأقرب والأعلى تقييما أولا</small></div><div class="pgrid" id="pgrid"></div><div id="pgMore" class="center mt"></div><div id="pgSentinel" style="height:1px"></div></section>' +
       '<section class="panel pprov" id="pProv"></section></div></div>';
     bindMenu();
     on('chLoc', 'click', function () { go('#/c/loc'); });
@@ -78,7 +79,7 @@
       b.addEventListener('click', function () {
         var v = b.getAttribute('data-side'); store.set('side', v);
         U.each('.side', function (x) { x.classList.toggle('on', x === b); });
-        document.querySelector('.panels').className = 'panels s-' + v;
+        document.querySelector('.panels').className = 'panels s-' + v; document.getElementById('seg').setAttribute('data-side', v);
         window.scrollTo(0, 0);
       });
     });
@@ -137,9 +138,9 @@
     var chips = ids.slice(0, 2).map(function (i) { return '<span class="mchip">' + esc(svc(i).name) + '</span>'; }).join('') + (ids.length > 2 ? '<span class="mchip more">+' + (ids.length - 2) + '</span>' : '');
     var cats = ids.map(function (i) { return SQ.catOf(svc(i)).id; }).join(' ');
     return '<button class="gcard" data-id="' + p.id + '" data-s="' + esc(first) + '" data-cats="' + cats + '" data-n="' + esc(normAr(p.name + ' ' + ids.map(function (i) { return svc(i).name; }).join(' '))) + '">' +
-      '<span class="gph">' + U.avatar(p, 'sq') + (p.available ? '<i class="dot on" title="متاح الآن"></i>' : '<i class="dot"></i>') + '</span>' +
-      '<b class="gname">' + esc(p.name) + (p.verified ? ' <span class="vmark" title="موثّق">✔</span>' : '') + '</b>' +
-      '<span class="gstar">' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
+      '<span class="gph">' + U.avatar(p, p.verified ? 'sq ver' : 'sq') + (p.available ? '<i class="dot on" title="متاح الآن"></i>' : '<i class="dot"></i>') + '</span>' +
+      '<b class="gname">' + esc(p.name) + (p.verified ? ' <span class="vmark" title="موثّق">' + SQ.I('shield', 15) + '</span>' : '') + '</b>' +
+      '<span class="gstar">' + (p.rating != null ? '<span class="star">' + SQ.I('star', 13, 'sf') + ' ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
       '<span class="gchips">' + chips + '</span></button>';
   }
   var gridState = { offset: 0, loading: false, done: false, io: null };
@@ -175,8 +176,8 @@
     var el = document.getElementById('pProv'); if (!el) return;
     var pid = getPid();
     if (!pid) {
-      el.innerHTML = '<div class="provhero"><div class="pe">🛠️</div><h2>اعرض مهارتك للناس القريبين منك</h2><p>سجّل مجانا في دقائق، وفريق صنايعي قريب يراجع طلبك ويؤكد بياناتك.</p>' +
-        '<ul class="perks"><li><i>🆓</i>مجاني بلا عمولة</li><li><i>📍</i>يصلك الزبون الأقرب إليك</li><li><i>📞</i>الزبون يتصل بك مباشرة</li><li><i>⭐</i>تقييماتك تبني سمعتك</li></ul>' +
+      el.innerHTML = '<div class="provhero"><div class="pe">' + SQ.I('wrench', 30) + '</div><h2>اعرض مهارتك للناس القريبين منك</h2><p>سجّل مجانا في دقائق، وفريق صنايعي قريب يراجع طلبك ويؤكد بياناتك.</p>' +
+        '<ul class="perks"><li><i>' + SQ.I('gift', 20) + '</i>مجاني بلا عمولة</li><li><i>' + SQ.I('pin', 20) + '</i>يصلك الزبون الأقرب إليك</li><li><i>' + SQ.I('phone', 20) + '</i>الزبون يتصل بك مباشرة</li><li><i>' + SQ.I('star', 20) + '</i>تقييماتك تبني سمعتك</li></ul>' +
         '<button class="btn primary" id="bNew">سجّل الآن مجانا</button><button class="btn ghost" id="bIn">عندي حساب؟ دخول</button></div>' +
         '<div class="card how"><b>كيف يعمل؟</b><ol><li>تسجّل بياناتك وخدماتك ومنطقتك</li><li>نؤكد حسابك معك على واتساب ويُوثَّق ملفك</li><li>تفعّل "متاح" فيصلك الزبائن</li></ol></div>';
       on('bNew', 'click', function () { go('#/p/1'); }); on('bIn', 'click', function () { go('#/p/login'); });
@@ -185,7 +186,7 @@
     el.innerHTML = '<div class="card"><div class="spin">...</div></div>';
     db.providerSelf(pid, getTok()).then(function (me) {
       var st = STATUS[me.status] || STATUS.pending;
-      el.innerHTML = '<div class="card mecard"><div class="mehead">' + U.avatar(me) + '<div><b>' + esc(me.name) + '</b>' + (me.verified ? ' <span class="vtag">✔ موثّق</span>' : '') + '<div class="muted">' + esc(svcNames(me.services)) + '</div><span class="badge ' + st[1] + '">' + st[0] + '</span></div></div>' +
+      el.innerHTML = '<div class="card mecard"><div class="mehead">' + U.avatar(me) + '<div><b>' + esc(me.name) + '</b>' + (me.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + '<div class="muted">' + esc(svcNames(me.services)) + '</div><span class="badge ' + st[1] + '">' + st[0] + '</span></div></div>' +
         '<div class="pbar"><i style="width:' + (me.pct || 0) + '%"></i></div><small class="muted">اكتمال ملفك ' + (me.pct || 0) + '%</small>' +
         '<div class="btnrow mt"><a class="btn primary" href="#/p/home">لوحتي</a><a class="btn ghost" href="#/p/profile">ملفي الشخصي</a></div></div>';
     }).catch(function () { el.innerHTML = '<div class="card"><a class="btn primary" href="#/p/login">ادخل إلى حسابك</a></div>'; });
@@ -205,7 +206,7 @@
             ? '<label class="field"><span>الولاية</span><select id="st">' + stateOptions(loc && loc.state_id) + '</select></label>' +
               '<label class="field"><span>المدينة</span><select id="ct">' + cityOptions(loc && loc.state_id, loc && loc.city_id) + '</select></label>' +
               '<label class="field"><span>الحي (اختياري)</span><input id="hd" value="' + esc(loc && loc.hood || '') + '" placeholder="مثال: الثورة"></label>'
-            : '<button class="btn primary" id="useGps" style="width:100%">📍 استخدم موقعي</button>' +
+            : '<button class="btn primary" id="useGps" style="width:100%">' + SQ.I('pin', 20) + ' استخدم موقعي</button>' +
               '<div class="center mt"><button class="linkbtn" id="manual">أو اختار يدويا</button></div>'),
         foot: manual ? '<button class="btn primary" id="okLoc">التالي</button>' : ''
       });
@@ -261,12 +262,12 @@
     var em = p.distance_km != null ? SQ.geo.eta(p.distance_km) : null;
     var eta = em != null ? 'يصل في حوالي ' + em + (em <= 10 ? ' دقائق' : ' دقيقة') : '';
     return '<div class="card click pcard-wrap" data-id="' + p.id + '"><div class="pcard">' + U.avatar(p) + '' +
-      '<div class="pinfo"><div class="pname">' + esc(p.name) + (p.verified ? ' <span class="vtag">✔ موثّق</span>' : '') + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' +
+      '<div class="pinfo"><div class="pname">' + esc(p.name) + (p.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' +
       '<div class="psvc">' + esc(svcNames(p.services)) + '</div>' +
       '<div class="meta">' +
-      (dist ? '<span>📍 ' + dist + '</span>' : '') + (eta ? '<span>🕒 ' + eta + '</span>' : '') +
+      (dist ? '<span class="mi">' + SQ.I('pin', 15) + ' ' + dist + '</span>' : '') + (eta ? '<span class="mi">' + SQ.I('clock', 15) + ' ' + eta + '</span>' : '') +
       '<span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : '<span class="new">جديد</span>') + '</span>' +
-      '<span>💰 كشف ' + Number(p.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span>' +
+      '<span>كشف ' + Number(p.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span>' +
       '<span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span>' +
       '</div></div></div></div>';
   }
@@ -280,7 +281,7 @@
     page({
       title: p.name, back: '#/c/list/' + sid,
       body: demoNote() +
-        '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + (p.verified ? ' <span class="vtag">✔ موثّق</span>' : '') + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
+        '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + (p.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
         '<div class="stats"><div class="stat"><b>' + (p.rating != null ? '★ ' + p.rating : 'جديد') + '</b><small>' + p.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + p.ok + ' - ' + p.fail + '</b><small>ناجحة - فاشلة</small></div>' +
         '<div class="stat"><b>' + p.experience + '</b><small>سنة خبرة</small></div></div>' +
@@ -295,7 +296,7 @@
           return '<div class="rev"><span class="star">' + '★'.repeat(r.stars) + '</span> <small class="muted">' + (r.success ? 'شغلانة ناجحة' : 'شغلانة فاشلة') + ' · ' + timeAgo(r.ts) + '</small>' + (r.comment ? '<div>' + esc(r.comment) + '</div>' : '') + '</div>';
         }).join('') : '<p class="muted">لا توجد تقييمات بعد</p>') + '</div>' +
         '<div class="center"><button class="linkbtn" id="rep">🚩 إبلاغ عن هذا الصنايعي</button></div>',
-      foot: '<button class="btn primary" id="call">📞 اتصال</button><button class="btn wa" id="wa">واتساب</button>'
+      foot: '<button class="btn primary" id="call">' + SQ.I('phone', 21) + ' اتصال</button><button class="btn wa" id="wa">' + SQ.I('chat', 21) + ' واتساب</button>'
     });
     async function contact(channel) {
       try { await db.createRequest({ provider_id: p.id, anon_id: anon, service: sid, city_id: loc ? loc.city_id : p.city_id, channel: channel }); }
@@ -618,12 +619,12 @@
   /* اكتمال الملف: الملفات المكتملة والنشطة تظهر أولا للزبائن */
   function completeCard(me) {
     var todo = [];
-    if (!me.photo) todo.push('📷 أضف صورة شخصية (+30%)');
-    if (!me.bio || me.bio.trim().length < 20) todo.push('✍️ اكتب وصفا لمهارتك بـ 20 حرفا فأكثر (+25%)');
-    if (!me.hood) todo.push('📍 اكتب اسم حيك (+15%)');
-    if (!me.price) todo.push('💰 حدد سعر الكشف (+10%)');
-    if (!me.experience) todo.push('🛠️ اكتب سنوات خبرتك (+10%)');
-    if (!me.has_password) todo.push('🔐 أضف كلمة سر (+10%)');
+    if (!me.photo) todo.push('أضف صورة شخصية (+30%)');
+    if (!me.bio || me.bio.trim().length < 20) todo.push('اكتب وصفا لمهارتك بـ 20 حرفا فأكثر (+25%)');
+    if (!me.hood) todo.push('اكتب اسم حيك (+15%)');
+    if (!me.price) todo.push('حدد سعر الكشف (+10%)');
+    if (!me.experience) todo.push('اكتب سنوات خبرتك (+10%)');
+    if (!me.has_password) todo.push('أضف كلمة سر (+10%)');
     var pct = me.pct != null ? me.pct : 100 - 0;
     return '<div class="card"><b>اكتمال ملفك: ' + pct + '%</b><div class="pbar"><i style="width:' + pct + '%"></i></div>' +
       (todo.length ? '<ul class="todo">' + todo.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul><p class="note">الملفات المكتملة والأكثر نشاطا تظهر أولا للزبائن. <a href="#/p/edit" class="linkbtn">أكمل الآن</a></p>'
