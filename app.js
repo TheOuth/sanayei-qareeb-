@@ -39,22 +39,107 @@
     return (loc.hood ? loc.hood + '، ' : '') + SQ.cityName(loc.city_id) + (loc.manual ? '' : ' (موقعك الحالي)');
   }
 
-  /* ---------- 1) الشاشة الأولى ---------- */
-  function viewWelcome() {
-    var role = store.get('role', null);
-    if (role === 'client') return go('#/c/loc');
-    if (role === 'provider') return go(store.get('pid', null) ? '#/p/home' : '#/p/start');
+  /* ---------- 1) الرئيسية: قسمان (أحتاج خدمة | أنا صنايعي) + بحث + تصنيفات ---------- */
+  function normAr(t) {
+    return String(t || '').toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ـ/g, '').trim();
+  }
+  function afterLoc() {
+    var n = store.get('next', null);
+    if (n) { store.del('next'); return go('#/c/list/' + n); }
+    go('#/');
+  }
+  function viewHome() {
+    document.body.classList.add('is-home');
+    var side = store.get('side', getPid() ? 'prov' : 'client');
+    var list = U.activeServices(), cats = SQ.CATEGORIES.filter(function (c) { return list.some(function (s) { return SQ.catOf(s).id === c.id; }); });
+    var tiles = cats.map(function (c) {
+      var items = list.filter(function (s) { return SQ.catOf(s).id === c.id; });
+      return '<div class="cat" data-c="' + c.id + '"><div class="cathead" style="--c:' + c.color + '"><i>' + c.icon + '</i><b>' + esc(c.name) + '</b><small>' + items.length + ' خدمة</small></div><div class="grid">' +
+        items.map(function (s) {
+          return '<button class="tile" data-s="' + s.id + '" data-n="' + esc(normAr(s.name + ' ' + (SQ.KEYWORDS[s.id] || '') + ' ' + c.name)) + '" style="--c:' + c.color + '"><span class="ti">' + esc(s.icon) + '</span><span class="tn">' + esc(s.name) + '</span></button>';
+        }).join('') + '</div></div>';
+    }).join('');
+    var chips = '<div class="catchips"><button class="chip on" data-c="">الكل</button>' + cats.map(function (c) { return '<button class="chip" data-c="' + c.id + '">' + c.icon + ' ' + esc(c.name) + '</button>'; }).join('') + '</div>';
     $app.innerHTML =
-      '<div class="welcome"><div class="logo">' + SVG_LOGO + '</div>' +
-      '<div class="brand">' + esc(C.appName) + '</div>' +
-      '<div class="tag">' + esc(C.tagline) + ' - ' + esc(SQ.COUNTRY.name) + '</div>' +
-      '<div class="choices">' +
-      '<button class="choice" id="bProv"><span class="ci">🛠️</span><b>مقدم خدمة</b><small>سجل واعرض خدماتك للناس القريبة منك</small></button>' +
-      '<button class="choice alt" id="bClient"><span class="ci">📍</span><b>محتاج خدمة</b><small>اطلب أقرب مقدم خدمة ليك</small></button>' +
-      '</div>' + (SQ.demo ? '<div class="note">نسخة تجريبية</div>' : '') +
-      '</div>';
-    on('bProv', 'click', function () { store.set('role', 'provider'); go(store.get('pid', null) ? '#/p/home' : '#/p/start'); });
-    on('bClient', 'click', function () { store.set('role', 'client'); go('#/c/loc'); });
+      '<div class="home"><header class="hero"><div class="herotop"><div class="logo sm">' + SVG_LOGO + '</div><div class="hname"><b>' + esc(C.appName) + '</b><small>' + esc(C.tagline) + '</small></div>' +
+      '<button class="back" id="menuBtn" aria-label="القائمة">⋮</button></div>' +
+      '<div class="searchbar"><span>🔍</span><input id="hq" type="search" placeholder="ابحث: سباك، كهربائي، تكييف..." autocomplete="off" enterkeyhint="search"><button id="hqx" hidden aria-label="مسح">✕</button></div>' +
+      '<button class="locchip2" id="chLoc">📍 ' + (loc ? esc(locLabel()) + ' · تغيير' : 'حدد موقعك ليظهر لك الأقرب') + '</button></header>' +
+      '<div class="sides"><button class="side' + (side === 'client' ? ' on' : '') + '" data-side="client"><i>🔍</i><b>أحتاج خدمة</b><small>تصفح الخدمات واطلب الأقرب</small></button>' +
+      '<button class="side' + (side === 'prov' ? ' on' : '') + '" data-side="prov"><i>🛠️</i><b>أنا صنايعي</b><small>سجّل واعرض خدماتك مجانا</small></button></div>' +
+      '<div class="panels s-' + side + '"><section class="panel pclient" id="pClient">' + demoNote() + '<div id="dueBox"></div>' + chips + '<div id="tiles">' + tiles +
+      '</div><div class="empty" id="noRes" hidden><div class="big">🔎</div><p>ما لقينا خدمة بهذا الاسم.</p><p class="note">جرّب كلمة أخرى، أو أخبرنا بالخدمة التي تحتاجها عبر الدعم.</p></div></section>' +
+      '<section class="panel pprov" id="pProv"></section></div></div>';
+    bindMenu();
+    on('chLoc', 'click', function () { go('#/c/loc'); });
+    // التبديل بين القسمين
+    U.each('.side', function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-side'); store.set('side', v);
+        U.each('.side', function (x) { x.classList.toggle('on', x === b); });
+        document.querySelector('.panels').className = 'panels s-' + v;
+        window.scrollTo(0, 0);
+      });
+    });
+    // فتح خدمة
+    var openSvc = function (sid) { if (!loc) { store.set('next', sid); return go('#/c/loc'); } go('#/c/list/' + sid); };
+    U.each('.tile', function (t) { t.addEventListener('click', function () { openSvc(t.getAttribute('data-s')); }); });
+    // التصنيفات
+    var catSel = '';
+    function applyFilter() {
+      var q = normAr(document.getElementById('hq').value), any = 0;
+      document.getElementById('hqx').hidden = !q;
+      U.each('.cat', function (c) {
+        var shown = 0;
+        U.each('#' + 'tiles' + ' .cat[data-c="' + c.getAttribute('data-c') + '"] .tile', function (t) {
+          var ok = (!catSel || c.getAttribute('data-c') === catSel) && (!q || t.getAttribute('data-n').indexOf(q) > -1);
+          t.style.display = ok ? '' : 'none'; if (ok) shown++;
+        });
+        c.style.display = shown ? '' : 'none'; any += shown;
+      });
+      document.getElementById('noRes').hidden = !!any;
+    }
+    U.each('.catchips .chip', function (b) {
+      b.addEventListener('click', function () { catSel = b.getAttribute('data-c'); U.each('.catchips .chip', function (x) { x.classList.toggle('on', x === b); }); applyFilter(); });
+    });
+    on('hq', 'input', function () {
+      applyFilter();
+      if (this.value && store.get('side', 'client') !== 'client') document.querySelector('.side[data-side="client"]').click();
+    });
+    on('hq', 'keydown', function (e) {
+      if (e.key !== 'Enter') return;
+      var vis = Array.prototype.filter.call(document.querySelectorAll('.tile'), function (t) { return t.style.display !== 'none'; });
+      if (vis.length === 1) openSvc(vis[0].getAttribute('data-s')); else this.blur();
+    });
+    on('hqx', 'click', function () { document.getElementById('hq').value = ''; applyFilter(); });
+    // طلب بانتظار التقييم
+    db.myRequests(anon).then(function (l) {
+      var due = l.filter(function (r) { return r.status === 'new' && Date.now() - r.ts > C.reviewDelayHours * 3600e3; })[0], box = document.getElementById('dueBox');
+      if (!due || !box) return;
+      box.innerHTML = '<div class="banner">تمت الشغلانة مع ' + esc(due.provider_name) + '؟<br><button class="btn primary" id="dueBtn">قيّم الآن</button></div>';
+      on('dueBtn', 'click', function () { go('#/c/rate/' + due.id); });
+    }).catch(function () {});
+    renderProvPanel();
+  }
+
+  function renderProvPanel() {
+    var el = document.getElementById('pProv'); if (!el) return;
+    var pid = getPid();
+    if (!pid) {
+      el.innerHTML = '<div class="provhero"><div class="pe">🛠️</div><h2>اعرض مهارتك للناس القريبين منك</h2><p>سجّل مجانا في دقائق، وفريق صنايعي قريب يراجع طلبك ويؤكد بياناتك.</p>' +
+        '<ul class="perks"><li><i>🆓</i>مجاني بلا عمولة</li><li><i>📍</i>يصلك الزبون الأقرب إليك</li><li><i>📞</i>الزبون يتصل بك مباشرة</li><li><i>⭐</i>تقييماتك تبني سمعتك</li></ul>' +
+        '<button class="btn primary" id="bNew">سجّل الآن مجانا</button><button class="btn ghost" id="bIn">عندي حساب؟ دخول</button></div>' +
+        '<div class="card how"><b>كيف يعمل؟</b><ol><li>تسجّل بياناتك وخدماتك ومنطقتك</li><li>نؤكد حسابك معك على واتساب ويُوثَّق ملفك</li><li>تفعّل "متاح" فيصلك الزبائن</li></ol></div>';
+      on('bNew', 'click', function () { go('#/p/1'); }); on('bIn', 'click', function () { go('#/p/login'); });
+      return;
+    }
+    el.innerHTML = '<div class="card"><div class="spin">...</div></div>';
+    db.providerSelf(pid, getTok()).then(function (me) {
+      var st = STATUS[me.status] || STATUS.pending;
+      el.innerHTML = '<div class="card mecard"><div class="mehead">' + U.avatar(me) + '<div><b>' + esc(me.name) + '</b>' + (me.verified ? ' <span class="vtag">✔ موثّق</span>' : '') + '<div class="muted">' + esc(svcNames(me.services)) + '</div><span class="badge ' + st[1] + '">' + st[0] + '</span></div></div>' +
+        '<div class="pbar"><i style="width:' + (me.pct || 0) + '%"></i></div><small class="muted">اكتمال ملفك ' + (me.pct || 0) + '%</small>' +
+        '<div class="btnrow mt"><a class="btn primary" href="#/p/home">لوحتي</a><a class="btn ghost" href="#/p/profile">ملفي الشخصي</a></div></div>';
+    }).catch(function () { el.innerHTML = '<div class="card"><a class="btn primary" href="#/p/login">ادخل إلى حسابك</a></div>'; });
   }
   function switchRole() { store.del('role'); go('#/'); }
 
@@ -63,7 +148,7 @@
     var gpsMsg = '';
     function render(manual) {
       page({
-        title: 'موقعك', back: '', menu: true,
+        title: 'موقعك', back: '#/', menu: true,
         body: demoNote() + '<div class="h2">وين أنت الآن؟</div>' +
           (manual ? '' : '<p class="muted" style="margin-bottom:16px">نحتاج موقعك لنعرض لك أقرب صنايعي ليك. نستخدمه وقت الطلب فقط.</p>') +
           (gpsMsg ? '<div class="banner">' + esc(gpsMsg) + '</div>' : '') +
@@ -83,7 +168,7 @@
           if (!s || !c) return toast('اختر الولاية والمدينة');
           var cc = SQ.findCity(c).city;
           loc = { lat: cc.lat, lng: cc.lng, state_id: s, city_id: c, hood: document.getElementById('hd').value.trim(), manual: true };
-          store.set('loc', loc); go('#/c/service');
+          store.set('loc', loc); afterLoc();
         });
       } else {
         on('manual', 'click', function () { render(true); });
@@ -93,7 +178,7 @@
             var g = await getGps(), n = SQ.geo.nearestCity(g.lat, g.lng);
             if (!n || n.km > 150) { gpsMsg = 'موقعك بعيد عن المدن المسجلة، اختر مدينتك يدويا'; return render(true); }
             loc = { lat: g.lat, lng: g.lng, state_id: n.state_id, city_id: n.city_id, hood: '', manual: false };
-            store.set('loc', loc); go('#/c/service');
+            store.set('loc', loc); afterLoc();
           } catch (e) { gpsMsg = 'ما قدرنا نحدد موقعك. اختر يدويا وسنكمل.'; render(true); }
         });
       }
@@ -101,36 +186,12 @@
     render(false);
   }
 
-  function viewClientService() {
-    if (!loc) return go('#/c/loc');
-    page({
-      title: 'اختر الخدمة', back: '#/c/loc', menu: true,
-      body: '<button class="locchip" id="chLoc">📍 ' + esc(locLabel()) + ' · تغيير</button>' +
-        '<div class="grid">' + U.activeServices().map(function (s) {
-          return '<button class="tile" data-s="' + s.id + '"><span class="ti">' + s.icon + '</span>' + esc(s.name) + '</button>';
-        }).join('') + '</div>'
-    });
-    bindMenu(); on('chLoc', 'click', function () { go('#/c/loc'); });
-    db.myRequests(anon).then(function (l) {
-      var due = l.filter(function (r) { return r.status === 'new' && Date.now() - r.ts > C.reviewDelayHours * 3600e3; })[0];
-      var main = document.querySelector('.main');
-      if (!due || !main || !document.querySelector('.tile')) return;
-      var d = document.createElement('div'); d.className = 'banner';
-      d.innerHTML = 'تمت الشغلانة مع ' + esc(due.provider_name) + '؟<br><button class="btn primary" id="dueBtn">قيّم الآن</button>';
-      main.insertBefore(d, main.firstChild);
-      document.getElementById('dueBtn').addEventListener('click', function () { go('#/c/rate/' + due.id); });
-    }).catch(function () {});
-    Array.prototype.forEach.call(document.querySelectorAll('.tile'), function (t) {
-      t.addEventListener('click', function () { go('#/c/list/' + t.getAttribute('data-s')); });
-    });
-  }
-
   async function viewClientList(sid) {
     if (!loc) return go('#/c/loc');
     loading(svc(sid).name);
     var res;
     try { res = await db.nearby({ lat: loc.lat, lng: loc.lng, cityId: loc.city_id, service: sid }); }
-    catch (e) { return page({ title: svc(sid).name, back: '#/c/service', body: '<div class="empty"><div class="big">📶</div>' + errMsg(e) + '<div class="mt"><button class="btn primary" id="retry">إعادة المحاولة</button></div></div>' }), on('retry', 'click', route); }
+    catch (e) { return page({ title: svc(sid).name, back: '#/', body: '<div class="empty"><div class="big">📶</div>' + errMsg(e) + '<div class="mt"><button class="btn primary" id="retry">إعادة المحاولة</button></div></div>' }), on('retry', 'click', route); }
     var items = res.items, head = '';
     if (res.tier === 'nearest_city') head = '<div class="banner">ما في أحد داخل نطاقك الآن. هذا أقرب زول ليك في المدينة على بعد ' + (items[0].distance_km != null ? items[0].distance_km + ' كم' : 'قريب') + '، تحب تشوفه؟</div>';
     if (res.tier === 'other_city') head = '<div class="banner">لا يوجد مقدم خدمة في مدينتك الآن. هؤلاء أقرب الموجودين في مدن أخرى، تحب تطلب منهم؟</div>';
@@ -140,7 +201,7 @@
     } else {
       body += items.map(function (p) { return pCard(p); }).join('');
     }
-    page({ title: svc(sid).name, back: '#/c/service', menu: true, body: body });
+    page({ title: svc(sid).name, back: '#/', menu: true, body: body });
     bindMenu();
     Array.prototype.forEach.call(document.querySelectorAll('.pcard-wrap'), function (c) {
       c.addEventListener('click', function () { go('#/c/p/' + c.getAttribute('data-id') + '/' + sid); });
@@ -151,7 +212,7 @@
     var em = p.distance_km != null ? SQ.geo.eta(p.distance_km) : null;
     var eta = em != null ? 'يصل في حوالي ' + em + (em <= 10 ? ' دقائق' : ' دقيقة') : '';
     return '<div class="card click pcard-wrap" data-id="' + p.id + '"><div class="pcard">' + U.avatar(p) + '' +
-      '<div class="pinfo"><div class="pname">' + esc(p.name) + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' +
+      '<div class="pinfo"><div class="pname">' + esc(p.name) + (p.verified ? ' <span class="vtag">✔ موثّق</span>' : '') + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' +
       '<div class="psvc">' + esc(svcNames(p.services)) + '</div>' +
       '<div class="meta">' +
       (dist ? '<span>📍 ' + dist + '</span>' : '') + (eta ? '<span>🕒 ' + eta + '</span>' : '') +
@@ -170,7 +231,7 @@
     page({
       title: p.name, back: '#/c/list/' + sid,
       body: demoNote() +
-        '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
+        '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + (p.verified ? ' <span class="vtag">✔ موثّق</span>' : '') + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
         '<div class="stats"><div class="stat"><b>' + (p.rating != null ? '★ ' + p.rating : 'جديد') + '</b><small>' + p.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + p.ok + ' - ' + p.fail + '</b><small>ناجحة - فاشلة</small></div>' +
         '<div class="stat"><b>' + p.experience + '</b><small>سنة خبرة</small></div></div>' +
@@ -218,10 +279,10 @@
   async function viewMyRequests() {
     loading('طلباتي');
     var list;
-    try { list = await db.myRequests(anon); } catch (e) { toast(errMsg(e)); return go('#/c/service'); }
+    try { list = await db.myRequests(anon); } catch (e) { toast(errMsg(e)); return go('#/'); }
     var st = { 'new': 'بانتظار رأيك', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
     page({
-      title: 'طلباتي', back: '#/c/service',
+      title: 'طلباتي', back: '#/',
       body: list.length ? list.map(function (r) {
         var can = r.status === 'new' && Date.now() - r.ts > 5 * 60e3; // يسمح بالتقييم بعد 5 دقائق (والتطبيق يذكّره بعد يوم)
         return '<div class="card"><div class="pname">' + esc(r.provider_name) + '</div><div class="psvc">' + esc(svc(r.service).name) + ' · ' + (r.channel === 'call' ? 'اتصال' : 'واتساب') + ' · ' + timeAgo(r.ts) + '</div>' +
@@ -257,19 +318,19 @@
 
   function bindMenu() {
     on('menuBtn', 'click', function () {
-      var role = store.get('role'), isC = role === 'client', isP = role === 'provider' && getPid();
+      var isC = true, isP = !!getPid();
       var sup = (SQ.cfg && SQ.cfg.support_whatsapp) || C.supportWhatsapp;
       modal('<h3>القائمة</h3><div style="display:flex;flex-direction:column;gap:10px">' +
         (isC ? '<button class="btn ghost" id="mReq">📋 طلباتي</button>' : '') +
         (isP ? '<button class="btn ghost" id="mProf">👤 ملفي الشخصي</button>' : '') +
         (sup ? '<a class="btn ghost" id="mSup" target="_blank" rel="noopener" href="https://wa.me/' + String(sup).replace(/\D/g, '') + '">💬 تواصل مع الدعم</a>' : '') +
-        '<button class="btn ghost" id="mRole">🔄 تغيير (مقدم/محتاج خدمة)</button>' +
+        '<button class="btn ghost" id="mRole">🏠 الرئيسية</button>' +
         (isP ? '<button class="btn danger" id="mOut">🚪 تسجيل الخروج</button>' : '') +
         (SQ.demo ? '<button class="btn ghost" id="mReset">♻️ إعادة ضبط البيانات التجريبية</button>' : '') +
         '<button class="btn ghost" id="mClose">إغلاق</button></div>');
       on('mReq', 'click', function () { closeModal(); go('#/c/requests'); });
       on('mProf', 'click', function () { closeModal(); go('#/p/profile'); });
-      on('mRole', 'click', function () { closeModal(); switchRole(); });
+      on('mRole', 'click', function () { closeModal(); go('#/'); });
       on('mOut', 'click', function () { closeModal(); confirmLogout(); });
       on('mReset', 'click', function () { closeModal(); db.resetDemo(); ['pid', 'ptoken', 'loc'].forEach(store.del); loc = null; toast('تمت إعادة الضبط'); go('#/'); });
       on('mClose', 'click', closeModal);
@@ -283,7 +344,7 @@
   function regSave() { store.set('reg', reg); }
   function getPid() { return store.get('pid', null); }
   function getTok() { return store.get('ptoken', null); }
-  function signIn(id, token) { store.set('pid', id); store.set('ptoken', token); store.set('role', 'provider'); }
+  function signIn(id, token) { store.set('pid', id); store.set('ptoken', token); store.set('role', 'provider'); store.set('side', 'prov'); }
   function signOut() { store.del('pid'); store.del('ptoken'); }
   function sessionExpired() { signOut(); toast('انتهت جلستك، ادخل من جديد'); go('#/p/login'); }
   function stepsBar(n) { return '<div class="steps">' + [1, 2, 3, 4].map(function (i) { return '<i class="' + (i <= n ? 'on' : '') + '"></i>'; }).join('') + '</div><div class="stepno">الخطوة ' + n + ' من 4</div>'; }
@@ -429,7 +490,7 @@
         [['الاسم', reg.name], ['الهاتف', reg.phone], ['الواتساب', reg.whatsapp], ['الخدمات', svcNames(reg.services)], ['المنطقة', (reg.hood ? reg.hood + '، ' : '') + SQ.cityName(reg.city_id) + ' - ' + SQ.stateName(reg.state_id)],
           ['النطاق', reg.radius === 'all' ? 'كل المدينة' : reg.radius + ' كم'], ['الخبرة', reg.experience + ' سنة'], ['سعر الكشف', Number(reg.price).toLocaleString('en') + ' ' + SQ.COUNTRY.currency], ['أوقات العمل', 'من ' + reg.from + ' إلى ' + reg.to], ['الوصف', reg.bio]]
           .map(function (r) { return '<div class="kv"><span>' + r[0] + '</span><span style="text-align:left">' + esc(r[1]) + '</span></div>'; }).join('') + '</div>' +
-        '<p class="note">بعد الإرسال يراجع المدير طلبك ويتواصل معك على واتساب خلال 24 ساعة. تدخل بعدها بالهاتف وكلمة السر.</p>',
+        '<p class="note">بعد الإرسال يراجع فريق صنايعي قريب طلبك ويتواصل معك على واتساب لتأكيد بياناتك خلال 24 ساعة. تدخل بعدها بالهاتف وكلمة السر.</p>',
       foot: '<button class="btn primary" id="send">أرسل للمراجعة</button>'
     });
     bindMenu();
@@ -457,7 +518,7 @@
     try { me = await db.providerSelf(pid, tk); } catch (e) { return sessionExpired(); }
     var pwBanner = !me.has_password ? '<div class="banner">🔐 أضف كلمة سر لتتمكن من الدخول لحسابك من أي جهاز.<br><button class="btn primary" id="addPw">إضافة كلمة سر</button></div>' : '';
     if (me.status !== 'approved') {
-      var msg = { pending: ['⏳', 'طلبك قيد المراجعة', 'سنتواصل معك على واتساب خلال 24 ساعة للتأكد من رقمك.'], rejected: ['✖', 'لم يتم قبول طلبك', 'تواصل مع الدعم لمعرفة السبب.'], suspended: ['⛔', 'حسابك موقوف مؤقتا', 'تواصل مع الدعم لمراجعة حسابك.'] }[me.status] || ['⏳', 'قيد المراجعة', ''];
+      var msg = { pending: ['⏳', 'طلبك قيد المراجعة', 'سيصلك على واتساب رسالة من فريق صنايعي قريب لتأكيد بياناتك. رد عليها برقم طلبك: <b class="ltr" style="font-size:22px">' + String(me.id).replace(/-/g, '').slice(0, 4).toUpperCase() + '</b>'], rejected: ['✖', 'لم يتم قبول طلبك', 'تواصل مع الدعم لمعرفة السبب.'], suspended: ['⛔', 'حسابك موقوف مؤقتا', 'تواصل مع الدعم لمراجعة حسابك.'] }[me.status] || ['⏳', 'قيد المراجعة', ''];
       var sup = (SQ.cfg && SQ.cfg.support_whatsapp) || C.supportWhatsapp;
       page({
         title: 'ملفي', menu: true, tab: 'home',
@@ -642,14 +703,14 @@
 
   /* ---------- التوجيه ---------- */
   function route() {
-    closeModal();
+    closeModal(); document.body.classList.remove('is-home');
     var h = (location.hash || '#/').replace(/^#/, ''), p = h.split('/').filter(Boolean);
     try {
-      if (!p.length) return viewWelcome();
+      if (!p.length) return viewHome();
       if (p[0] === 'c') {
         if (p[1] === 'p') { if (!store.get('role')) store.set('role', 'client'); return viewClientProvider(p[2], p[3] || 'other'); } // رابط مشاركة الصنايعي
         if (p[1] === 'loc') return viewClientLoc();
-        if (p[1] === 'service') return viewClientService();
+        if (p[1] === 'service') return go('#/');
         if (p[1] === 'list') return viewClientList(p[2]);
         if (p[1] === 'requests') return viewMyRequests();
         if (p[1] === 'rate') return viewRate(p[2]);
@@ -667,7 +728,7 @@
         if (p[1] === '4') return viewReg4();
         return getPid() ? viewProviderHome() : viewProvStart();
       }
-      viewWelcome();
+      viewHome();
     } catch (e) { $app.innerHTML = '<div class="empty"><div class="big">⚠️</div>حصل خطأ. <a href="#/">الرئيسية</a></div>'; }
   }
   window.addEventListener('hashchange', route);

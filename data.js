@@ -41,6 +41,26 @@
     { id: 'other', name: 'أخرى', icon: '➕' }
   ];
 
+  // تصنيفات الخدمات (المدير يحدد تصنيف كل خدمة من لوحته)
+  SQ.CATEGORIES = [
+    { id: 'home', name: 'البيت والصيانة', icon: '🏠', color: '#0f766e' },
+    { id: 'energy', name: 'الطاقة والمياه', icon: '⚡', color: '#b45309' },
+    { id: 'devices', name: 'الأجهزة والإلكترونيات', icon: '📱', color: '#1d4ed8' },
+    { id: 'personal', name: 'خدمات منزلية وشخصية', icon: '🧹', color: '#a21caf' },
+    { id: 'other', name: 'أخرى', icon: '➕', color: '#475569' }
+  ];
+  var CAT_DEFAULT = { plumbing: 'home', electric: 'home', ac: 'home', carpentry: 'home', blacksmith: 'home', paint: 'home', building: 'home', locks: 'home',
+    solar: 'energy', generator: 'energy', water: 'energy', mobile: 'devices', appliance: 'devices', cleaning: 'personal', tailor: 'personal', barber: 'personal', transport: 'personal' };
+  SQ.KEYWORDS = { plumbing: 'سباك مواسير حنفية تسريب مياه صرف', electric: 'كهربائي كهرباء اسلاك فيوز', solar: 'طاقة شمسية الواح بطاريات انفرتر',
+    ac: 'تكييف مكيف تبريد ثلاجة فريون', carpentry: 'نجار اثاث ابواب خشب', blacksmith: 'حداد ابواب شبابيك لحام', paint: 'نقاش دهان صبغ',
+    building: 'بناء معلم سيراميك بلاط طوب', generator: 'مولد مولدات', water: 'مضخة بئر ماء طلمبة', mobile: 'موبايل هاتف جوال شاشة', appliance: 'غسالة ثلاجة اجهزة',
+    transport: 'نقل توصيل عفش شحن', cleaning: 'نظافة تنظيف', tailor: 'خياط ترزي خياطة', barber: 'حلاق تجميل', locks: 'قفل مفتاح' };
+  SQ.catOf = function (s) {
+    var id = s.cat || CAT_DEFAULT[s.id] || 'other';
+    for (var i = 0; i < SQ.CATEGORIES.length; i++) if (SQ.CATEGORIES[i].id === id) return SQ.CATEGORIES[i];
+    return SQ.CATEGORIES[SQ.CATEGORIES.length - 1];
+  };
+
   function c(id, name, lat, lng) { return { id: id, name: name, lat: lat, lng: lng }; }
 
   SQ.COUNTRIES = {

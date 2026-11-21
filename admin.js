@@ -13,6 +13,18 @@
   var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
+  function refOf(p) { return String(p.id).replace(/-/g, '').slice(0, 4).toUpperCase(); }
+  var SIGN = '\n\n— فريق *' + C.appName + '* 🛠️\n' + C.tagline;
+  function waText(p) {
+    var svcs = U.svcNames(p.services), city = SQ.cityName(p.city_id) || '', hi = 'السلام عليكم ورحمة الله وبركاته أخي/أختي ' + p.name + ' 🌿\n';
+    if (p.status === 'pending') return hi + 'معك فريق *' + C.appName + '*، المنصة التي تربط الناس بأقرب صنايعي في السودان.\n\nاستلمنا طلب انضمامك كمقدم خدمة (' + svcs + ') في ' + city + '، ونحتاج لتأكيد بياناتك حتى يظهر ملفك للزبائن 👷\n\n' +
+      '*للتأكيد رد على هذه الرسالة بـ:*\n1️⃣ رقم طلبك: *' + refOf(p) + '* (يظهر لك في التطبيق على صفحة "طلبك قيد المراجعة")\n2️⃣ كلمة *تأكيد* إن كانت بياناتك صحيحة (الاسم والخدمة والمنطقة)\n\n' +
+      '💡 لتتقدم في ترتيب الظهور: أضف صورة شخصية ووصفا لمهارتك من ملفك الشخصي.' + SIGN;
+    if (p.status === 'approved') return hi + 'يسعدنا إبلاغك بأنه تم *اعتماد حسابك* في ' + C.appName + ' ✅\nيمكنك الآن تفعيل زر "متاح" ليصلك الزبائن القريبون منك.\n\nالتطبيق: ' + appUrl() + '\n\n💡 الملفات المكتملة (صورة + وصف + حي) والأنشط تظهر أولا للزبائن.' + SIGN;
+    if (p.status === 'rejected') return hi + 'شكرا لتسجيلك في ' + C.appName + '. لم نتمكن حاليا من اعتماد طلبك، وغالبا لأن بعض البيانات تحتاج استكمالا أو تأكيدا.\nيمكنك الرد هنا لنساعدك في تصحيح بياناتك وإعادة النظر في طلبك.' + SIGN;
+    if (p.status === 'suspended') return hi + 'نود إبلاغك بأنه تم إيقاف ظهور حسابك في ' + C.appName + ' مؤقتا لمراجعته. يرجى الرد على هذه الرسالة لنتواصل معك ونحل الأمر سريعا.' + SIGN;
+    return hi + 'معك فريق ' + C.appName + '.' + SIGN;
+  }
   function appUrl() { return location.origin + location.pathname.replace(/admin\.html$/, ''); }
   function localPhone(p) { return SQ.util.localPhone(p); }
   function fmtDate(ts) { var d = new Date(ts); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
@@ -128,17 +140,17 @@
 
   function provCard(p) {
     var st = STATUS[p.status] || ['—', ''];
-    var wa = 'https://wa.me/' + SQ.util.digits(p.whatsapp || p.phone) + '?text=' + encodeURIComponent('السلام عليكم ' + p.name + '، معك مدير ' + C.appName + '. ');
+    var wa = 'https://wa.me/' + SQ.util.digits(p.whatsapp || p.phone) + '?text=' + encodeURIComponent(waText(p));
     var act = [];
     if (p.status === 'pending') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ موافقة</button><button class="btn danger" data-act="rejected" data-id="' + p.id + '">✖ رفض</button>');
     if (p.status === 'approved') act.push('<button class="btn danger" data-act="suspended" data-id="' + p.id + '">⛔ إيقاف</button>');
     if (p.status === 'suspended' || p.status === 'rejected') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ اعتماد</button>');
-    return '<div class="card acard"><div class="top2">' + U.avatar(p) + '<div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + '</div></div>' +
+    return '<div class="card acard"><div class="top2">' + U.avatar(p) + '<div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + ' ' + (p.verified ? '<span class="vtag">✔ موثّق</span>' : pill('غير موثّق', 'warn')) + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + '</div></div>' +
       '<div class="psvc">' + esc(U.svcNames(p.services)) + '</div>' +
       '<div class="meta"><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + p.experience + ' سنة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
-      '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
+      '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span>🔖 رقم الطلب <b class="ltr">' + refOf(p) + '</b></span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
       (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') + (p.admin_note ? '<p class="note">📝 ' + esc(p.admin_note) + '</p>' : '') +
-      '<div class="btnrow">' + act.join('') + '<a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">واتساب</a><a class="btn ghost" href="tel:' + esc(p.phone) + '">📞</a>' +
+      '<div class="btnrow">' + act.join('') + '<a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">' + (p.status === 'pending' ? '💬 رسالة التأكيد' : 'واتساب') + '</a><button class="btn ghost" data-act="verify" data-id="' + p.id + '">' + (p.verified ? 'إلغاء التوثيق' : '✔ توثيق') + '</button><a class="btn ghost" href="tel:' + esc(p.phone) + '">📞</a>' +
       '<button class="btn ghost" data-act="edit" data-id="' + p.id + '">✏️ تعديل</button><button class="btn ghost" data-act="pw" data-id="' + p.id + '">🔑 كلمة سر</button><button class="btn danger" data-act="del" data-id="' + p.id + '">🗑</button></div></div>';
   }
 
@@ -146,6 +158,7 @@
     if (!p) return;
     if (a === 'edit') return openProvForm(p);
     if (a === 'pw') return openResetPw(p);
+    if (a === 'verify') { try { await db.adminSetVerified(code, p.id, !p.verified); toast(p.verified ? 'أُلغي التوثيق' : 'تم توثيق الصنايعي ✔'); refreshAll(); } catch (e) { fail(e); } return; }
     if (a === 'del') {
       modal('<h3>حذف الصنايعي</h3><p>سيُحذف <b>' + esc(p.name) + '</b> وكل طلباته وتقييماته نهائيا. هذا لا يمكن التراجع عنه. يمكنك بدل ذلك <b>إيقافه</b>.</p><div class="row2 mt"><button class="btn ghost" id="dn">إلغاء</button><button class="btn danger" id="dy">نعم، احذف</button></div>');
       on('dn', 'click', closeModal);
@@ -212,7 +225,7 @@
   }
 
   function showCreds(name, phone, pw, title) {
-    var msg = 'مرحبا ' + name + '، تم تجهيز حسابك في تطبيق ' + C.appName + '.\nالتطبيق: ' + appUrl() + '\nالهاتف: ' + phone + '\nكلمة السر: ' + pw + '\nيمكنك تغيير كلمة السر من ملفك الشخصي.';
+    var msg = 'السلام عليكم ورحمة الله وبركاته أخي/أختي ' + name + ' 🌿\nمعك فريق *' + C.appName + '*. تم تجهيز حسابك واعتماده ✅\n\nالتطبيق: ' + appUrl() + '\nالهاتف: ' + phone + '\nكلمة السر: ' + pw + '\n\n🔐 يمكنك تغيير كلمة السر من ملفك الشخصي.\n💡 أضف صورتك ووصفا لمهارتك ليتقدم ترتيبك أمام الزبائن.' + SIGN;
     modal('<h3>' + esc(title) + '</h3><p>أرسل هذه البيانات للصنايعي ليدخل بها التطبيق (لن تظهر لك كلمة السر مرة ثانية):</p><div class="copybox">' + esc(phone) + '<br>' + esc(pw) + '</div>' +
       '<div class="btnrow"><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/' + SQ.util.digits(phone) + '?text=' + encodeURIComponent(msg) + '">إرسال عبر واتساب</a><button class="btn ghost" id="cp">نسخ</button></div><button class="btn primary mt" id="cok" style="width:100%">تم</button>');
     on('cp', 'click', function () { copyText(msg); }); on('cok', 'click', closeModal);
@@ -265,7 +278,7 @@
     var el = document.getElementById('slist'); if (!el) return;
     el.innerHTML = list.map(function (s, i) {
       return '<div class="srv ' + (s.active ? '' : 'off') + '"><div><button class="mini" data-m="up" data-i="' + i + '"' + (i === 0 ? ' disabled' : '') + '>▲</button><br><button class="mini" data-m="dn" data-i="' + i + '"' + (i === list.length - 1 ? ' disabled' : '') + '>▼</button></div>' +
-        '<div class="si">' + esc(s.icon) + '</div><div class="nm"><b>' + esc(s.name) + '</b><small>' + s.providers + ' صنايعي' + (s.active ? '' : ' · مخفية') + '</small></div>' +
+        '<div class="si">' + esc(s.icon) + '</div><div class="nm"><b>' + esc(s.name) + '</b><small>' + esc(SQ.catOf(s).icon + ' ' + SQ.catOf(s).name) + ' · ' + s.providers + ' صنايعي' + (s.active ? '' : ' · مخفية') + '</small></div>' +
         '<button class="mini" data-m="tg" data-i="' + i + '" title="' + (s.active ? 'إخفاء' : 'إظهار') + '">' + (s.active ? '👁' : '🚫') + '</button><button class="mini" data-m="ed" data-i="' + i + '" title="تعديل">✏️</button><button class="mini" data-m="del" data-i="' + i + '" title="حذف">🗑</button></div>';
     }).join('');
     el.onclick = async function (e) {
@@ -275,7 +288,7 @@
         if (m === 'up' || m === 'dn') {
           var j = m === 'up' ? i - 1 : i + 1, t = list[i]; list[i] = list[j]; list[j] = t;
           await db.adminReorderServices(code, list.map(function (x) { return x.id; })); await SQ.refreshServices(); viewServices();
-        } else if (m === 'tg') { await db.adminSaveService(code, s.id, s.name, s.icon, !s.active); await SQ.refreshServices(); viewServices(); }
+        } else if (m === 'tg') { await db.adminSaveService(code, s.id, s.name, s.icon, !s.active, s.cat || SQ.catOf(s).id); await SQ.refreshServices(); viewServices(); }
         else if (m === 'ed') openSvcForm(s);
         else if (m === 'del') {
           modal('<h3>حذف الخدمة</h3><p>حذف <b>' + esc(s.name) + '</b> نهائيا؟' + (s.providers ? '<br><span class="dangertxt">يستخدمها ' + s.providers + ' صنايعي، فلن يُسمح بالحذف. أخفِها بدل ذلك.</span>' : '') + '</p><div class="row2 mt"><button class="btn ghost" id="dn">إلغاء</button><button class="btn danger" id="dy">حذف</button></div>');
@@ -291,6 +304,7 @@
     modal('<h3>' + (s ? 'تعديل الخدمة' : 'إضافة خدمة') + '</h3><label class="field"><span>اسم الخدمة</span><input id="s_nm" maxlength="40" value="' + esc(s ? s.name : '') + '"></label>' +
       '<label class="field"><span>الأيقونة (اكتب أو اختر)</span><input id="s_ic" maxlength="8" value="' + esc(s ? s.icon : '🔧') + '" style="font-size:24px;text-align:center"></label>' +
       '<div class="emojis">' + EMO.map(function (e) { return '<button type="button" data-e="' + e + '">' + e + '</button>'; }).join('') + '</div>' +
+      '<label class="field"><span>التصنيف</span><select id="s_ct">' + SQ.CATEGORIES.map(function (c) { return '<option value="' + c.id + '"' + ((s ? (s.cat || SQ.catOf(s).id) : 'home') === c.id ? ' selected' : '') + '>' + c.icon + ' ' + esc(c.name) + '</option>'; }).join('') + '</select></label>' +
       '<label class="check"><input type="checkbox" id="s_ac"' + (!s || s.active ? ' checked' : '') + '> ظاهرة للزبائن وفي التسجيل</label>' +
       '<div class="row2"><button class="btn ghost" id="s_cancel">إلغاء</button><button class="btn primary" id="s_save">حفظ</button></div>');
     U.each('.emojis button', function (b) { b.addEventListener('click', function () { document.getElementById('s_ic').value = b.getAttribute('data-e'); }); });
@@ -298,7 +312,7 @@
     on('s_save', 'click', async function () {
       var nm = document.getElementById('s_nm').value.trim(), ic = document.getElementById('s_ic').value.trim() || '🔧';
       if (nm.length < 2) return toast('اكتب اسم الخدمة');
-      try { await db.adminSaveService(code, s ? s.id : '', nm, ic, document.getElementById('s_ac').checked); closeModal(); await SQ.refreshServices(); toast('تم الحفظ'); viewServices(); } catch (e) { fail(e); }
+      try { await db.adminSaveService(code, s ? s.id : '', nm, ic, document.getElementById('s_ac').checked, document.getElementById('s_ct').value); closeModal(); await SQ.refreshServices(); toast('تم الحفظ'); viewServices(); } catch (e) { fail(e); }
     });
   }
 

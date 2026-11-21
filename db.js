@@ -114,7 +114,7 @@
   // أولوية الظهور: اكتمال الملف + نشاط آخر 30 يوما (حتى 10 طلبات)
   function score(p) {
     var since = Date.now() - 30 * 86400000, n = L.d.requests.filter(function (q) { return q.provider_id === p.id && q.ts > since; }).length;
-    return pct(p) + Math.min(n, 10) * 5;
+    return pct(p) + (p.verified ? 20 : 0) + Math.min(n, 10) * 5;
   }
 
   var L = {
@@ -123,7 +123,7 @@
       this.d = load();
       if (!this.d || !this.d.v) { this.d = seed(); save(this.d); }
       var d = this.d, ch = false;
-      if (!d.services) { d.services = SQ.SERVICES.map(function (s, i) { return { id: s.id, name: s.name, icon: s.icon, sort: (i + 1) * 10, active: true }; }); ch = true; }
+      if (!d.services) { d.services = SQ.SERVICES.map(function (s, i) { return { id: s.id, name: s.name, icon: s.icon, sort: (i + 1) * 10, active: true, cat: SQ.catOf(s).id }; }); ch = true; }
       if (!d.settings) { d.settings = { support_whatsapp: '', support_email: '' }; ch = true; }
       if (!d.adminCode) { d.adminCode = C.adminCode; ch = true; }
       if (ch) save(d);
@@ -134,7 +134,7 @@
         experience: p.experience, price: p.price, bio: p.bio, from: p.from, to: p.to, available: isAvail(p),
         distance_km: d == null ? null : Math.round(d * 10) / 10,
         rating: p.stats.n >= C.minReviewsForStars ? p.stats.avg : null, rating_n: p.stats.n,
-        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || ''
+        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || '', verified: !!p.verified
       };
     },
     find: function (id) { return this.d.providers.filter(function (p) { return p.id === id; })[0]; },
@@ -310,7 +310,7 @@
     /* ===== الخدمات والإعدادات ===== */
     listServices: async function () {
       return this.d.services.slice().sort(function (a, b) { return a.sort - b.sort; })
-        .map(function (s) { return { id: s.id, name: s.name, icon: s.icon, active: s.active }; });
+        .map(function (s) { return { id: s.id, name: s.name, icon: s.icon, active: s.active, cat: s.cat || SQ.catOf(s).id }; });
     },
     appConfig: async function () { return { support_whatsapp: this.d.settings.support_whatsapp || '', support_email: this.d.settings.support_email || '' }; },
 
@@ -376,7 +376,7 @@
         available: p.status === 'approved' && isAvail(p), flag: !!p.available, has_password: !!p.password, admin_note: p.admin_note || '',
         last_seen: p.last_seen, created: p.created, requests_total: rq.length, requests_week: rq.filter(function (q) { return q.ts > week; }).length,
         rating_n: p.stats.n, rating: p.stats.n > 0 ? p.stats.avg : null, ok: p.stats.ok, fail: p.stats.fail,
-        photo: p.photo || '', pct: pct(p)
+        photo: p.photo || '', pct: pct(p), verified: !!p.verified
       };
     },
     adminOverview: async function (code) {
@@ -443,6 +443,7 @@
       };
       this.d.providers.push(p); save(this.d); return { id: p.id };
     },
+    adminSetVerified: async function (code, id, v) { this.admin(code); var p = this.find(id); if (p) p.verified = !!v; save(this.d); return true; },
     adminResetPassword: async function (code, id, pw) {
       this.admin(code); var p = this.find(id); if (!p) throw new Error('not_found');
       if (String(pw || '').length < 6) throw new Error('weak');
@@ -464,10 +465,10 @@
     adminServices: async function (code) {
       this.admin(code); var d = this.d;
       return d.services.slice().sort(function (a, b) { return a.sort - b.sort; }).map(function (s) {
-        return { id: s.id, name: s.name, icon: s.icon, active: s.active, sort: s.sort, providers: d.providers.filter(function (p) { return !p.demo && p.services.indexOf(s.id) > -1; }).length };
+        return { id: s.id, name: s.name, icon: s.icon, active: s.active, sort: s.sort, cat: s.cat || SQ.catOf(s).id, providers: d.providers.filter(function (p) { return !p.demo && p.services.indexOf(s.id) > -1; }).length };
       });
     },
-    adminSaveService: async function (code, id, name, icon, active) {
+    adminSaveService: async function (code, id, name, icon, active, cat) {
       this.admin(code);
       if (String(name || '').trim().length < 2) throw new Error('invalid');
       var s = id ? this.d.services.filter(function (x) { return x.id === id; })[0] : null;
@@ -477,7 +478,7 @@
         s = { id: id, sort: this.d.services.reduce(function (m, x) { return Math.max(m, x.sort); }, 0) + 10, active: true };
         this.d.services.push(s);
       }
-      s.name = String(name).trim().slice(0, 40); if (icon) s.icon = icon; if (active != null) s.active = !!active;
+      s.name = String(name).trim().slice(0, 40); if (icon) s.icon = icon; if (active != null) s.active = !!active; if (cat != null) s.cat = String(cat).slice(0, 20);
       save(this.d); return id;
     },
     adminReorderServices: async function (code, ids) {
@@ -554,7 +555,8 @@
     adminDeleteProvider: function (code, id) { return SB.rpc('admin_delete_provider', { p_code: code, p_id: id }); },
     adminRequests: function (code, limit, status) { return SB.rpc('admin_requests', { p_code: code, p_limit: limit || 100, p_status: status || '' }); },
     adminServices: function (code) { return SB.rpc('admin_services', { p_code: code }); },
-    adminSaveService: function (code, id, name, icon, active) { return SB.rpc('admin_save_service', { p_code: code, p_id: id || '', p_name: name, p_icon: icon || '', p_active: active == null ? true : !!active }); },
+    adminSaveService: function (code, id, name, icon, active, cat) { return SB.rpc('admin_save_service', { p_code: code, p_id: id || '', p_name: name, p_icon: icon || '', p_active: active == null ? true : !!active, p_cat: cat == null ? null : cat }); },
+    adminSetVerified: function (code, id, v) { return SB.rpc('admin_set_verified', { p_code: code, p_id: id, p_value: !!v }); },
     adminReorderServices: function (code, ids) { return SB.rpc('admin_reorder_services', { p_code: code, p_ids: ids }); },
     adminDeleteService: function (code, id) { return SB.rpc('admin_delete_service', { p_code: code, p_id: id }); },
     adminGetSettings: function (code) { return SB.rpc('admin_get_settings', { p_code: code }); },
