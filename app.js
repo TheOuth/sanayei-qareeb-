@@ -1,5 +1,5 @@
 /* صنايعي قريب - الواجهة والتنقل
-   مسارات: #/ (البداية) | #/c/... (طالب الخدمة) | #/p/... (مقدم الخدمة) | #/admin (المدير) */
+   مسارات: #/ (البداية) | #/c/... (طالب الخدمة) | #/p/... (مقدم الخدمة) */
 (function () {
   'use strict';
   var SQ = window.SQ, C = SQ.CONFIG, db = SQ.db, $app = document.getElementById('app');
@@ -100,7 +100,7 @@
       '<button class="choice" id="bProv"><span class="ci">🛠️</span><b>مقدم خدمة</b><small>سجل واعرض خدماتك للناس القريبة منك</small></button>' +
       '<button class="choice alt" id="bClient"><span class="ci">📍</span><b>محتاج خدمة</b><small>اطلب أقرب مقدم خدمة ليك</small></button>' +
       '</div>' + (SQ.demo ? '<div class="note">نسخة تجريبية</div>' : '') +
-      '<a class="admin-link" href="#/admin">دخول المدير</a></div>';
+      '</div>';
     on('bProv', 'click', function () { store.set('role', 'provider'); go(store.get('pid', null) ? '#/p/home' : '#/p/1'); });
     on('bClient', 'click', function () { store.set('role', 'client'); go('#/c/loc'); });
   }
@@ -475,69 +475,12 @@
     });
   }
 
-  /* ---------- 4) لوحة المدير ---------- */
-  var adminCode = '';
-  var adminTab = 'pending';
-  async function viewAdmin() {
-    if (!adminCode) {
-      page({
-        title: 'دخول المدير', back: '#/',
-        body: '<label class="field"><span>رمز المدير</span><input id="code" type="password" class="ltr" autocomplete="off"></label>' + (SQ.demo ? '<p class="note">الرمز التجريبي: ' + esc(C.adminCode) + ' (غيّره في data.js قبل النشر)</p>' : ''),
-        foot: '<button class="btn primary" id="ok">دخول</button>'
-      });
-      on('ok', 'click', async function () {
-        var c = document.getElementById('code').value;
-        try { await db.adminCheck(c); adminCode = c; route(); } catch (e) { toast('الرمز غير صحيح'); }
-      });
-      return;
-    }
-    loading('لوحة المدير');
-    var stats, list = [], reps = [];
-    try {
-      stats = await db.adminStats(adminCode);
-      if (adminTab === 'reports') reps = await db.adminReports(adminCode); else list = await db.adminList(adminCode, adminTab);
-    } catch (e) { adminCode = ''; toast('انتهت الجلسة'); return route(); }
-    var tabs = [['pending', 'طلبات الانضمام (' + stats.pending + ')'], ['approved', 'المعتمدون'], ['suspended', 'الموقوفون'], ['reports', 'البلاغات (' + stats.reports + ')']];
-    var body = '<div class="stats"><div class="stat"><b>' + stats.providers + '</b><small>صنايعي معتمد</small></div><div class="stat"><b>' + stats.requests_week + '</b><small>طلبات الأسبوع</small></div><div class="stat"><b>' + stats.pending + '</b><small>بانتظار الموافقة</small></div></div>' +
-      '<div class="tabs">' + tabs.map(function (t) { return '<button class="chip' + (adminTab === t[0] ? ' on' : '') + '" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
-    if (adminTab === 'reports') {
-      body += reps.length ? reps.map(function (r) {
-        return '<div class="card"><div class="pname">' + esc(r.provider_name) + '</div><div class="psvc">السبب: ' + esc(r.reason) + ' · ' + timeAgo(r.ts) + '</div><div class="btnrow">' +
-          (r.provider_status === 'approved' ? '<button class="btn danger" data-act="suspend" data-id="' + r.provider_id + '">إيقاف الصنايعي</button>' : '') + '<button class="btn ghost" data-act="resolve" data-id="' + r.id + '">تم الحل</button></div></div>';
-      }).join('') : '<div class="empty">لا توجد بلاغات</div>';
-    } else {
-      body += list.length ? list.map(function (p) {
-        var wa = 'https://wa.me/' + SQ.util.digits(p.whatsapp) + '?text=' + encodeURIComponent('السلام عليكم ' + p.name + '، معك مدير ' + C.appName + '. وصلنا طلب تسجيلك، نرجو تأكيد أنك صاحب هذا الرقم وأن بياناتك صحيحة.');
-        return '<div class="card"><div class="pname">' + esc(p.name) + '</div><div class="psvc">' + esc(svcNames(p.services)) + '</div><div class="meta"><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + SQ.cityName(p.city_id)) + '</span><span>' + p.experience + ' سنة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
-          (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') +
-          '<div class="btnrow"><a class="btn wa" href="' + wa + '" target="_blank">تواصل واتساب</a>' +
-          (p.status === 'pending' ? '<button class="btn primary" data-act="approved" data-id="' + p.id + '">موافقة</button><button class="btn danger" data-act="rejected" data-id="' + p.id + '">رفض</button>' : '') +
-          (p.status === 'approved' ? '<button class="btn danger" data-act="suspended" data-id="' + p.id + '">إيقاف</button>' : '') +
-          (p.status === 'suspended' ? '<button class="btn primary" data-act="approved" data-id="' + p.id + '">إعادة تفعيل</button>' : '') + '</div></div>';
-      }).join('') : '<div class="empty"><div class="big">✔</div>لا يوجد شيء هنا</div>';
-    }
-    page({ title: 'لوحة المدير', back: '#/', body: body });
-    Array.prototype.forEach.call(document.querySelectorAll('.tabs .chip'), function (c) { c.addEventListener('click', function () { adminTab = c.getAttribute('data-t'); route(); }); });
-    Array.prototype.forEach.call(document.querySelectorAll('[data-act]'), function (b) {
-      b.addEventListener('click', async function () {
-        var a = b.getAttribute('data-act'), id = b.getAttribute('data-id');
-        try {
-          if (a === 'resolve') await db.adminResolveReport(adminCode, id);
-          else if (a === 'suspend') await db.adminSetStatus(adminCode, id, 'suspended');
-          else await db.adminSetStatus(adminCode, id, a);
-          toast('تم'); route();
-        } catch (e) { toast(errMsg(e)); }
-      });
-    });
-  }
-
   /* ---------- التوجيه ---------- */
   function route() {
     closeModal();
     var h = (location.hash || '#/').replace(/^#/, ''), p = h.split('/').filter(Boolean);
     try {
       if (!p.length) return viewWelcome();
-      if (p[0] === 'admin') return viewAdmin();
       if (p[0] === 'c') {
         if (p[1] === 'p') { if (!store.get('role')) store.set('role', 'client'); return viewClientProvider(p[2], p[3] || 'other'); } // رابط مشاركة الصنايعي
         if (p[1] === 'loc') return viewClientLoc();
