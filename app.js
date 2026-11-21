@@ -454,19 +454,34 @@
       });
       bindMenu(); on('refresh', 'click', route); return;
     }
-    var avail = me.available;
+    var flag = !!me.flag, shown = flag && me.available;
+    var hoursNote = flag && !me.in_hours
+      ? '<div class="banner">⏰ أنت "متاح" لكن الوقت الآن خارج أوقات عملك (من ' + esc(me.from) + ' إلى ' + esc(me.to) + ')، فلن تظهر للزبائن حتى يحين وقتك.<br><button class="btn primary" id="hrs">تعديل أوقات العمل</button></div>'
+      : '';
     page({
       title: 'ملفي', back: '', menu: true,
-      body: demoNote() + '<button class="switch' + (avail ? ' on' : '') + '" id="sw">' + (avail ? '🟢 متاح الآن' : '⚪ مشغول') + '<small>' + (avail ? 'ظاهر للزبائن القريبين منك. اضغط لو انشغلت' : 'مخفي عن الزبائن. اضغط لتظهر') + '</small></button>' +
+      body: demoNote() + hoursNote + '<button class="switch' + (shown ? ' on' : '') + '" id="sw">' + (shown ? '🟢 متاح الآن' : (flag ? '🟡 متاح (خارج أوقات عملك)' : '⚪ مشغول')) + '<small>' + (flag ? 'اضغط لو انشغلت لتختفي عن الزبائن' : 'مخفي عن الزبائن. اضغط لتظهر') + '</small></button>' +
         '<div class="stats mt"><div class="stat"><b>' + me.requests_week + '</b><small>اتصالات هذا الأسبوع</small></div>' +
         '<div class="stat"><b>' + (me.rating != null ? '★ ' + me.rating : 'جديد') + '</b><small>' + me.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + me.ok + ' - ' + me.fail + '</b><small>ناجحة - فاشلة</small></div></div>' +
-        '<div class="card"><div class="kv"><span>الخدمات</span><span>' + esc(svcNames(me.services)) + '</span></div><div class="kv"><span>المنطقة</span><span>' + esc((me.hood ? me.hood + '، ' : '') + SQ.cityName(me.city_id)) + '</span></div><div class="kv"><span>أوقات العمل</span><span>' + esc(me.from + ' - ' + me.to) + '</span></div></div>' +
+        '<div class="card"><div class="kv"><span>الخدمات</span><span>' + esc(svcNames(me.services)) + '</span></div><div class="kv"><span>المنطقة</span><span>' + esc((me.hood ? me.hood + '، ' : '') + SQ.cityName(me.city_id)) + '</span></div><div class="kv"><span>أوقات العمل</span><span>' + esc(me.from + ' - ' + me.to) + ' <button class="linkbtn" id="hrs2">تعديل</button></span></div></div>' +
         '<p class="note">يتحول وضعك تلقائيا إلى "مشغول" لو ما فتحت التطبيق ' + C.availableTimeoutHours + ' ساعات، أو خارج أوقات عملك.</p>',
       foot: '<button class="btn wa" id="share">📤 شارك رابط ملفي</button>'
     });
+    function editHours() {
+      modal('<h3>أوقات العمل</h3><div class="row2"><label class="field"><span>من الساعة</span><input id="hf" type="time" class="ltr" value="' + esc(me.from) + '"></label><label class="field"><span>إلى الساعة</span><input id="ht" type="time" class="ltr" value="' + esc(me.to) + '"></label></div>' +
+        '<button class="linkbtn" id="h24">طوال اليوم (00:00 - 23:59)</button><div class="row2 mt"><button class="btn ghost" id="hc">إلغاء</button><button class="btn primary" id="hs">حفظ</button></div>');
+      on('h24', 'click', function () { document.getElementById('hf').value = '00:00'; document.getElementById('ht').value = '23:59'; });
+      on('hc', 'click', closeModal);
+      on('hs', 'click', async function () {
+        var f = document.getElementById('hf').value, t = document.getElementById('ht').value;
+        if (!f || !t) return toast('اكتب الوقتين');
+        try { await db.setHours(pid, tk, f, t); closeModal(); toast('تم حفظ أوقات العمل'); route(); } catch (e) { toast(errMsg(e)); }
+      });
+    }
+    on('hrs', 'click', editHours); on('hrs2', 'click', editHours);
     bindMenu();
-    on('sw', 'click', async function () { try { await db.setAvailable(pid, tk, !avail); route(); } catch (e) { toast(errMsg(e)); } });
+    on('sw', 'click', async function () { try { await db.setAvailable(pid, tk, !flag); route(); } catch (e) { toast(errMsg(e)); } });
     on('share', 'click', function () {
       var url = location.href.split('#')[0] + '#/c/p/' + pid + '/' + me.services[0];
       var txt = 'أنا ' + me.name + '، ' + svcNames(me.services) + '. تقدر تتواصل معي من تطبيق ' + C.appName + ': ' + url;

@@ -182,12 +182,15 @@
       p.last_seen = Date.now(); save(this.d);
       var week = Date.now() - 7 * 86400000;
       var r = this.pub(p, null);
-      r.status = p.status;
+      r.status = p.status; r.flag = !!p.available; r.in_hours = isOpen(p.from, p.to);
       r.requests_week = this.d.requests.filter(function (q) { return q.provider_id === id && q.ts > week; }).length;
       return r;
     },
     setAvailable: async function (id, token, v) {
       var p = this.auth(id, token); p.available = !!v; p.last_seen = Date.now(); save(this.d); return true;
+    },
+    setHours: async function (id, token, from, to) {
+      var p = this.auth(id, token); p.from = from; p.to = to; save(this.d); return true;
     },
     deleteProvider: async function (id, token) {
       this.auth(id, token);
@@ -302,6 +305,7 @@
     registerProvider: function (x) { return SB.rpc('register_provider', { p: x }); },
     providerSelf: function (id, t) { return SB.rpc('provider_self', { p_id: id, p_token: t }); },
     setAvailable: function (id, t, v) { return SB.rpc('set_available', { p_id: id, p_token: t, p_value: !!v }); },
+    setHours: function (id, t, f, to) { return SB.rpc('set_hours', { p_id: id, p_token: t, p_from: f, p_to: to }); },
     deleteProvider: function (id, t) { return SB.rpc('delete_provider', { p_id: id, p_token: t }); },
     createRequest: function (x) { return SB.rpc('create_request', { p: x }); },
     myRequests: function (anon) { return SB.rpc('my_requests', { p_anon: anon }); },
