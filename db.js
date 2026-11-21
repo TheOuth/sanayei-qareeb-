@@ -110,6 +110,11 @@
     init: function () {
       this.d = load();
       if (!this.d || !this.d.v) { this.d = seed(); save(this.d); }
+      var d = this.d, ch = false;
+      if (!d.services) { d.services = SQ.SERVICES.map(function (s, i) { return { id: s.id, name: s.name, icon: s.icon, sort: (i + 1) * 10, active: true }; }); ch = true; }
+      if (!d.settings) { d.settings = { support_whatsapp: '', support_email: '' }; ch = true; }
+      if (!d.adminCode) { d.adminCode = C.adminCode; ch = true; }
+      if (ch) save(d);
     },
     pub: function (p, d) {
       return {
@@ -126,7 +131,7 @@
       if (!p || p.token !== token) throw new Error('forbidden');
       return p;
     },
-    admin: function (code) { if (code !== C.adminCode) throw new Error('forbidden'); },
+    admin: function (code) { if (code !== this.d.adminCode) throw new Error('forbidden'); },
 
     nearby: async function (q) {
       var self = this, hasLoc = q.lat != null;
@@ -167,7 +172,10 @@
 
     registerProvider: async function (x) {
       if (this.d.providers.some(function (p) { return p.phone === x.phone; })) throw new Error('duplicate');
+      if (String(x.password || '').length < 6) throw new Error('weak');
+      if (!x.services || !x.services.length) throw new Error('invalid');
       var p = {
+        password: x.password, fails: 0, locked_until: 0, admin_note: '',
         id: uid(), token: uid(), name: x.name, phone: x.phone, whatsapp: x.whatsapp, state_id: x.state_id, city_id: x.city_id,
         hood: x.hood, lat: x.lat, lng: x.lng, radius: String(x.radius), services: x.services, experience: Number(x.experience) || 0,
         price: Number(x.price) || 0, bio: x.bio, from: x.from, to: x.to, status: 'pending', available: false,
@@ -182,7 +190,7 @@
       p.last_seen = Date.now(); save(this.d);
       var week = Date.now() - 7 * 86400000;
       var r = this.pub(p, null);
-      r.status = p.status; r.flag = !!p.available; r.in_hours = isOpen(p.from, p.to);
+      r.status = p.status; r.flag = !!p.available; r.in_hours = isOpen(p.from, p.to); r.radius = p.radius; r.has_password = !!p.password;
       r.requests_week = this.d.requests.filter(function (q) { return q.provider_id === id && q.ts > week; }).length;
       return r;
     },
@@ -282,6 +290,189 @@
         reports: this.d.reports.filter(function (r) { return r.status === 'open'; }).length
       };
     },
+    /* ===== الخدمات والإعدادات ===== */
+    listServices: async function () {
+      return this.d.services.slice().sort(function (a, b) { return a.sort - b.sort; })
+        .map(function (s) { return { id: s.id, name: s.name, icon: s.icon, active: s.active }; });
+    },
+    appConfig: async function () { return { support_whatsapp: this.d.settings.support_whatsapp || '', support_email: this.d.settings.support_email || '' }; },
+
+    /* ===== حسابات الصنايعية ===== */
+    providerLogin: async function (phone, pw) {
+      var p = this.d.providers.filter(function (x) { return x.phone === phone && !x.demo; })[0];
+      if (!p) throw new Error('invalid');
+      if (p.locked_until && p.locked_until > Date.now()) throw new Error('locked');
+      if (!p.password) throw new Error('no_password');
+      if (p.password !== pw) {
+        p.fails = (p.fails || 0) + 1;
+        if (p.fails >= 5) { p.fails = 0; p.locked_until = Date.now() + 15 * 60e3; }
+        save(this.d); throw new Error('invalid');
+      }
+      p.fails = 0; p.last_seen = Date.now(); save(this.d);
+      return { id: p.id, token: p.token };
+    },
+    setPassword: async function (id, token, nw, old) {
+      var p = this.auth(id, token);
+      if (String(nw || '').length < 6) throw new Error('weak');
+      if (p.password) {
+        if (old !== p.password) throw new Error('wrong_password');
+        p.token = uid();
+      }
+      p.password = nw; save(this.d);
+      return { token: p.token };
+    },
+    applyProfile: function (p, o, admin) {
+      if (o.services && !o.services.length) throw new Error('invalid');
+      if (o.name && String(o.name).trim()) p.name = String(o.name).trim().slice(0, 80);
+      if (o.whatsapp) p.whatsapp = o.whatsapp;
+      if (admin && o.phone) p.phone = o.phone;
+      if (o.state_id) p.state_id = o.state_id;
+      if (o.city_id) p.city_id = o.city_id;
+      if (o.hood != null) p.hood = String(o.hood).slice(0, 60);
+      if (o.lat != null) p.lat = o.lat;
+      if (o.lng != null) p.lng = o.lng;
+      if (o.radius) p.radius = String(o.radius);
+      if (o.services) p.services = o.services.slice();
+      if (o.experience != null) p.experience = Number(o.experience);
+      if (o.price != null) p.price = Number(o.price);
+      if (o.bio != null) p.bio = String(o.bio).slice(0, 200);
+      if (o.from) p.from = o.from;
+      if (o.to) p.to = o.to;
+      if (admin && o.admin_note != null) p.admin_note = String(o.admin_note).slice(0, 500);
+    },
+    updateProfile: async function (id, token, o) {
+      var p = this.auth(id, token); this.applyProfile(p, o, false); save(this.d); return true;
+    },
+
+    /* ===== إدارة المدير ===== */
+    realProviders: function () { return this.d.providers.filter(function (p) { return !p.demo; }); },
+    adminRow: function (p) {
+      var rid = p.id, week = Date.now() - 7 * 86400000, rq = this.d.requests.filter(function (q) { return q.provider_id === rid; });
+      return {
+        id: p.id, name: p.name, phone: p.phone, whatsapp: p.whatsapp, services: p.services, state_id: p.state_id, city_id: p.city_id, hood: p.hood,
+        radius: p.radius, experience: p.experience, price: p.price, bio: p.bio, from: p.from, to: p.to, status: p.status,
+        available: p.status === 'approved' && isAvail(p), flag: !!p.available, has_password: !!p.password, admin_note: p.admin_note || '',
+        last_seen: p.last_seen, created: p.created, requests_total: rq.length, requests_week: rq.filter(function (q) { return q.ts > week; }).length,
+        rating_n: p.stats.n, rating: p.stats.n > 0 ? p.stats.avg : null, ok: p.stats.ok, fail: p.stats.fail
+      };
+    },
+    adminOverview: async function (code) {
+      this.admin(code);
+      var self = this, real = this.realProviders(), now = Date.now(), DAY = 86400000;
+      var cnt = function (st) { return real.filter(function (p) { return p.status === st; }).length; };
+      var dayKey = function (t) { var x = new Date(t); return x.getFullYear() + '-' + (x.getMonth() + 1) + '-' + x.getDate(); };
+      var days = [];
+      for (var i = 6; i >= 0; i--) {
+        var t = now - i * DAY, k = dayKey(t), dd = new Date(t);
+        days.push({ d: ('0' + (dd.getMonth() + 1)).slice(-2) + '-' + ('0' + dd.getDate()).slice(-2), n: this.d.requests.filter(function (q) { return dayKey(q.ts) === k; }).length });
+      }
+      var tops = this.d.services.map(function (s) {
+        return { id: s.id, name: s.name, icon: s.icon,
+          providers: real.filter(function (p) { return p.status === 'approved' && p.services.indexOf(s.id) > -1; }).length,
+          requests_week: self.d.requests.filter(function (q) { return q.service === s.id && q.ts > now - 7 * DAY; }).length };
+      }).sort(function (a, b) { return b.requests_week - a.requests_week || b.providers - a.providers; }).slice(0, 8);
+      var cities = {};
+      real.forEach(function (p) { if (p.status === 'approved') cities[p.city_id] = (cities[p.city_id] || 0) + 1; });
+      var allRev = this.d.reviews;
+      return {
+        approved: cnt('approved'), pending: cnt('pending'), suspended: cnt('suspended'), rejected: cnt('rejected'),
+        available_now: real.filter(function (p) { return p.status === 'approved' && isAvail(p); }).length,
+        requests_today: this.d.requests.filter(function (q) { return dayKey(q.ts) === dayKey(now); }).length,
+        requests_week: this.d.requests.filter(function (q) { return q.ts > now - 7 * DAY; }).length,
+        requests_total: this.d.requests.length, reviews_total: allRev.length,
+        avg_rating: allRev.length ? Math.round(allRev.reduce(function (a, r) { return a + r.stars; }, 0) / allRev.length * 10) / 10 : 0,
+        reports_open: this.d.reports.filter(function (r) { return r.status === 'open'; }).length,
+        by_day: days, top_services: tops,
+        by_city: Object.keys(cities).map(function (k) { return { city_id: k, n: cities[k] }; }).sort(function (a, b) { return b.n - a.n; }).slice(0, 8)
+      };
+    },
+    adminProviders: async function (code, f) {
+      this.admin(code); f = f || {};
+      var q = String(f.q || '').trim().toLowerCase(), qd = q.replace(/\D/g, '').replace(/^0+/, ''), self = this;
+      var list = this.realProviders().filter(function (p) {
+        if (f.status && p.status !== f.status) return false;
+        if (f.service && p.services.indexOf(f.service) < 0) return false;
+        if (f.city && p.city_id !== f.city) return false;
+        if (q && !(p.name.toLowerCase().indexOf(q) > -1 || (qd && p.phone.indexOf(qd) > -1))) return false;
+        return true;
+      }).sort(function (a, b) { return (a.status !== 'pending') - (b.status !== 'pending') || b.created - a.created; });
+      var off = f.offset || 0, lim = f.limit || 30;
+      return { total: list.length, items: list.slice(off, off + lim).map(function (p) { return self.adminRow(p); }) };
+    },
+    adminUpdateProvider: async function (code, id, o) {
+      this.admin(code); var p = this.find(id); if (!p) throw new Error('not_found');
+      if (o.phone && this.d.providers.some(function (x) { return x.id !== id && x.phone === o.phone; })) throw new Error('duplicate');
+      this.applyProfile(p, o, true); save(this.d); return true;
+    },
+    adminCreateProvider: async function (code, o) {
+      this.admin(code);
+      if (this.d.providers.some(function (p) { return p.phone === o.phone; })) throw new Error('duplicate');
+      if (String(o.password || '').length < 6) throw new Error('weak');
+      if (!o.services || !o.services.length) throw new Error('invalid');
+      var city = SQ.findCity(o.city_id), p = {
+        id: uid(), token: uid(), password: o.password, fails: 0, locked_until: 0, admin_note: o.admin_note || '',
+        name: o.name, phone: o.phone, whatsapp: o.whatsapp || o.phone, state_id: o.state_id, city_id: o.city_id, hood: o.hood || '',
+        lat: o.lat != null ? o.lat : (city ? city.city.lat : 0), lng: o.lng != null ? o.lng : (city ? city.city.lng : 0),
+        radius: String(o.radius || '10'), services: o.services, experience: Number(o.experience) || 0, price: Number(o.price) || 0, bio: o.bio || '',
+        from: o.from || '08:00', to: o.to || '20:00', status: 'approved', available: false, last_seen: Date.now(), created: Date.now(),
+        stats: { ok: 0, fail: 0, n: 0, avg: 0 }
+      };
+      this.d.providers.push(p); save(this.d); return { id: p.id };
+    },
+    adminResetPassword: async function (code, id, pw) {
+      this.admin(code); var p = this.find(id); if (!p) throw new Error('not_found');
+      if (String(pw || '').length < 6) throw new Error('weak');
+      p.password = pw; p.token = uid(); p.fails = 0; p.locked_until = 0; save(this.d); return true;
+    },
+    adminDeleteProvider: async function (code, id) {
+      this.admin(code);
+      this.d.providers = this.d.providers.filter(function (p) { return p.id !== id; });
+      this.d.requests = this.d.requests.filter(function (q) { return q.provider_id !== id; });
+      this.d.reviews = this.d.reviews.filter(function (q) { return q.provider_id !== id; });
+      save(this.d); return true;
+    },
+    adminRequests: async function (code, limit, status) {
+      this.admin(code); var self = this;
+      return this.d.requests.filter(function (q) { return !status || q.status === status; })
+        .sort(function (a, b) { return b.ts - a.ts; }).slice(0, limit || 100)
+        .map(function (q) { var p = self.find(q.provider_id); return { id: q.id, provider_id: q.provider_id, provider_name: p ? p.name : '—', service: q.service, city_id: q.city_id, channel: q.channel, status: q.status, ts: q.ts }; });
+    },
+    adminServices: async function (code) {
+      this.admin(code); var d = this.d;
+      return d.services.slice().sort(function (a, b) { return a.sort - b.sort; }).map(function (s) {
+        return { id: s.id, name: s.name, icon: s.icon, active: s.active, sort: s.sort, providers: d.providers.filter(function (p) { return !p.demo && p.services.indexOf(s.id) > -1; }).length };
+      });
+    },
+    adminSaveService: async function (code, id, name, icon, active) {
+      this.admin(code);
+      if (String(name || '').trim().length < 2) throw new Error('invalid');
+      var s = id ? this.d.services.filter(function (x) { return x.id === id; })[0] : null;
+      if (id && !s) throw new Error('not_found');
+      if (!s) {
+        id = 's' + uid().slice(0, 8);
+        s = { id: id, sort: this.d.services.reduce(function (m, x) { return Math.max(m, x.sort); }, 0) + 10, active: true };
+        this.d.services.push(s);
+      }
+      s.name = String(name).trim().slice(0, 40); if (icon) s.icon = icon; if (active != null) s.active = !!active;
+      save(this.d); return id;
+    },
+    adminReorderServices: async function (code, ids) {
+      this.admin(code); var d = this.d;
+      ids.forEach(function (id, i) { var s = d.services.filter(function (x) { return x.id === id; })[0]; if (s) s.sort = (i + 1) * 10; });
+      save(d); return true;
+    },
+    adminDeleteService: async function (code, id) {
+      this.admin(code);
+      if (this.d.providers.some(function (p) { return p.services.indexOf(id) > -1; })) throw new Error('in_use');
+      this.d.services = this.d.services.filter(function (s) { return s.id !== id; }); save(this.d); return true;
+    },
+    adminGetSettings: async function (code) { this.admin(code); return this.appConfig(); },
+    adminSaveSettings: async function (code, o) {
+      this.admin(code); this.d.settings.support_whatsapp = o.support_whatsapp || ''; this.d.settings.support_email = o.support_email || ''; save(this.d); return true;
+    },
+    adminChangeCode: async function (code, nw) {
+      this.admin(code); if (String(nw || '').length < 8) throw new Error('weak'); this.d.adminCode = nw; save(this.d); return true;
+    },
     resetDemo: function () { try { localStorage.removeItem(KEY); } catch (e) {} this.init(); }
   };
 
@@ -316,7 +507,35 @@
     adminSetStatus: function (code, id, status) { return SB.rpc('admin_set_status', { p_code: code, p_id: id, p_status: status }); },
     adminReports: function (code) { return SB.rpc('admin_reports', { p_code: code }); },
     adminResolveReport: function (code, id) { return SB.rpc('admin_resolve_report', { p_code: code, p_id: id }); },
-    adminStats: function (code) { return SB.rpc('admin_stats', { p_code: code }); }
+    adminStats: function (code) { return SB.rpc('admin_stats', { p_code: code }); },
+
+    listServices: function () { return SB.rpc('list_services'); },
+    appConfig: function () { return SB.rpc('app_config'); },
+    providerLogin: async function (phone, pw) {
+      var r = await SB.rpc('provider_login', { p_phone: phone, p_password: pw });
+      if (!r || !r.ok) throw new Error((r && r.error) || 'invalid');
+      return { id: r.id, token: r.token };
+    },
+    setPassword: function (id, t, nw, old) { return SB.rpc('set_password', { p_id: id, p_token: t, p_new: nw, p_old: old || null }); },
+    updateProfile: function (id, t, o) { return SB.rpc('update_profile', { p_id: id, p_token: t, p: o }); },
+
+    adminOverview: function (code) { return SB.rpc('admin_overview', { p_code: code }); },
+    adminProviders: function (code, f) {
+      f = f || {};
+      return SB.rpc('admin_providers', { p_code: code, p_q: f.q || '', p_status: f.status || '', p_service: f.service || '', p_city: f.city || '', p_limit: f.limit || 30, p_offset: f.offset || 0 });
+    },
+    adminUpdateProvider: function (code, id, o) { return SB.rpc('admin_update_provider', { p_code: code, p_id: id, p: o }); },
+    adminCreateProvider: function (code, o) { return SB.rpc('admin_create_provider', { p_code: code, p: o }); },
+    adminResetPassword: function (code, id, pw) { return SB.rpc('admin_reset_password', { p_code: code, p_id: id, p_password: pw }); },
+    adminDeleteProvider: function (code, id) { return SB.rpc('admin_delete_provider', { p_code: code, p_id: id }); },
+    adminRequests: function (code, limit, status) { return SB.rpc('admin_requests', { p_code: code, p_limit: limit || 100, p_status: status || '' }); },
+    adminServices: function (code) { return SB.rpc('admin_services', { p_code: code }); },
+    adminSaveService: function (code, id, name, icon, active) { return SB.rpc('admin_save_service', { p_code: code, p_id: id || '', p_name: name, p_icon: icon || '', p_active: active == null ? true : !!active }); },
+    adminReorderServices: function (code, ids) { return SB.rpc('admin_reorder_services', { p_code: code, p_ids: ids }); },
+    adminDeleteService: function (code, id) { return SB.rpc('admin_delete_service', { p_code: code, p_id: id }); },
+    adminGetSettings: function (code) { return SB.rpc('admin_get_settings', { p_code: code }); },
+    adminSaveSettings: function (code, o) { return SB.rpc('admin_save_settings', { p_code: code, p: o }); },
+    adminChangeCode: function (code, nw) { return SB.rpc('admin_change_code', { p_code: code, p_new: nw }); }
   };
 
   if (C.mode === 'supabase' && C.supabaseUrl && C.supabaseKey) {
@@ -324,4 +543,18 @@
   } else {
     L.init(); SQ.db = L; SQ.demo = true;
   }
+
+  /* قائمة الخدمات يديرها المدير: تُحمَّل من القاعدة وتُخزَّن نسخة للعمل بلا إنترنت */
+  var SKEY = 'sq_services_cache';
+  SQ.hasServicesCache = false;
+  try {
+    var cached = JSON.parse(localStorage.getItem(SKEY));
+    if (cached && cached.length) { SQ.SERVICES = cached; SQ.hasServicesCache = true; }
+  } catch (e) {}
+  SQ.refreshServices = async function () {
+    try {
+      var list = await SQ.db.listServices();
+      if (list && list.length) { SQ.SERVICES = list; try { localStorage.setItem(SKEY, JSON.stringify(list)); } catch (e) {} }
+    } catch (e) {}
+  };
 })();

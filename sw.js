@@ -1,6 +1,6 @@
 /* خدمة العمل دون إنترنت: الملفات الثابتة من الذاكرة، وطلبات Supabase دائما من الشبكة */
-var CACHE = 'sq-v1';
-var FILES = ['./', 'index.html', 'styles.css', 'data.js', 'db.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png'];
+var CACHE = 'sq-v3';
+var FILES = ['./', 'index.html', 'styles.css', 'data.js', 'db.js', 'common.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png'];
 
 self.addEventListener('install', function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); }));
