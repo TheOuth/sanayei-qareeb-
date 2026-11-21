@@ -367,24 +367,43 @@
   }
 
   function bindMenu() {
-    on('menuBtn', 'click', function () {
-      var isC = true, isP = !!getPid();
-      var sup = (SQ.cfg && SQ.cfg.support_whatsapp) || C.supportWhatsapp;
-      modal('<h3>القائمة</h3><div style="display:flex;flex-direction:column;gap:10px">' +
-        (isC ? '<button class="btn ghost" id="mReq">📋 طلباتي</button>' : '') +
-        (isP ? '<button class="btn ghost" id="mProf">👤 ملفي الشخصي</button>' : '') +
-        (sup ? '<a class="btn ghost" id="mSup" target="_blank" rel="noopener" href="https://wa.me/' + String(sup).replace(/\D/g, '') + '">💬 تواصل مع الدعم</a>' : '') +
-        '<button class="btn ghost" id="mRole">🏠 الرئيسية</button>' +
-        (isP ? '<button class="btn danger" id="mOut">🚪 تسجيل الخروج</button>' : '') +
-        (SQ.demo ? '<button class="btn ghost" id="mReset">♻️ إعادة ضبط البيانات التجريبية</button>' : '') +
-        '<button class="btn ghost" id="mClose">إغلاق</button></div>');
-      on('mReq', 'click', function () { closeModal(); go('#/c/requests'); });
-      on('mProf', 'click', function () { closeModal(); go('#/p/profile'); });
-      on('mRole', 'click', function () { closeModal(); go('#/'); });
-      on('mOut', 'click', function () { closeModal(); confirmLogout(); });
-      on('mReset', 'click', function () { closeModal(); db.resetDemo(); ['pid', 'ptoken', 'loc'].forEach(store.del); loc = null; toast('تمت إعادة الضبط'); go('#/'); });
-      on('mClose', 'click', closeModal);
-    });
+    on('menuBtn', 'click', openDrawer);
+  }
+  function openDrawer() {
+    var old = document.getElementById('drawer'); if (old) old.remove();
+    var isP = !!getPid();
+    var sup = (SQ.cfg && SQ.cfg.support_whatsapp) || C.supportWhatsapp;
+    var supUrl = sup ? 'https://wa.me/' + String(sup).replace(/\D/g, '') : '';
+    function item(id, ic, label, extra) { return '<button class="ditem" id="' + id + '"' + (extra || '') + '><i>' + SQ.I(ic, 20) + '</i><span>' + label + '</span></button>'; }
+    function acc(key, ic, title, body, open) { return '<div class="acc' + (open ? ' open' : '') + '" data-k="' + key + '"><button class="acch" aria-expanded="' + (!!open) + '"><i>' + SQ.I(ic, 20) + '</i><span>' + title + '</span><b class="chev"></b></button><div class="accb"><div>' + body + '</div></div></div>'; }
+    var steps = '<ol class="dsteps"><li>حدد موقعك أو اختر مدينتك.</li><li>اختر الخدمة التي تحتاجها.</li><li>سنعرض لك الأقرب والأعلى تقييما أولا.</li><li>اتصل أو راسل عبر واتساب، ثم قيّم الصنايعي بعد انتهاء العمل.</li></ol>';
+    var html = '<div class="scrim" id="dScrim"></div><aside class="dpanel" role="dialog" aria-label="القائمة">' +
+      '<div class="dhead"><span class="dlogo">' + SVG_LOGO + '</span><div><b>صنايعي قريب</b><small>خدمتك لحدي بيتك</small></div><button class="dclose" id="dClose" aria-label="إغلاق">' + SQ.I('plus', 20) + '</button></div>' +
+      '<div class="dbody">' +
+        item('dHome', 'home', 'الرئيسية') + item('dReq', 'clock', 'طلباتي') +
+        acc('acct', 'user', isP ? 'حسابي كصنايعي' : 'انضم كصنايعي',
+          isP ? item('dProf', 'user', 'ملفي الشخصي') + item('dOut', 'out', 'تسجيل الخروج', ' data-danger="1"')
+              : '<p class="dnote">سجّل خدماتك مجانا ليصلك العملاء الأقرب إليك.</p>' + item('dJoin', 'wrench', 'سجّل كصنايعي'), false) +
+        acc('help', 'chat', 'المساعدة', (supUrl ? '<a class="ditem" id="dSup" target="_blank" rel="noopener" href="' + supUrl + '"><i>' + SQ.I('chat', 20) + '</i><span>تواصل مع الدعم</span></a>' : '') + '<div class="dh">كيف يعمل التطبيق؟</div>' + steps, false) +
+        acc('about', 'shield', 'عن التطبيق', item('dShare', 'share', 'مشاركة التطبيق') + '<a class="ditem" href="privacy-policy.html" target="_blank" rel="noopener"><i>' + SQ.I('lock', 20) + '</i><span>سياسة الخصوصية</span></a><p class="dnote">الإصدار 1.0</p>', false) +
+        (SQ.demo ? acc('dev', 'edit', 'أدوات التجربة', item('dReset', 'check', 'إعادة ضبط البيانات التجريبية'), false) : '') +
+      '</div></aside>';
+    var d = document.createElement('div'); d.id = 'drawer'; d.innerHTML = html; document.body.appendChild(d);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { d.classList.add('show'); }); });
+    function close(cb) { d.classList.remove('show'); document.removeEventListener('keydown', esc); setTimeout(function () { d.remove(); if (cb) cb(); }, 260); }
+    function esc(e) { if (e.key === 'Escape') close(); }
+    document.addEventListener('keydown', esc);
+    function q(id, fn) { var el = d.querySelector('#' + id); if (el) el.addEventListener('click', fn); }
+    q('dScrim', function () { close(); }); q('dClose', function () { close(); });
+    Array.prototype.forEach.call(d.querySelectorAll('.acch'), function (b) { b.addEventListener('click', function () { var p = b.parentNode, o = !p.classList.contains('open'); Array.prototype.forEach.call(d.querySelectorAll('.acc.open'), function (x) { x.classList.remove('open'); x.firstChild.setAttribute('aria-expanded', 'false'); }); if (o) { p.classList.add('open'); b.setAttribute('aria-expanded', 'true'); } }); });
+    q('dHome', function () { close(function () { go('#/'); }); });
+    q('dReq', function () { close(function () { go('#/c/requests'); }); });
+    q('dProf', function () { close(function () { go('#/p/profile'); }); });
+    q('dJoin', function () { close(function () { store.set('side', 'prov'); go('#/'); location.reload(); }); });
+    q('dOut', function () { close(confirmLogout); });
+    q('dSup', function () { setTimeout(function () { close(); }, 100); });
+    q('dShare', function () { var u = location.origin + location.pathname, t = 'صنايعي قريب: اعثر على أقرب صنايعي لك'; if (navigator.share) navigator.share({ title: 'صنايعي قريب', text: t, url: u }).catch(function () {}); else { try { navigator.clipboard.writeText(u); } catch (e) {} toast('تم نسخ رابط التطبيق'); } });
+    q('dReset', function () { close(function () { db.resetDemo(); ['pid', 'ptoken', 'loc'].forEach(store.del); loc = null; toast('تمت إعادة الضبط'); go('#/'); }); });
   }
 
   /* ---------- 3) مسار مقدم الخدمة ---------- */
