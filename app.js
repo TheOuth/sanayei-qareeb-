@@ -10,7 +10,7 @@
   var anon = store.get('anon', null);
   if (!anon) { anon = SQ.uid(); store.set('anon', anon); }
   function go(h) { if (location.hash === h) route(); else location.hash = h; }
-  var SVG_LOGO = '<svg viewBox="0 0 96 96" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6E2A3"/><stop offset="1" stop-color="#C79A36"/></linearGradient></defs><circle cx="48" cy="48" r="45" fill="none" stroke="#E4C46F" stroke-opacity=".6" stroke-width="1.5"/><path d="M48 17c-11.5 0-20 8.3-20 19 0 15 20 35 20 35s20-20 20-35c0-10.7-8.5-19-20-19z" fill="url(#lg1)"/><path d="M52.5 28.5a7.5 7.5 0 0 0-8.6 9.7L32.5 49.5a3.2 3.2 0 0 0 4.5 4.5l11.3-11.300a7.5 7.5 0 0 0 9.7-8.600l-4.400 4.400-4.300-1.100-1.100-4.300z" fill="#0A2E2B"/></svg>';
+  var SVG_LOGO = '<svg viewBox="0 0 96 96" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#D6EBFF"/></linearGradient></defs><circle cx="48" cy="48" r="45" fill="rgba(255,255,255,.14)" stroke="#fff" stroke-opacity=".75" stroke-width="1.5"/><path d="M48 17c-11.5 0-20 8.3-20 19 0 15 20 35 20 35s20-20 20-35c0-10.7-8.500-19-20-19z" fill="url(#lg1)"/><path d="M52.500 28.500a7.500 7.500 0 0 0-8.600 9.700L32.500 49.500a3.200 3.200 0 0 0 4.500 4.500l11.300-11.300a7.500 7.500 0 0 0 9.700-8.600l-4.400 4.400-4.300-1.100-1.100-4.300z" fill="#1E6FD0"/></svg>';
 
   /* ---------- هيكل الصفحة ---------- */
   function page(o) {

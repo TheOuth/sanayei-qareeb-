@@ -43,11 +43,11 @@
 
   // تصنيفات الخدمات (المدير يحدد تصنيف كل خدمة من لوحته)
   SQ.CATEGORIES = [
-    { id: 'home', name: 'البيت والصيانة', icon: '🏠', color: '#0f766e' },
-    { id: 'energy', name: 'الطاقة والمياه', icon: '⚡', color: '#b45309' },
-    { id: 'devices', name: 'الأجهزة والإلكترونيات', icon: '📱', color: '#1d4ed8' },
-    { id: 'personal', name: 'خدمات منزلية وشخصية', icon: '🧹', color: '#a21caf' },
-    { id: 'other', name: 'أخرى', icon: '➕', color: '#475569' }
+    { id: 'home', name: 'البيت والصيانة', icon: '🏠', color: '#2B8CF0' },
+    { id: 'energy', name: 'الطاقة والمياه', icon: '⚡', color: '#F08C2B' },
+    { id: 'devices', name: 'الأجهزة والإلكترونيات', icon: '📱', color: '#6D5BEF' },
+    { id: 'personal', name: 'خدمات منزلية وشخصية', icon: '🧹', color: '#E0508F' },
+    { id: 'other', name: 'أخرى', icon: '➕', color: '#5B6F86' }
   ];
   var CAT_DEFAULT = { plumbing: 'home', electric: 'home', ac: 'home', carpentry: 'home', blacksmith: 'home', paint: 'home', building: 'home', locks: 'home',
     solar: 'energy', generator: 'energy', water: 'energy', mobile: 'devices', appliance: 'devices', cleaning: 'personal', tailor: 'personal', barber: 'personal', transport: 'personal' };
