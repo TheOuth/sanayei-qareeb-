@@ -380,10 +380,10 @@
     var html = '<div class="scrim" id="dScrim"></div><aside class="dpanel" role="dialog" aria-label="القائمة">' +
       '<div class="dhead"><span class="dlogo">' + SVG_LOGO + '</span><div><b>صنايعي قريب</b><small>خدمتك لحدي بيتك</small></div><button class="dclose" id="dClose" aria-label="إغلاق">' + SQ.I('plus', 20) + '</button></div>' +
       '<div class="dbody">' +
+        (isP ? '' : '<div class="dauth"><button class="btn primary" id="dLogin">تسجيل الدخول</button><button class="btn ghost" id="dJoin">إنشاء حساب صنايعي</button><small>الدخول والتسجيل لمقدمي الخدمة. طلب الخدمة متاح للجميع بلا حساب.</small></div>') +
         item('dHome', 'home', 'الرئيسية') + item('dReq', 'clock', 'طلباتي') +
-        acc('acct', 'user', isP ? 'حسابي كصنايعي' : 'انضم كصنايعي',
-          isP ? item('dProf', 'user', 'ملفي الشخصي') + item('dOut', 'out', 'تسجيل الخروج', ' data-danger="1"')
-              : '<p class="dnote">سجّل خدماتك مجانا ليصلك العملاء الأقرب إليك.</p>' + item('dJoin', 'wrench', 'سجّل كصنايعي'), false) +
+        (isP ? acc('acct', 'user', 'حسابي كصنايعي', item('dProf', 'user', 'ملفي الشخصي') + item('dPHome', 'wrench', 'لوحة الصنايعي') + item('dOut', 'out', 'تسجيل الخروج', ' data-danger="1"'), false) : ''
+          ) +
         acc('help', 'chat', 'المساعدة', (supUrl ? '<a class="ditem" id="dSup" target="_blank" rel="noopener" href="' + supUrl + '"><i>' + SQ.I('chat', 20) + '</i><span>تواصل مع الدعم</span></a>' : '') + '<div class="dh">كيف يعمل التطبيق؟</div>' + steps, false) +
         acc('about', 'shield', 'عن التطبيق', item('dShare', 'share', 'مشاركة التطبيق') + '<a class="ditem" href="privacy-policy.html" target="_blank" rel="noopener"><i>' + SQ.I('lock', 20) + '</i><span>سياسة الخصوصية</span></a><p class="dnote">الإصدار 1.0</p>', false) +
         (SQ.demo ? acc('dev', 'edit', 'أدوات التجربة', item('dReset', 'check', 'إعادة ضبط البيانات التجريبية'), false) : '') +
@@ -399,7 +399,9 @@
     q('dHome', function () { close(function () { go('#/'); }); });
     q('dReq', function () { close(function () { go('#/c/requests'); }); });
     q('dProf', function () { close(function () { go('#/p/profile'); }); });
-    q('dJoin', function () { close(function () { store.set('side', 'prov'); go('#/'); location.reload(); }); });
+    q('dJoin', function () { close(function () { go('#/p/1'); }); });
+    q('dLogin', function () { close(function () { go('#/p/login'); }); });
+    q('dPHome', function () { close(function () { go('#/p/home'); }); });
     q('dOut', function () { close(confirmLogout); });
     q('dSup', function () { setTimeout(function () { close(); }, 100); });
     q('dShare', function () { var u = location.origin + location.pathname, t = 'صنايعي قريب: اعثر على أقرب صنايعي لك'; if (navigator.share) navigator.share({ title: 'صنايعي قريب', text: t, url: u }).catch(function () {}); else { try { navigator.clipboard.writeText(u); } catch (e) {} toast('تم نسخ رابط التطبيق'); } });

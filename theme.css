@@ -255,3 +255,6 @@ body.admin .acard .ava{width:46px;height:46px}
 .dh{margin:8px 12px 2px;font-weight:600;font-size:13px;color:var(--teal-d)}
 .dsteps{margin:4px 12px 6px;padding-inline-start:20px;font-size:13.5px;color:var(--mute);line-height:1.9}
 @media (prefers-reduced-motion:reduce){#drawer *{transition:none!important}}
+
+.dauth{display:flex;flex-direction:column;gap:8px;padding:6px 6px 14px;margin-bottom:6px;border-bottom:1px solid var(--hair)}
+.dauth .btn{width:100%}.dauth small{color:var(--mute);font-size:12px;line-height:1.7;text-align:center}
