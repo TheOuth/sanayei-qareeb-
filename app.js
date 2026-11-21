@@ -68,7 +68,8 @@
       '<div class="sides"><button class="side' + (side === 'client' ? ' on' : '') + '" data-side="client"><i>🔍</i><b>أحتاج خدمة</b><small>تصفح الخدمات واطلب الأقرب</small></button>' +
       '<button class="side' + (side === 'prov' ? ' on' : '') + '" data-side="prov"><i>🛠️</i><b>أنا صنايعي</b><small>سجّل واعرض خدماتك مجانا</small></button></div>' +
       '<div class="panels s-' + side + '"><section class="panel pclient" id="pClient">' + demoNote() + '<div id="dueBox"></div>' + chips + '<div id="tiles">' + tiles +
-      '</div><div class="empty" id="noRes" hidden><div class="big">🔎</div><p>ما لقينا خدمة بهذا الاسم.</p><p class="note">جرّب كلمة أخرى، أو أخبرنا بالخدمة التي تحتاجها عبر الدعم.</p></div></section>' +
+      '</div><div class="empty" id="noRes" hidden><div class="big">🔎</div><p>ما لقينا خدمة بهذا الاسم.</p><p class="note">جرّب كلمة أخرى، أو أخبرنا بالخدمة التي تحتاجها عبر الدعم.</p></div>' +
+      '<div class="sechead" id="pgHead"><b>🌟 الصنايعية</b><small>الأقرب والأعلى تقييما أولا</small></div><div class="pgrid" id="pgrid"></div><div id="pgMore" class="center mt"></div><div id="pgSentinel" style="height:1px"></div></section>' +
       '<section class="panel pprov" id="pProv"></section></div></div>';
     bindMenu();
     on('chLoc', 'click', function () { go('#/c/loc'); });
@@ -97,8 +98,15 @@
         });
         c.style.display = shown ? '' : 'none'; any += shown;
       });
-      document.getElementById('noRes').hidden = !!any;
+      var gshown = 0;
+      U.each('#pgrid .gcard', function (g) {
+        var ok = (!catSel || (' ' + g.getAttribute('data-cats') + ' ').indexOf(' ' + catSel + ' ') > -1) && (!q || g.getAttribute('data-n').indexOf(q) > -1);
+        g.style.display = ok ? '' : 'none'; if (ok) gshown++;
+      });
+      var ph = document.getElementById('pgHead'); if (ph) ph.style.display = (document.getElementById('pgrid').children.length && !gshown && (q || catSel)) ? 'none' : '';
+      document.getElementById('noRes').hidden = !!(any || gshown);
     }
+    window.__applyFilter = applyFilter;
     U.each('.catchips .chip', function (b) {
       b.addEventListener('click', function () { catSel = b.getAttribute('data-c'); U.each('.catchips .chip', function (x) { x.classList.toggle('on', x === b); }); applyFilter(); });
     });
@@ -120,6 +128,47 @@
       on('dueBtn', 'click', function () { go('#/c/rate/' + due.id); });
     }).catch(function () {});
     renderProvPanel();
+    loadGrid();
+  }
+
+  /* شبكة الصنايعية أسفل الرئيسية: تُحمَّل عند الاقتراب منها لتوفير الاستهلاك */
+  function gridCard(p) {
+    var ids = p.services || [], first = ids[0] || '';
+    var chips = ids.slice(0, 2).map(function (i) { return '<span class="mchip">' + esc(svc(i).name) + '</span>'; }).join('') + (ids.length > 2 ? '<span class="mchip more">+' + (ids.length - 2) + '</span>' : '');
+    var cats = ids.map(function (i) { return SQ.catOf(svc(i)).id; }).join(' ');
+    return '<button class="gcard" data-id="' + p.id + '" data-s="' + esc(first) + '" data-cats="' + cats + '" data-n="' + esc(normAr(p.name + ' ' + ids.map(function (i) { return svc(i).name; }).join(' '))) + '">' +
+      '<span class="gph">' + U.avatar(p, 'sq') + (p.available ? '<i class="dot on" title="متاح الآن"></i>' : '<i class="dot"></i>') + '</span>' +
+      '<b class="gname">' + esc(p.name) + (p.verified ? ' <span class="vmark" title="موثّق">✔</span>' : '') + '</b>' +
+      '<span class="gstar">' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
+      '<span class="gchips">' + chips + '</span></button>';
+  }
+  var gridState = { offset: 0, loading: false, done: false, io: null };
+  function loadGrid(reset) {
+    var el = document.getElementById('pgrid'); if (!el) return;
+    if (reset !== false) { gridState.offset = 0; gridState.done = false; el.innerHTML = ''; }
+    var sentinel = document.getElementById('pgSentinel');
+    var run = function () {
+      if (gridState.loading || gridState.done) return;
+      gridState.loading = true;
+      var more = document.getElementById('pgMore'); if (more) more.innerHTML = '<div class="spin">...</div>';
+      db.featured({ lat: loc ? loc.lat : null, lng: loc ? loc.lng : null, limit: 12, offset: gridState.offset }).then(function (r) {
+        gridState.loading = false;
+        var g = document.getElementById('pgrid'); if (!g) return;
+        g.insertAdjacentHTML('beforeend', r.items.map(gridCard).join(''));
+        gridState.offset += r.items.length; gridState.done = !r.more || !r.items.length;
+        var m = document.getElementById('pgMore'); if (m) m.innerHTML = '';
+        if (!g.children.length) { var h = document.getElementById('pgHead'); if (h) h.style.display = 'none'; }
+        U.each('#pgrid .gcard:not([data-b])', function (c) { c.setAttribute('data-b', 1); c.addEventListener('click', function () { go('#/c/p/' + c.getAttribute('data-id') + '/' + c.getAttribute('data-s')); }); });
+        if (window.__applyFilter) window.__applyFilter();
+        if (!gridState.done && 'IntersectionObserver' in window && sentinel) { gridState.io && gridState.io.disconnect(); gridState.io = new IntersectionObserver(function (e) { if (e[0].isIntersecting) { gridState.io.disconnect(); run(); } }, { rootMargin: '300px' }); gridState.io.observe(sentinel); }
+        else if (!gridState.done && m) { m.innerHTML = '<button class="btn ghost" id="pgBtn">عرض المزيد</button>'; on('pgBtn', 'click', run); }
+      }).catch(function () { gridState.loading = false; var m = document.getElementById('pgMore'); if (m) m.innerHTML = ''; });
+    };
+    if ('IntersectionObserver' in window && sentinel) {
+      gridState.io && gridState.io.disconnect();
+      gridState.io = new IntersectionObserver(function (e) { if (e[0].isIntersecting) { gridState.io.disconnect(); run(); } }, { rootMargin: '400px' });
+      gridState.io.observe(sentinel);
+    } else run();
   }
 
   function renderProvPanel() {
@@ -346,7 +395,7 @@
   function getTok() { return store.get('ptoken', null); }
   function signIn(id, token) { store.set('pid', id); store.set('ptoken', token); store.set('role', 'provider'); store.set('side', 'prov'); }
   function signOut() { store.del('pid'); store.del('ptoken'); }
-  function sessionExpired() { signOut(); toast('انتهت جلستك، ادخل من جديد'); go('#/p/login'); }
+  function sessionExpired() { signOut(); store.set('side', 'client'); toast('انتهت جلستك، ادخل من جديد'); go('#/p/login'); }
   function stepsBar(n) { return '<div class="steps">' + [1, 2, 3, 4].map(function (i) { return '<i class="' + (i <= n ? 'on' : '') + '"></i>'; }).join('') + '</div><div class="stepno">الخطوة ' + n + ' من 4</div>'; }
   function regBack(n) { return n === 1 ? '#/p/start' : '#/p/' + (n - 1); }
   function localPhone(p) { return SQ.util.localPhone(p); }
@@ -629,7 +678,7 @@
   function confirmLogout() {
     modal('<h3>تسجيل الخروج</h3><p>هل تريد تسجيل الخروج؟ تدخل مرة ثانية برقم هاتفك وكلمة السر.</p><div class="row2 mt"><button class="btn ghost" id="lc">إلغاء</button><button class="btn primary" id="ly">خروج</button></div>');
     on('lc', 'click', closeModal);
-    on('ly', 'click', function () { closeModal(); signOut(); toast('تم تسجيل الخروج'); go('#/p/login'); });
+    on('ly', 'click', function () { closeModal(); signOut(); store.set('side', 'client'); toast('تم تسجيل الخروج'); go('#/'); });
   }
 
   function openPwModal(me) {

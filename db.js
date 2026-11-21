@@ -145,6 +145,19 @@
     },
     admin: function (code) { if (code !== this.d.adminCode) throw new Error('forbidden'); },
 
+    featured: async function (q) {
+      var self = this, off = q.offset || 0, lim = Math.min(q.limit || 12, 24), hasLoc = q.lat != null;
+      var arr = this.d.providers.filter(function (p) { return p.status === 'approved'; })
+        .map(function (p) { return { p: p, d: hasLoc ? G.haversine(q.lat, q.lng, p.lat, p.lng) : null, av: isAvail(p) }; });
+      arr.sort(function (a, b) {
+        if (a.av !== b.av) return a.av ? -1 : 1;
+        var da = a.d == null ? 0 : Math.floor(a.d / 3), db = b.d == null ? 0 : Math.floor(b.d / 3);
+        if (da !== db) return da - db;
+        var sa = score(a.p), sb = score(b.p); if (sa !== sb) return sb - sa;
+        return (a.d || 0) - (b.d || 0);
+      });
+      return { items: arr.slice(off, off + lim).map(function (x) { return self.pub(x.p, x.d); }), more: arr.length > off + lim };
+    },
     nearby: async function (q) {
       var self = this, hasLoc = q.lat != null;
       var all = this.d.providers
@@ -516,6 +529,7 @@
       }
       return data;
     },
+    featured: function (q) { return SB.rpc('featured_providers', { p_lat: q.lat == null ? null : q.lat, p_lng: q.lng == null ? null : q.lng, p_limit: q.limit || 12, p_offset: q.offset || 0 }); },
     nearby: function (q) { return SB.rpc('nearby_providers', { p_lat: q.lat, p_lng: q.lng, p_service: q.service, p_city: q.cityId }); },
     getProvider: function (id, loc) { return SB.rpc('get_provider', { p_id: id, p_lat: loc ? loc.lat : null, p_lng: loc ? loc.lng : null }); },
     registerProvider: function (x) { return SB.rpc('register_provider', { p: x }); },
