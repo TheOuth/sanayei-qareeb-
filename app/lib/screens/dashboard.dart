@@ -34,6 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       try {
         if (me['status'] == 'approved') rq = await Api.rpc('provider_requests', {'p_id': _id, 'p_token': _tk}) as List;
       } catch (_) {}
+      Store.setMe((me['name'] ?? '').toString(), (me['photo'] ?? '').toString());
       if (mounted) setState(() { _me = me as Map; _reqs = rq; _err = null; });
     } catch (e) {
       if (e is ApiError && e.code == 'forbidden') {

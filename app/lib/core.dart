@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -44,6 +45,16 @@ String errMsg(Object e) {
     'locked': 'تم إيقاف الدخول مؤقتًا. حاول بعد 15 دقيقة',
     'no_password': 'لا توجد كلمة سر لهذا الحساب',
   };
+  if (c.startsWith('not_configured:')) {
+    final parts = c.substring(15).split('|');
+    return 'خدمة البريد غير مفعّلة. لم يُضبط في Supabase: ${parts[0]}${parts.length > 1 && parts[1].isNotEmpty ? ' (الموجود عندك: ${parts[1]})' : ''}';
+  }
+  if (c.startsWith('send_failed:')) {
+    final st = c.substring(12);
+    if (st == '401') return 'Brevo رفض المفتاح: تأكد من المفتاح وأن تقييد عناوين IP مغلق';
+    if (st == '400') return 'Brevo رفض الإرسال: غالبًا عنوان المرسِل غير موثّق عندهم';
+    return 'تعذّر إرسال البريد (رمز $st)';
+  }
   if (m.containsKey(c)) return m[c]!;
   if (c.contains('SocketException') || c.contains('ClientException') || c.contains('Failed host')) return 'لا يوجد اتصال بالإنترنت';
   if (c.contains('TimeoutException')) return 'الاتصال بطيء، حاول مرة أخرى';
@@ -80,13 +91,19 @@ Future<dynamic> callFunction(String name, Map<String, dynamic> body) async {
   try {
     data = jsonDecode(utf8.decode(r.bodyBytes));
   } catch (_) {}
-  if (r.statusCode >= 300) throw ApiError((data is Map ? data['error'] : null)?.toString() ?? 'failed');
+  if (r.statusCode >= 300) {
+    final e = (data is Map ? data['error'] : null)?.toString() ?? 'failed';
+    if (e == 'not_configured' && data is Map) throw ApiError('not_configured:${(data['missing'] as List?)?.join(',') ?? ''}|${(data['seen'] as List?)?.join(',') ?? ''}');
+    if (e == 'send_failed' && data is Map) throw ApiError('send_failed:${data['status'] ?? ''}');
+    throw ApiError(e);
+  }
   return data;
 }
 
 /// تخزين محلي بسيط (هوية الجهاز، جلسة الصنايعي، آخر موقع، كاش خفيف)
 class Store {
   static late SharedPreferences p;
+  static final ValueNotifier<int> tick = ValueNotifier(0);
   static Future<void> init() async => p = await SharedPreferences.getInstance();
 
   static String get anon {
@@ -105,11 +122,30 @@ class Store {
   static Future<void> signIn(String id, String t) async {
     await p.setString('pid', id);
     await p.setString('token', t);
+    tick.value++;
   }
 
   static Future<void> signOut() async {
     await p.remove('pid');
     await p.remove('token');
+    await p.remove('me_photo');
+    await p.remove('me_name');
+    tick.value++;
+  }
+
+  static String get mePhoto => p.getString('me_photo') ?? '';
+  static String get meName => p.getString('me_name') ?? '';
+  static Future<void> setMe(String name, String photo) async {
+    await p.setString('me_name', name);
+    await p.setString('me_photo', photo);
+    tick.value++;
+  }
+
+  static Future<void> refreshMe() async {
+    try {
+      final me = await Api.rpc('provider_self', {'p_id': pid, 'p_token': token});
+      await setMe((me['name'] ?? '').toString(), (me['photo'] ?? '').toString());
+    } catch (_) {}
   }
 
   static Map<String, dynamic>? get loc {

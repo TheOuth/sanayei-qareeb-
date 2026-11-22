@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final r = await Api.rpc('provider_login', {'p_phone': ph, 'p_password': _pw.text});
       if (r['ok'] == true) {
         await Store.signIn(r['id'], r['token']);
+        Store.refreshMe();
         if (!mounted) return;
         Navigator.of(context).popUntil((r) => r.isFirst);
         toast(context, 'تم تسجيل الدخول. لوحتك من القائمة الجانبية');

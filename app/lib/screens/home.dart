@@ -32,10 +32,22 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    Store.tick.addListener(_onTick);
+    if (Store.loggedIn && Store.meName.isEmpty) Store.refreshMe();
     Meta.refresh().then((_) {
       if (mounted) setState(() {});
     });
     _load();
+  }
+
+  void _onTick() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    Store.tick.removeListener(_onTick);
+    super.dispose();
   }
 
   Future<void> _load({bool more = false}) async {
@@ -201,7 +213,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Column(children: [
-            ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.asset('assets/icon.png', width: 46, height: 46)),
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))]),
+              child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.asset('assets/icon.png', width: 46, height: 46)),
+            ),
             const SizedBox(height: 8),
             InkWell(
               onTap: () => _key.currentState?.openDrawer(),
@@ -215,6 +231,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ]),
           const SizedBox(width: 12),
           const Expanded(child: Padding(padding: EdgeInsets.only(top: 10), child: Text('صنايعي قريب', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)))),
+          if (Store.loggedIn)
+            GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen())).then((_) { if (mounted) setState(() {}); }),
+              child: Container(
+                padding: const EdgeInsets.all(2.5),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: Avatar(photo: Store.mePhoto, name: Store.meName, size: 46),
+              ),
+            ),
         ]),
         const SizedBox(height: 14),
         const Text('خدمتك لحدّ بيتك', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),

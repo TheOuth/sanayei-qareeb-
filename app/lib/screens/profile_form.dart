@@ -92,8 +92,26 @@ class _ProfileFormState extends State<ProfileForm> {
     }
   }
 
-  bool get _emailSaved => widget.initial != null && (widget.initial!['email'] ?? '').toString().isNotEmpty && _email.text.trim().toLowerCase() == widget.initial!['email'].toString();
+  bool get _emailSaved => _savedEmail.isNotEmpty && _email.text.trim().toLowerCase() == _savedEmail;
   bool _verified = false;
+  late String _savedEmail = (widget.initial?['email'] ?? '').toString();
+  bool _savingEmail = false;
+
+  Future<void> _saveEmail() async {
+    final em = _email.text.trim().toLowerCase();
+    if (em.isNotEmpty && !RegExp(r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$').hasMatch(em)) return toast(context, 'البريد الإلكتروني غير صحيح');
+    setState(() => _savingEmail = true);
+    try {
+      await Api.rpc('update_profile', {'p_id': Store.pid, 'p_token': Store.token, 'p': {'email': em}});
+      if (mounted) {
+        setState(() { _savedEmail = em; _verified = false; });
+        toast(context, em.isEmpty ? 'تم حذف البريد' : 'تم حفظ البريد. اضغط "أرسل رمز التأكيد" لتوثيقه');
+      }
+    } catch (e) {
+      if (mounted) toast(context, errMsg(e));
+    }
+    if (mounted) setState(() => _savingEmail = false);
+  }
 
   Future<void> _sendCode() async {
     setState(() => _sending = true);
@@ -141,10 +159,24 @@ class _ProfileFormState extends State<ProfileForm> {
   }
 
   Widget _emailStatus() {
-    final verified = _verified || (widget.initial?['email_verified'] == true && _emailSaved);
-    if (_email.text.trim().isEmpty) return const SizedBox.shrink();
+    final verified = _verified || (widget.initial?['email_verified'] == true && _emailSaved && _email.text.trim().toLowerCase() == (widget.initial?['email'] ?? '').toString());
+    final typed = _email.text.trim().toLowerCase();
+    if (typed.isEmpty && _savedEmail.isEmpty) return const SizedBox.shrink();
+    if (typed != _savedEmail) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
+            onPressed: _savingEmail ? null : _saveEmail,
+            icon: const Icon(Icons.save_rounded, size: 18),
+            label: Text(_savingEmail ? 'جارٍ الحفظ…' : (typed.isEmpty ? 'حذف البريد' : 'حفظ البريد')),
+          ),
+        ),
+      );
+    }
     if (verified) return const Padding(padding: EdgeInsets.only(top: 6), child: Row(children: [Icon(Icons.verified_rounded, color: C.green, size: 18), SizedBox(width: 6), Text('بريد موثّق', style: TextStyle(color: C.green, fontWeight: FontWeight.w600))]));
-    if (!_emailSaved) return const Padding(padding: EdgeInsets.only(top: 6), child: Text('احفظ التعديلات أولًا ثم أكّد بريدك برمز من 4 أرقام', style: TextStyle(color: C.mute, fontSize: 12)));
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: Align(

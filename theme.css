@@ -295,3 +295,13 @@ body.admin .acard .ava{width:46px;height:46px}
 /* تاريخ الميلاد */
 .bsel{display:grid;grid-template-columns:.8fr 1.3fr 1fr;gap:8px}
 .bsel select{width:100%;min-width:0}
+
+/* ===== لوحة المدير على الهاتف: لا اتساع أفقي ===== */
+body.admin{overflow-x:hidden}
+body.admin #app,body.admin .main{min-width:0;max-width:100%}
+body.admin .anav{display:flex;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;max-width:100%}
+body.admin .anav::-webkit-scrollbar{display:none}
+body.admin .anav button{flex:0 0 auto;white-space:nowrap}
+body.admin .card{overflow-x:auto;max-width:100%}
+body.admin .tbl{min-width:100%}
+body.admin .tbl th,body.admin .tbl td{white-space:nowrap}
