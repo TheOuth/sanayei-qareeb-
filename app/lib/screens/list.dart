@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_drawer.dart';
 import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -50,7 +51,8 @@ class _ListScreenState extends State<ListScreen> {
   Widget build(BuildContext context) {
     final s = widget.service;
     return Scaffold(
-      appBar: AppBar(title: Text('${s.icon} ${s.name}')),
+      drawer: const AppDrawer(current: 'home'),
+      appBar: AppBar(title: Text('${s.icon} ${s.name}'), actions: const [MenuBtn()]),
       body: Builder(builder: (_) {
         if (_loc == null) {
           return Center(

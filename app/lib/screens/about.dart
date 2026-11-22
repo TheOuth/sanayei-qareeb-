@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_drawer.dart';
 import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -10,7 +11,8 @@ class AboutScreen extends StatelessWidget {
     final wa = (Meta.cfg['support_whatsapp'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
     final mail = (Meta.cfg['support_email'] ?? '').toString();
     return Scaffold(
-      appBar: AppBar(title: const Text('عن التطبيق')),
+      drawer: const AppDrawer(current: 'about'),
+      appBar: AppBar(title: const Text('عن التطبيق'), leading: const MenuBtn()),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         const Text('صنايعي قريب يوصلك بأقرب صنايعي في منطقتك بالاتصال أو الواتساب مباشرة، مجانًا للزبائن.', style: TextStyle(height: 1.6)),
         const SizedBox(height: 14),

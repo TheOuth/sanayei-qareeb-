@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_drawer.dart';
 import '../core.dart';
 import '../widgets.dart';
 import 'register.dart';
@@ -39,7 +40,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تسجيل دخول الصنايعي')),
+      drawer: const AppDrawer(current: 'login'),
+      appBar: AppBar(title: const Text('تسجيل دخول الصنايعي'), leading: const MenuBtn()),
       body: ListView(padding: const EdgeInsets.all(20), children: [
         const SizedBox(height: 10),
         TextField(controller: _ph, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'رقم الهاتف', hintText: '09xxxxxxxx')),

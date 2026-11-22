@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'app_drawer.dart';
 import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -124,7 +125,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final me = _me;
     return Scaffold(
-      appBar: AppBar(title: const Text('لوحتي'), actions: [IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout)]),
+      drawer: const AppDrawer(current: 'dash'),
+      appBar: AppBar(title: const Text('لوحتي'), leading: const MenuBtn(), actions: [IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout)]),
       body: _err != null
           ? ErrorRetry(_err!, _load)
           : me == null

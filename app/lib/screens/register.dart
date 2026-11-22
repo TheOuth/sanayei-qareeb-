@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_drawer.dart';
 import '../core.dart';
 import '../widgets.dart';
 import 'profile_form.dart';
@@ -8,7 +9,8 @@ class RegisterScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('سجّل كصنايعي')),
+      drawer: const AppDrawer(current: 'register'),
+      appBar: AppBar(title: const Text('سجّل كصنايعي'), leading: const MenuBtn()),
       body: ProfileForm(
         isRegister: true,
         onSubmit: (body) async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_drawer.dart';
 import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -80,7 +81,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('طلباتي')),
+      drawer: const AppDrawer(current: 'requests'),
+      appBar: AppBar(title: const Text('طلباتي'), leading: const MenuBtn()),
       body: _err != null
           ? ErrorRetry(_err!, _load)
           : _items == null

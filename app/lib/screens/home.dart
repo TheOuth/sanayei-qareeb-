@@ -10,6 +10,7 @@ import 'login.dart';
 import 'register.dart';
 import 'dashboard.dart';
 import 'about.dart';
+import 'app_drawer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -77,7 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final found = Meta.search(_query);
     return Scaffold(
       key: _key,
-      drawer: _drawer(),
+      drawer: AppDrawer(current: 'home', onLocation: _pickLoc),
+      onDrawerChanged: (open) { if (open) setState(() {}); },
       body: RefreshIndicator(
         onRefresh: () async { await _load(); await Meta.refresh(); setState(() {}); },
         child: CustomScrollView(slivers: [
@@ -275,42 +277,5 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     ];
-  }
-
-  Widget _drawer() {
-    void go(Widget w) {
-      Navigator.pop(context);
-      Navigator.push(context, MaterialPageRoute(builder: (_) => w)).then((_) {
-        if (mounted) setState(() {});
-      });
-    }
-    return Drawer(
-      child: SafeArea(
-        child: ListView(children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(children: [
-              ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.asset('assets/icon.png', width: 44, height: 44)),
-              const SizedBox(width: 10),
-              const Text('صنايعي قريب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            ]),
-          ),
-          const Divider(height: 1),
-          ListTile(leading: const Icon(Icons.home_rounded), title: const Text('الرئيسية'), onTap: () => Navigator.pop(context)),
-          ListTile(leading: const Icon(Icons.history_rounded), title: const Text('طلباتي'), onTap: () => go(const RequestsScreen())),
-          ListTile(leading: const Icon(Icons.place_rounded), title: const Text('تغيير موقعي'), onTap: () { Navigator.pop(context); _pickLoc(); }),
-          const Divider(),
-          const Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 4), child: Text('أنا صنايعي', style: TextStyle(color: C.mute, fontWeight: FontWeight.w600))),
-          if (Store.loggedIn)
-            ListTile(leading: const Icon(Icons.dashboard_rounded), title: const Text('لوحتي'), onTap: () => go(const DashboardScreen()))
-          else ...[
-            ListTile(leading: const Icon(Icons.login_rounded), title: const Text('تسجيل الدخول'), onTap: () => go(const LoginScreen())),
-            ListTile(leading: const Icon(Icons.app_registration_rounded), title: const Text('سجّل كصنايعي'), subtitle: const Text('اعرض خدمتك حسب المهارات العندك'), onTap: () => go(const RegisterScreen())),
-          ],
-          const Divider(),
-          ListTile(leading: const Icon(Icons.info_outline_rounded), title: const Text('عن التطبيق والدعم'), onTap: () => go(const AboutScreen())),
-        ]),
-      ),
-    );
   }
 }
