@@ -9,6 +9,15 @@ android {
         versionCode 1
         versionName '1.0'
     }
+    signingConfigs {
+        test {
+            storeFile file('../test.keystore')
+            storePassword 'sanayei-test'
+            keyAlias 'sanayei'
+            keyPassword 'sanayei-test'
+        }
+    }
+    buildTypes { debug { signingConfig signingConfigs.test } }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
 dependencies { implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0' }

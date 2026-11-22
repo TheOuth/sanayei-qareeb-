@@ -1,1 +1,4 @@
-<resources><string name="app_name">صنايعي قريب</string></resources>
+<resources>
+    <string name="app_name">صنايعي قريب</string>
+    <string name="asset_statements" translatable="false">[{\"relation\":[\"delegate_permission/common.handle_all_urls\"],\"target\":{\"namespace\":\"web\",\"site\":\"https://theouth.github.io\"}}]</string>
+</resources>
