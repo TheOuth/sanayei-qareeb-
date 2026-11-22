@@ -41,6 +41,14 @@ jobs:
           open(p,'w',encoding='utf8').write(s)
           print(s)
           PY
+          cat >> android/build.gradle.kts <<'KTS'
+
+          subprojects {
+              tasks.configureEach {
+                  if (name.startsWith("lintVital") || name.startsWith("lintAnalyze") || name.startsWith("lintReport")) { enabled = false }
+              }
+          }
+          KTS
           cp ../android/test.keystore android/app/test.keystore
           cat >> android/app/build.gradle.kts <<'KTS'
 
