@@ -282,3 +282,7 @@ body.admin .acard .ava{width:46px;height:46px}
 .tbbub.show{opacity:1;transform:none}
 .tbbub.t-gray{background:#6B7686}.tbbub.t-blue{background:#2B8CF0}.tbbub.t-gold{background:#B8860B}
 @media (prefers-reduced-motion:reduce){.tbbub{transition:none}}
+
+.tb{width:auto;height:auto;background:none!important;border-radius:0;line-height:0}
+.tb .bdg{filter:drop-shadow(0 1px 1.5px rgba(10,36,64,.25));transition:transform .15s var(--ease)}.tb:active .bdg{transform:scale(.88)}
+.tier .bdg{margin-inline-end:1px}

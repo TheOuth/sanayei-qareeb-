@@ -47,6 +47,13 @@
   }
   SQ.uid = uid;
 
+  function checkBirth(v, required) {
+    if (!v) { if (required) throw new Error('birth_required'); return null; }
+    var b = new Date(v); if (isNaN(b) || b > new Date() || b < new Date('1930-01-01')) throw new Error('invalid_birth');
+    var n = new Date(), a = n.getFullYear() - b.getFullYear(); if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--;
+    if (a < 18) throw new Error('underage'); return String(v).slice(0, 10);
+  }
+  function ageOf(v) { if (!v) return null; var b = new Date(v), n = new Date(), a = n.getFullYear() - b.getFullYear(); if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--; return a; }
   var KEY = 'sq_db_v1';
   function load() { try { return JSON.parse(localStorage.getItem(KEY)); } catch (e) { return null; } }
   function save(d) { try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {} }
@@ -134,7 +141,7 @@
         experience: p.experience, price: p.price, bio: p.bio, from: p.from, to: p.to, available: isAvail(p),
         distance_km: d == null ? null : Math.round(d * 10) / 10,
         rating: p.stats.n >= C.minReviewsForStars ? p.stats.avg : null, rating_n: p.stats.n,
-        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || '', verified: !!p.verified, jobs: this.jobs(p.id)
+        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || '', verified: !!p.verified, jobs: this.jobs(p.id), age: ageOf(p.birth_date)
       };
     },
     jobs: function (id) {
@@ -207,7 +214,9 @@
       if (String(x.password || '').length < 6) throw new Error('weak');
       if (!x.services || !x.services.length) throw new Error('invalid');
       if (x.photo && (x.photo.indexOf('data:image/jpeg;base64,') !== 0 || x.photo.length > 60000)) throw new Error('invalid');
+      var bd = checkBirth(x.birth_date, true);
       var p = {
+        birth_date: bd,
         photo: x.photo || '',
         password: x.password, fails: 0, locked_until: 0, admin_note: '',
         id: uid(), token: uid(), name: x.name, phone: x.phone, whatsapp: x.whatsapp, state_id: x.state_id, city_id: x.city_id,
@@ -225,6 +234,7 @@
       var week = Date.now() - 7 * 86400000;
       var r = this.pub(p, null);
       r.status = p.status; r.flag = !!p.available; r.in_hours = isOpen(p.from, p.to); r.radius = p.radius; r.has_password = !!p.password; r.pct = pct(p);
+      r.birth_date = p.birth_date || null;
       r.requests_week = this.d.requests.filter(function (q) { return q.provider_id === id && q.ts > week; }).length;
       return r;
     },
@@ -358,6 +368,7 @@
     },
     applyProfile: function (p, o, admin) {
       if (o.services && !o.services.length) throw new Error('invalid');
+      if (o.birth_date) p.birth_date = checkBirth(o.birth_date, true);
       if (o.name && String(o.name).trim()) p.name = String(o.name).trim().slice(0, 80);
       if (o.whatsapp) p.whatsapp = nph(o.whatsapp);
       if (admin && o.phone) p.phone = nph(o.phone);
@@ -393,7 +404,7 @@
         available: p.status === 'approved' && isAvail(p), flag: !!p.available, has_password: !!p.password, admin_note: p.admin_note || '',
         last_seen: p.last_seen, created: p.created, requests_total: rq.length, requests_week: rq.filter(function (q) { return q.ts > week; }).length,
         rating_n: p.stats.n, rating: p.stats.n > 0 ? p.stats.avg : null, ok: p.stats.ok, fail: p.stats.fail,
-        photo: p.photo || '', pct: pct(p), verified: !!p.verified, verify_doc: p.verify_doc || '', verified_at: p.verified_at || null
+        photo: p.photo || '', pct: pct(p), verified: !!p.verified, verify_doc: p.verify_doc || '', verified_at: p.verified_at || null, birth_date: p.birth_date || null, age: ageOf(p.birth_date)
       };
     },
     adminOverview: async function (code) {
@@ -450,7 +461,9 @@
       if (this.d.providers.some(function (p) { return p.phone === o.phone; })) throw new Error('duplicate');
       if (String(o.password || '').length < 6) throw new Error('weak');
       if (!o.services || !o.services.length) throw new Error('invalid');
+      var bd2 = checkBirth(o.birth_date, false);
       var city = SQ.findCity(o.city_id), p = {
+        birth_date: bd2,
         photo: o.photo || '', id: uid(), token: uid(), password: o.password, fails: 0, locked_until: 0, admin_note: o.admin_note || '',
         name: o.name, phone: o.phone, whatsapp: o.whatsapp || o.phone, state_id: o.state_id, city_id: o.city_id, hood: o.hood || '',
         lat: o.lat != null ? o.lat : (city ? city.city.lat : 0), lng: o.lng != null ? o.lng : (city ? city.city.lng : 0),

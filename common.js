@@ -38,7 +38,7 @@
     var m = (e && e.message) || '';
     var map = {
       duplicate: 'هذا الرقم مسجل من قبل', forbidden: 'غير مسموح', weak: 'كلمة السر قصيرة (6 أحرف أو أرقام على الأقل)',
-      invalid: 'بيانات غير صحيحة', invalid_phone: 'رقم الهاتف غير صحيح (مثال: 0912345678)', wrong_password: 'كلمة السر الحالية غير صحيحة', in_use: 'لا يمكن الحذف: الخدمة مستخدمة عند صنايعية، يمكنك إخفاؤها بدل ذلك',
+      invalid: 'بيانات غير صحيحة', invalid_phone: 'رقم الهاتف غير صحيح (مثال: 0912345678)', wrong_password: 'كلمة السر الحالية غير صحيحة', birth_required: 'اكتب تاريخ ميلادك', invalid_birth: 'تاريخ الميلاد غير صحيح', underage: 'التطبيق لمن عمره 18 سنة فأكثر', in_use: 'لا يمكن الحذف: الخدمة مستخدمة عند صنايعية، يمكنك إخفاؤها بدل ذلك',
       not_found: 'غير موجود', locked: 'تم إيقاف المحاولات مؤقتا، حاول بعد 15 دقيقة', already: 'تم هذا من قبل'
     };
     if (map[m]) return map[m];
@@ -163,6 +163,19 @@
       img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('img')); };
       img.src = url;
     });
+  };
+  /* تاريخ الميلاد: 18 سنة فأكثر */
+  U.maxBirth = function () { var d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().slice(0, 10); };
+  U.ageOf = function (s) { if (!s) return null; var b = new Date(s), n = new Date(); if (isNaN(b)) return null; var a = n.getFullYear() - b.getFullYear(); if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--; return a; };
+  U.birthHtml = function (id, value, hint) {
+    return '<label class="field"><span>تاريخ الميلاد (18 سنة فأكثر)</span><input id="' + id + '" type="date" class="ltr" min="1930-01-01" max="' + U.maxBirth() + '" value="' + U.esc(value || '') + '">' +
+      '<small>' + (hint || 'اكتب تاريخ ميلادك الحقيقي، فسيُطابَق مع وثيقتك عند التوثيق. يظهر عمرك فقط للزبائن، ولا يظهر التاريخ.') + '</small></label>';
+  };
+  U.birthErr = function (v, required) {
+    if (!v) return required ? 'اكتب تاريخ ميلادك' : '';
+    var a = U.ageOf(v); if (a == null || a > 90 || new Date(v) > new Date()) return 'تاريخ الميلاد غير صحيح';
+    if (a < 18) return 'التطبيق لمن عمره 18 سنة فأكثر';
+    return '';
   };
   U.photoHtml = function (id, name) {
     return '<div class="field photofield"><span>الصورة الشخصية (اختياري، تزيد ثقة الزبائن وترفع ترتيبك)</span><div class="photorow">' +

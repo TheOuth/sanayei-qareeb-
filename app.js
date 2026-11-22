@@ -137,7 +137,7 @@
   function trustBadge(p) {
     var t = SQ.tierOf(p.jobs); if (!t && !p.verified) return '';
     tbReg[p.id] = p;
-    return '<span class="tb t-' + (t ? t.id : 'gray') + '" role="button" tabindex="0" data-tb="' + p.id + '" aria-label="موثوق">' + SQ.I('shield', 17) + '</span>';
+    return '<span class="tb t-' + (t ? t.id : 'gray') + '" role="button" tabindex="0" data-tb="' + p.id + '" aria-label="موثوق">' + SQ.badge(t ? t.id : 'gray', 21) + '</span>';
   }
   function trustModal(p) {
     var j = p.jobs || 0, t = SQ.tierOf(j), nx = SQ.nextTier(j);
@@ -145,11 +145,11 @@
     modal('<h3>لماذا ' + esc(p.name) + ' موثوق؟</h3><div class="tbl-wrap"><table class="tbl"><tbody>' +
       '<tr><th>الهوية</th><td>' + (p.verified ? yes + ' · تحقق منها فريق التطبيق' : no + ' · لم يتم التحقق بعد') + '</td></tr>' +
       '<tr><th>الأعمال المؤكدة</th><td>' + j + (nx ? ' <small class="muted">(' + (nx.min - j) + ' للوصول إلى «' + nx.name + '»)</small>' : '') + '</td></tr>' +
-      '<tr><th>الشارة الحالية</th><td>' + (t ? '<span class="tier t-' + t.id + '">' + SQ.I('check', 12) + ' ' + t.name + '</span>' : '<span class="muted">لا يوجد بعد</span>') + '</td></tr>' +
+      '<tr><th>الشارة الحالية</th><td>' + (t ? '<span class="tier t-' + t.id + '">' + SQ.badge(t.id, 15) + ' ' + t.name + '</span>' : '<span class="muted">لا يوجد بعد</span>') + '</td></tr>' +
       '<tr><th>التقييم</th><td>' + (p.rating != null ? '★ ' + p.rating + ' (' + p.rating_n + ')' : 'جديد') + '</td></tr></tbody></table></div>' +
       '<h3 style="margin-top:14px">كيف تحصل على التوثيق؟</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>العلامة</th><th>الشرط</th></tr></thead><tbody>' +
-      '<tr><td><span class="tier t-gray">' + SQ.I('check', 12) + ' موثّق</span></td><td>أرسل لفريق التطبيق على واتساب وثيقة سارية وصورة لك معها، وبعد التحقق تُفعَّل علامتك.</td></tr>' +
-      SQ.TIERS.slice().reverse().map(function (x) { return '<tr><td><span class="tier t-' + x.id + '">' + SQ.I('check', 12) + ' ' + x.name + '</span></td><td>' + x.min + ' أعمال مؤكدة من عملاء مختلفين.</td></tr>'; }).join('') +
+      '<tr><td><span class="tier t-gray">' + SQ.badge('gray', 15) + ' موثّق</span></td><td>أرسل لفريق التطبيق على واتساب وثيقة سارية وصورة لك معها، وبعد التحقق تُفعَّل علامتك.</td></tr>' +
+      SQ.TIERS.slice().reverse().map(function (x) { return '<tr><td><span class="tier t-' + x.id + '">' + SQ.badge(x.id, 15) + ' ' + x.name + '</span></td><td>' + x.min + ' أعمال مؤكدة من عملاء مختلفين.</td></tr>'; }).join('') +
       '</tbody></table></div><p class="note">العمل يُحسب مؤكدا حين يقول العميل «تمت الخدمة» من «طلباتي» ولا يعترض الصنايعي.</p><button class="btn primary" id="tbClose" style="width:100%">حسنا</button>');
     on('tbClose', 'click', closeModal);
   }
@@ -173,7 +173,7 @@
 
   function tierTag(p, long) {
     var t = SQ.tierOf(p.jobs); if (!t) return '';
-    return '<span class="tier t-' + t.id + '" title="' + p.jobs + ' عمل مؤكد">' + SQ.I('check', 12) + (long ? ' صنايعي ' + t.name + ' · ' + p.jobs + ' عمل مؤكد' : ' ' + t.name) + '</span>';
+    return '<span class="tier t-' + t.id + '" title="' + p.jobs + ' عمل مؤكد">' + SQ.badge(t.id, 15) + (long ? ' صنايعي ' + t.name + ' · ' + p.jobs + ' عمل مؤكد' : ' ' + t.name) + '</span>';
   }
   function gridCard(p) {
     var ids = p.services || [], first = ids[0] || '';
@@ -182,7 +182,7 @@
     return '<button class="gcard" data-id="' + p.id + '" data-s="' + esc(first) + '" data-cats="' + cats + '" data-n="' + esc(normAr(p.name + ' ' + ids.map(function (i) { return svc(i).name; }).join(' '))) + '">' +
       '<span class="gph">' + U.avatar(p, p.verified ? 'sq ver' : 'sq') + (p.available ? '<i class="dot on" title="متاح الآن"></i>' : '<i class="dot"></i>') + '</span>' +
       '<b class="gname">' + esc(p.name) + ' ' + trustBadge(p) + '</b>' +
-      '<span class="gstar">' + (p.rating != null ? '<span class="star">' + SQ.I('star', 13, 'sf') + ' ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
+      '<span class="gstar">' + (p.rating != null ? '<span class="star">' + SQ.I('star', 13, 'sf') + ' ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.age ? ' <small class="muted">· ' + p.age + ' سنة</small>' : '') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
       '<span class="gchips">' + chips + '</span></button>';
   }
   var gridState = { offset: 0, loading: false, done: false, io: null };
@@ -307,7 +307,7 @@
       '<div class="pinfo"><div class="pname">' + esc(p.name) + ' ' + trustBadge(p) + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' +
       '<div class="psvc">' + esc(svcNames(p.services)) + '</div>' +
       '<div class="meta">' +
-      (dist ? '<span class="mi">' + SQ.I('pin', 15) + ' ' + dist + '</span>' : '') + (eta ? '<span class="mi">' + SQ.I('clock', 15) + ' ' + eta + '</span>' : '') +
+      (dist ? '<span class="mi">' + SQ.I('pin', 15) + ' ' + dist + '</span>' : '') + (eta ? '<span class="mi">' + SQ.I('clock', 15) + ' ' + eta + '</span>' : '') + (p.age ? '<span class="mi">' + SQ.I('user', 15) + ' ' + p.age + ' سنة</span>' : '') +
       '<span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : '<span class="new">جديد</span>') + '</span>' +
       '<span>كشف ' + Number(p.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span>' +
       '<span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span>' +
@@ -326,7 +326,7 @@
         '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + ' ' + trustBadge(p) + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
         '<div class="stats"><div class="stat"><b>' + (p.rating != null ? '★ ' + p.rating : 'جديد') + '</b><small>' + p.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + p.ok + ' - ' + p.fail + '</b><small>ناجحة - فاشلة</small></div>' +
-        '<div class="stat"><b>' + p.experience + '</b><small>سنة خبرة</small></div></div>' +
+        '<div class="stat"><b>' + p.experience + '</b><small>سنة خبرة</small></div></div>' + (p.age ? '<div class="card"><div class="kv"><span>العمر</span><span>' + p.age + ' سنة</span></div></div>' : '') +
         '<div class="card">' +
         '<div class="kv"><span>الحالة</span><span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span></div>' +
         '<div class="kv"><span>المسافة</span><span>' + dist + '</span></div>' +
@@ -512,6 +512,7 @@
       title: 'تسجيل مقدم خدمة', back: regBack(1), menu: true,
       body: stepsBar(1) + '<div class="h2">بياناتك الشخصية</div>' +
         '<label class="field"><span>الاسم الكامل</span><input id="nm" value="' + esc(reg.name || '') + '" autocomplete="name"></label>' +
+        U.birthHtml('bd', reg.birth_date) +
         '<label class="field"><span>رقم الهاتف</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="ph" class="ltr" inputmode="tel" value="' + esc(localPhone(reg.phone)) + '" placeholder="' + SQ.COUNTRY.phoneHint + '" autocomplete="username"></div><small>رقم حقيقي، سنتواصل معك عليه في واتساب للتأكيد</small></label>' +
         '<label class="check"><input type="checkbox" id="same"' + (reg.waSame !== false ? ' checked' : '') + '> رقم الواتساب هو نفس رقم الهاتف</label>' +
         '<label class="field" id="waBox" style="display:' + (reg.waSame !== false ? 'none' : 'block') + '"><span>رقم الواتساب</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="wa" class="ltr" inputmode="tel" value="' + esc(reg.wa || '') + '"></div></label>' +
@@ -527,10 +528,11 @@
       var same = document.getElementById('same').checked, wa = same ? ph : SQ.util.normalizePhone(document.getElementById('wa').value);
       var pw = document.getElementById('pw').value;
       if (nm.length < 3) return toast('اكتب اسمك الكامل');
+      var be = U.birthErr(document.getElementById('bd').value, true); if (be) return toast(be);
       if (!ph) return toast('رقم الهاتف غير صحيح');
       if (!wa) return toast('رقم الواتساب غير صحيح');
       if (pw.length < 6) return toast('كلمة السر قصيرة (6 أحرف أو أرقام على الأقل)');
-      reg.name = nm; reg.phone = ph; reg.whatsapp = wa; reg.wa = document.getElementById('wa').value; reg.waSame = same; regPw = pw; regSave(); go('#/p/2');
+      reg.name = nm; reg.birth_date = document.getElementById('bd').value; reg.phone = ph; reg.whatsapp = wa; reg.wa = document.getElementById('wa').value; reg.waSame = same; regPw = pw; regSave(); go('#/p/2');
     });
   }
 
@@ -614,7 +616,7 @@
         var r = await db.registerProvider({
           name: reg.name, phone: reg.phone, whatsapp: reg.whatsapp, password: regPw, state_id: reg.state_id, city_id: reg.city_id, hood: reg.hood,
           lat: reg.lat || city.lat, lng: reg.lng || city.lng, radius: reg.radius, services: reg.services, experience: reg.experience, price: reg.price,
-          bio: reg.bio, from: reg.from, to: reg.to, photo: reg.photo || ''
+          bio: reg.bio, from: reg.from, to: reg.to, photo: reg.photo || '', birth_date: reg.birth_date
         });
         signIn(r.id, r.token); store.del('reg'); reg = { services: [], radius: '10', from: '08:00', to: '20:00', waSame: true }; regPw = '';
         go('#/p/home');
@@ -642,13 +644,14 @@
       bindMenu(); on('refresh', 'click', route); on('addPw', 'click', function () { openPwModal(me); });
       return;
     }
+    var bdBanner = !me.birth_date ? '<div class="banner">🎂 أضف تاريخ ميلادك الحقيقي. التطبيق لمن هم 18 سنة فأكثر، وسيُطابَق مع وثيقتك عند التوثيق.<br><a class="btn primary" href="#/p/edit">إضافة تاريخ الميلاد</a></div>' : '';
     var flag = !!me.flag, shown = flag && me.available;
     var hoursNote = flag && !me.in_hours
       ? '<div class="banner">⏰ أنت "متاح" لكن الوقت الآن خارج أوقات عملك (من ' + esc(me.from) + ' إلى ' + esc(me.to) + ')، فلن تظهر للزبائن حتى يحين وقتك.<br><button class="btn primary" id="hrs">تعديل أوقات العمل</button></div>'
       : '';
     page({
       title: 'الرئيسية', menu: true, tab: 'home',
-      body: demoNote() + pwBanner + hoursNote + '<button class="switch' + (shown ? ' on' : '') + '" id="sw">' + (shown ? '🟢 متاح الآن' : (flag ? '🟡 متاح (خارج أوقات عملك)' : '⚪ مشغول')) + '<small>' + (flag ? 'اضغط لو انشغلت لتختفي عن الزبائن' : 'مخفي عن الزبائن. اضغط لتظهر') + '</small></button>' +
+      body: demoNote() + pwBanner + bdBanner + hoursNote + '<button class="switch' + (shown ? ' on' : '') + '" id="sw">' + (shown ? '🟢 متاح الآن' : (flag ? '🟡 متاح (خارج أوقات عملك)' : '⚪ مشغول')) + '<small>' + (flag ? 'اضغط لو انشغلت لتختفي عن الزبائن' : 'مخفي عن الزبائن. اضغط لتظهر') + '</small></button>' +
         '<div class="stats mt"><div class="stat"><b>' + me.requests_week + '</b><small>اتصالات هذا الأسبوع</small></div>' +
         '<div class="stat"><b>' + (me.rating != null ? '★ ' + me.rating : 'جديد') + '</b><small>' + me.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + me.ok + ' - ' + me.fail + '</b><small>ناجحة - فاشلة</small></div></div>' +
@@ -810,7 +813,7 @@
     var ed = { services: me.services.slice(), radius: String(me.radius || '10'), lat: null, lng: null, name: me.name, photo: me.photo || '' };
     page({
       title: 'تعديل ملفي', back: '#/p/profile',
-      body: U.photoHtml('pe') + '<label class="field"><span>الاسم الكامل</span><input id="nm" value="' + esc(me.name) + '"></label>' +
+      body: U.photoHtml('pe') + '<label class="field"><span>الاسم الكامل</span><input id="nm" value="' + esc(me.name) + '"></label>' + U.birthHtml('bd', me.birth_date) +
         '<label class="field"><span>رقم الهاتف</span><input class="ltr" value="' + esc(me.phone) + '" disabled><small>لتغيير الرقم تواصل مع الدعم</small></label>' +
         '<label class="field"><span>رقم الواتساب</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="wa" class="ltr" inputmode="tel" value="' + esc(localPhone(me.whatsapp)) + '"></div></label>' +
         U.svcFieldHtml('sv') +
@@ -840,12 +843,13 @@
       var st = document.getElementById('st').value, ct = document.getElementById('ct').value, bio = document.getElementById('bio').value.trim();
       var ex = document.getElementById('ex').value, pr = document.getElementById('pr').value;
       if (nm.length < 3) return toast('اكتب اسمك الكامل');
+      var be = U.birthErr(document.getElementById('bd').value, true); if (be) return toast(be);
       if (!wa) return toast('رقم الواتساب غير صحيح');
       if (!ed.services.length) return toast('اختر خدمة واحدة على الأقل');
       if (!st || !ct) return toast('اختر الولاية والمدينة');
       if (ex === '' || pr === '') return toast('اكتب الخبرة وسعر الكشف');
       if (bio.length < 5) return toast('اكتب وصفا قصيرا لمهارتك');
-      var o = { name: nm, whatsapp: wa, services: ed.services, state_id: st, city_id: ct, hood: document.getElementById('hd').value.trim(), radius: ed.radius,
+      var o = { name: nm, birth_date: document.getElementById('bd').value, whatsapp: wa, services: ed.services, state_id: st, city_id: ct, hood: document.getElementById('hd').value.trim(), radius: ed.radius,
         experience: +ex, price: +pr, bio: bio, photo: ed.photo, from: document.getElementById('fr').value || '08:00', to: document.getElementById('to').value || '20:00' };
       if (ed.lat != null) { o.lat = ed.lat; o.lng = ed.lng; }
       else if (ct !== me.city_id) { var cc = SQ.findCity(ct).city; o.lat = cc.lat; o.lng = cc.lng; }

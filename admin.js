@@ -147,7 +147,7 @@
     if (p.status === 'suspended' || p.status === 'rejected') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ اعتماد</button>');
     return '<div class="card acard"><div class="top2">' + U.avatar(p) + '<div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + ' ' + (p.verified ? '<span class="vtag">✔ موثّق</span>' : pill('غير موثّق', 'warn')) + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + '</div></div>' +
       '<div class="psvc">' + esc(U.svcNames(p.services)) + '</div>' +
-      '<div class="meta"><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + p.experience + ' سنة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
+      '<div class="meta"><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + (p.age ? '🎂 ' + p.age + ' سنة' : '<span class="dangertxt">بلا تاريخ ميلاد</span>') + '</span><span>' + p.experience + ' سنة خبرة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
       '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span>🔖 رقم الطلب <b class="ltr">' + refOf(p) + '</b></span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
       (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') + (p.admin_note ? '<p class="note">📝 ' + esc(p.admin_note) + '</p>' : '') + (p.verified && p.verify_doc ? '<p class="note">✔ التحقق: ' + esc(p.verify_doc) + '</p>' : '') +
       '<div class="btnrow">' + act.join('') + '<a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">' + (p.status === 'pending' ? '💬 رسالة التأكيد' : 'واتساب') + '</a><button class="btn ghost" data-act="verify" data-id="' + p.id + '">' + (p.verified ? 'إلغاء التوثيق' : '✔ توثيق') + '</button><a class="btn ghost" href="tel:' + esc(p.phone) + '">📞</a>' +
@@ -193,7 +193,7 @@
     var isNew = !p, d = p || { services: [], radius: '10', from: '08:00', to: '20:00', state_id: '', city_id: '' }, services = (d.services || []).slice();
     modal('<h3>' + (isNew ? 'إضافة صنايعي' : 'تعديل ' + esc(p.name)) + '</h3>' +
       '<label class="field"><span>الاسم الكامل</span><input id="f_nm" value="' + esc(d.name || '') + '"></label>' +
-      U.photoHtml('f_ph_') +
+      U.photoHtml('f_ph_') + U.birthHtml('f_bd', d.birth_date, 'اختياري هنا. اكتب التاريخ الحقيقي كما في الوثيقة.') +
       '<label class="field"><span>رقم الهاتف</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="f_ph" class="ltr" inputmode="tel" value="' + esc(localPhone(d.phone)) + '" placeholder="' + SQ.COUNTRY.phoneHint + '"></div></label>' +
       '<label class="field"><span>رقم الواتساب (اتركه فارغا إن كان نفس الهاتف)</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="f_wa" class="ltr" inputmode="tel" value="' + esc(d.whatsapp && d.whatsapp !== d.phone ? localPhone(d.whatsapp) : '') + '"></div></label>' +
       U.svcFieldHtml('f_sv') +
@@ -215,12 +215,13 @@
       var nm = g('f_nm').trim(), ph = SQ.util.normalizePhone(g('f_ph')), waRaw = g('f_wa').trim(), wa = waRaw ? SQ.util.normalizePhone(waRaw) : ph;
       var st = g('f_st'), ct = g('f_ct');
       if (nm.length < 3) return toast('اكتب الاسم الكامل');
+      var be = U.birthErr(g('f_bd'), false); if (be) return toast(be);
       if (!ph) return toast('رقم الهاتف غير صحيح');
       if (!wa) return toast('رقم الواتساب غير صحيح');
       if (!services.length) return toast('اختر خدمة واحدة على الأقل');
       if (!st || !ct) return toast('اختر الولاية والمدينة');
       if (g('f_ex') === '' || g('f_pr') === '') return toast('اكتب الخبرة وسعر الكشف');
-      var o = { name: nm, phone: ph, whatsapp: wa, services: services, state_id: st, city_id: ct, hood: g('f_hd').trim(), radius: g('f_rd'), experience: +g('f_ex'), price: +g('f_pr'),
+      var o = { name: nm, birth_date: g('f_bd'), phone: ph, whatsapp: wa, services: services, state_id: st, city_id: ct, hood: g('f_hd').trim(), radius: g('f_rd'), experience: +g('f_ex'), price: +g('f_pr'),
         bio: g('f_bio').trim(), photo: photoSt.photo, from: g('f_fr') || '08:00', to: g('f_to') || '20:00', admin_note: g('f_nt').trim() };
       var cc = SQ.findCity(ct).city;
       if (isNew || ct !== d.city_id) { o.lat = cc.lat; o.lng = cc.lng; }
