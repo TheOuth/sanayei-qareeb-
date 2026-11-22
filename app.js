@@ -611,10 +611,11 @@
         '<div class="stat"><b>' + (me.rating != null ? '★ ' + me.rating : 'جديد') + '</b><small>' + me.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + me.ok + ' - ' + me.fail + '</b><small>ناجحة - فاشلة</small></div></div>' +
         '<div class="card"><div class="kv"><span>الخدمات</span><span>' + esc(svcNames(me.services)) + '</span></div><div class="kv"><span>المنطقة</span><span>' + esc((me.hood ? me.hood + '، ' : '') + SQ.cityName(me.city_id)) + '</span></div><div class="kv"><span>أوقات العمل</span><span>' + esc(me.from + ' - ' + me.to) + ' <button class="linkbtn" id="hrs2">تعديل</button></span></div></div>' +
+        '<div class="h2 mt">طلبات العملاء</div><div id="preqs"><div class="spin">جاري التحميل...</div></div>' +
         '<p class="note">يتحول وضعك تلقائيا إلى "مشغول" لو ما فتحت التطبيق ' + C.availableTimeoutHours + ' ساعات، أو خارج أوقات عملك.</p>',
       foot: '<button class="btn wa" id="share">📤 شارك رابط ملفي</button>'
     });
-    bindMenu();
+    bindMenu(); loadProvReqs(pid, tk);
     function editHours() {
       modal('<h3>أوقات العمل</h3><div class="row2"><label class="field"><span>من الساعة</span><input id="hf" type="time" class="ltr" value="' + esc(me.from) + '"></label><label class="field"><span>إلى الساعة</span><input id="ht" type="time" class="ltr" value="' + esc(me.to) + '"></label></div>' +
         '<button class="linkbtn" id="h24">طوال اليوم (00:00 - 23:59)</button><div class="row2 mt"><button class="btn ghost" id="hc">إلغاء</button><button class="btn primary" id="hs">حفظ</button></div>');
@@ -634,6 +635,36 @@
       if (navigator.share) navigator.share({ text: txt }).catch(function () {});
       else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
     });
+  }
+
+  /* طلبات العملاء: تأكيد الصنايعي لإتمام الخدمة */
+  async function loadProvReqs(pid, tk) {
+    var el = document.getElementById('preqs'); if (!el) return;
+    var list;
+    try { list = await db.providerRequests(pid, tk); } catch (e) { el.innerHTML = '<p class="note">تعذر تحميل الطلبات.</p>'; return; }
+    el = document.getElementById('preqs'); if (!el) return;
+    if (!list.length) { el.innerHTML = '<div class="card"><p class="note" style="margin:0">لا توجد طلبات بعد. تظهر هنا كل مرة يتصل بك عميل أو يراسلك.</p></div>'; return; }
+    var cl = { new: 'العميل لم يرد بعد', done: 'العميل قال: تمت الخدمة', failed: 'العميل قال: لم تنجح', not_agreed: 'العميل قال: لم نتفق' };
+    el.innerHTML = list.map(function (r) {
+      var s = svc(r.service);
+      var mine = r.confirm === 'done' ? '<span class="vtag">✓ أكدت التنفيذ' + (r.amount ? ' · ' + Number(r.amount).toLocaleString('en') + ' جنيه' : '') + '</span>' : r.confirm === 'not_done' ? '<span class="muted">أكدت: لم تتم</span>' : '';
+      var both = r.confirm === 'done' && r.client === 'done' ? '<span class="vtag">✓ مؤكدة من الطرفين</span>' : '';
+      return '<div class="card preq"><div class="pname">' + esc(s.icon + ' ' + s.name) + '</div><div class="meta"><span>' + (r.channel === 'call' ? '📞 اتصال' : '💬 واتساب') + '</span><span class="muted">' + timeAgo(r.ts) + '</span></div>' +
+        '<div class="note" style="margin:6px 0">' + cl[r.client] + '</div>' + both + mine +
+        '<div class="row2 mt"><button class="btn primary" data-pc="done" data-id="' + r.id + '">تمت الخدمة</button><button class="btn ghost" data-pc="not_done" data-id="' + r.id + '">لم تتم</button></div></div>';
+    }).join('');
+    el.onclick = function (e) {
+      var b = e.target.closest('[data-pc]'); if (!b) return;
+      var id = b.getAttribute('data-id'), done = b.getAttribute('data-pc') === 'done';
+      if (!done) { db.providerConfirm(pid, tk, id, false, null).then(function () { toast('تم التسجيل'); loadProvReqs(pid, tk); }).catch(function (x) { toast(errMsg(x)); }); return; }
+      modal('<h3>تأكيد تنفيذ الخدمة</h3><label class="field"><span>المبلغ المتفق عليه بالجنيه (اختياري)</span><input id="pcAmt" class="ltr" inputmode="numeric" placeholder="0"></label>' +
+        '<p class="note">يُستخدم المبلغ لتقارير فريق التطبيق فقط ولا يظهر للعملاء.</p><div class="row2 mt"><button class="btn ghost" id="pcX">إلغاء</button><button class="btn primary" id="pcOk">تأكيد</button></div>');
+      on('pcX', 'click', closeModal);
+      on('pcOk', 'click', async function () {
+        var v = String(document.getElementById('pcAmt').value || '').replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/[^\d]/g, '');
+        try { await db.providerConfirm(pid, tk, id, true, v ? +v : null); closeModal(); toast('تم تأكيد الطلب'); loadProvReqs(pid, tk); } catch (x) { toast(errMsg(x)); }
+      });
+    };
   }
 
   /* الملف الشخصي */

@@ -469,11 +469,33 @@
       this.d.reviews = this.d.reviews.filter(function (q) { return q.provider_id !== id; });
       save(this.d); return true;
     },
+    providerRequests: async function (id, token) {
+      this.auth(id, token); var lim = Date.now() - 60 * 86400000;
+      return this.d.requests.filter(function (q) { return q.provider_id === id && q.ts > lim; }).sort(function (a, b) { return b.ts - a.ts; }).slice(0, 40)
+        .map(function (q) { return { id: q.id, service: q.service, channel: q.channel, client: q.status, confirm: q.pconfirm || null, amount: q.pamount == null ? null : q.pamount, ts: q.ts }; });
+    },
+    providerConfirm: async function (id, token, reqId, done, amount) {
+      this.auth(id, token);
+      var q = this.d.requests.filter(function (x) { return x.id === reqId && x.provider_id === id; })[0];
+      if (!q) throw new Error('not_found');
+      q.pconfirm = done ? 'done' : 'not_done'; q.pamount = done && amount != null && amount >= 0 ? Math.round(amount) : null; save(this.d); return true;
+    },
+    adminConfirmReport: async function (code, days) {
+      this.admin(code); var self = this, lim = Date.now() - (days || 30) * 86400000, m = {};
+      this.d.requests.forEach(function (q) {
+        if (q.ts < lim) return; var p = self.find(q.provider_id); if (!p) return;
+        var x = m[p.id] = m[p.id] || { provider_id: p.id, name: p.name, phone: p.phone, verified: !!p.verified, total: 0, client_done: 0, provider_done: 0, both: 0, mismatch: 0, amount: 0 };
+        x.total++; if (q.status === 'done') x.client_done++; if (q.pconfirm === 'done') x.provider_done++;
+        if (q.status === 'done' && q.pconfirm === 'done') { x.both++; x.amount += q.pamount || 0; }
+        if ((q.status === 'done' && q.pconfirm === 'not_done') || ((q.status === 'failed' || q.status === 'not_agreed') && q.pconfirm === 'done')) x.mismatch++;
+      });
+      return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return b.both - a.both || b.total - a.total; });
+    },
     adminRequests: async function (code, limit, status) {
       this.admin(code); var self = this;
       return this.d.requests.filter(function (q) { return !status || q.status === status; })
         .sort(function (a, b) { return b.ts - a.ts; }).slice(0, limit || 100)
-        .map(function (q) { var p = self.find(q.provider_id); return { id: q.id, provider_id: q.provider_id, provider_name: p ? p.name : '—', service: q.service, city_id: q.city_id, channel: q.channel, status: q.status, ts: q.ts }; });
+        .map(function (q) { var p = self.find(q.provider_id); return { id: q.id, provider_id: q.provider_id, provider_name: p ? p.name : '—', service: q.service, city_id: q.city_id, channel: q.channel, status: q.status, confirm: q.pconfirm || null, amount: q.pamount == null ? null : q.pamount, ts: q.ts }; });
     },
     adminServices: async function (code) {
       this.admin(code); var d = this.d;
@@ -567,6 +589,9 @@
     adminCreateProvider: function (code, o) { return SB.rpc('admin_create_provider', { p_code: code, p: o }); },
     adminResetPassword: function (code, id, pw) { return SB.rpc('admin_reset_password', { p_code: code, p_id: id, p_password: pw }); },
     adminDeleteProvider: function (code, id) { return SB.rpc('admin_delete_provider', { p_code: code, p_id: id }); },
+    providerRequests: function (id, t) { return SB.rpc('provider_requests', { p_id: id, p_token: t }); },
+    providerConfirm: function (id, t, rid, done, amount) { return SB.rpc('provider_confirm_request', { p_id: id, p_token: t, p_request: rid, p_done: !!done, p_amount: amount == null ? null : amount }); },
+    adminConfirmReport: function (code, days) { return SB.rpc('admin_confirm_report', { p_code: code, p_days: days || 30 }); },
     adminRequests: function (code, limit, status) { return SB.rpc('admin_requests', { p_code: code, p_limit: limit || 100, p_status: status || '' }); },
     adminServices: function (code) { return SB.rpc('admin_services', { p_code: code }); },
     adminSaveService: function (code, id, name, icon, active, cat) { return SB.rpc('admin_save_service', { p_code: code, p_id: id || '', p_name: name, p_icon: icon || '', p_active: active == null ? true : !!active, p_cat: cat == null ? null : cat }); },

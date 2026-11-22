@@ -9,7 +9,7 @@
   try { code = sessionStorage.getItem('sq_admin') || ''; } catch (e) {}
   document.body.classList.add('admin');
 
-  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['services', 'الخدمات'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
+  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['services', 'الخدمات'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
   var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
@@ -70,7 +70,7 @@
   async function render() {
     if (!code) return login();
     try { ov = await db.adminOverview(code); } catch (e) { if (guard(e)) return; ov = null; }
-    ({ overview: viewOverview, providers: viewProviders, requests: viewRequests, services: viewServices, reports: viewReports, settings: viewSettings })[tab]();
+    ({ overview: viewOverview, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, services: viewServices, reports: viewReports, settings: viewSettings })[tab]();
   }
 
   /* ---------- نظرة عامة ---------- */
@@ -265,8 +265,25 @@
     try { list = await db.adminRequests(code, 100, rf.status); } catch (e) { return fail(e); }
     var el = document.getElementById('rlist'); if (!el) return;
     el.innerHTML = list.length ? list.map(function (r) {
-      return '<div class="card"><div class="pname">' + esc(r.provider_name) + '</div><div class="psvc">' + esc(U.svc(r.service).icon + ' ' + U.svc(r.service).name) + ' · ' + esc(SQ.cityName(r.city_id) || '') + '</div><div class="meta"><span>' + (r.channel === 'call' ? '📞 اتصال' : '💬 واتساب') + '</span><span>' + pill(REQ[r.status] || r.status, r.status === 'done' ? '' : r.status === 'failed' ? 'bad' : 'warn') + '</span><span class="muted">' + U.timeAgo(r.ts) + '</span></div></div>';
+      return '<div class="card"><div class="pname">' + esc(r.provider_name) + '</div><div class="psvc">' + esc(U.svc(r.service).icon + ' ' + U.svc(r.service).name) + ' · ' + esc(SQ.cityName(r.city_id) || '') + '</div><div class="meta"><span>' + (r.channel === 'call' ? '📞 اتصال' : '💬 واتساب') + '</span><span>' + pill(REQ[r.status] || r.status, r.status === 'done' ? '' : r.status === 'failed' ? 'bad' : 'warn') + '</span>' + (r.confirm === 'done' ? '<span>' + pill('الصنايعي: نفّذ' + (r.amount ? ' · ' + Number(r.amount).toLocaleString('en') : ''), '') + '</span>' : r.confirm === 'not_done' ? '<span>' + pill('الصنايعي: لم تتم', 'warn') + '</span>' : '') + '<span class="muted">' + U.timeAgo(r.ts) + '</span></div></div>';
     }).join('') : '<div class="empty"><div class="big">📋</div>لا توجد طلبات</div>';
+  }
+
+  /* ---------- الطلبات المؤكدة من الطرفين ---------- */
+  var cdays = 30;
+  async function viewConfirmed() {
+    shell('<div class="toolbar"><select id="cd">' + [7, 30, 90, 365].map(function (n) { return '<option value="' + n + '"' + (cdays === n ? ' selected' : '') + '>آخر ' + n + ' يوم</option>'; }).join('') + '</select></div><div id="clist"><div class="spin">جاري التحميل...</div></div>');
+    on('cd', 'change', function () { cdays = +this.value; viewConfirmed(); });
+    var list;
+    try { list = await db.adminConfirmReport(code, cdays); } catch (e) { return fail(e); }
+    var el = document.getElementById('clist'); if (!el) return;
+    var tot = list.reduce(function (a, x) { a.t += x.total; a.b += x.both; a.m += x.mismatch; a.s += x.amount; return a; }, { t: 0, b: 0, m: 0, s: 0 });
+    el.innerHTML = '<div class="stats"><div class="stat"><b>' + tot.t + '</b><small>كل الطلبات</small></div><div class="stat"><b>' + tot.b + '</b><small>مؤكدة من الطرفين</small></div><div class="stat"><b>' + tot.m + '</b><small>غير متطابقة</small></div></div>' +
+      '<p class="note">المؤكد من الطرفين = قال الزبون "تمت الخدمة" وأكد الصنايعي التنفيذ. المبلغ يصرّح به الصنايعي، فاعتبره تقديريا. "غير متطابق" يحتاج مراجعتك.</p>' +
+      '<div class="agrid">' + (list.length ? list.map(function (x) {
+        return '<div class="card"><div class="pname">' + esc(x.name) + (x.verified ? ' ✓' : '') + '</div><div class="meta"><span>طلبات: ' + x.total + '</span><span>الزبائن: ' + x.client_done + '</span><span>الصنايعي: ' + x.provider_done + '</span></div>' +
+          '<div class="meta"><span>' + pill('مؤكدة: ' + x.both, x.both ? '' : 'warn') + '</span>' + (x.mismatch ? '<span>' + pill('غير متطابقة: ' + x.mismatch, 'bad') + '</span>' : '') + '<span class="muted">' + Number(x.amount).toLocaleString('en') + ' جنيه</span></div></div>';
+      }).join('') : '<div class="empty"><div class="big">🤝</div>لا توجد بيانات في هذه الفترة</div>') + '</div>';
   }
 
   /* ---------- الخدمات ---------- */
