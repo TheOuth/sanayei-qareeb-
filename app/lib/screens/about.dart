@@ -12,7 +12,7 @@ class AboutScreen extends StatelessWidget {
     final mail = (Meta.cfg['support_email'] ?? '').toString();
     return Scaffold(
       drawer: const AppDrawer(current: 'about'),
-      appBar: AppBar(title: const Text('عن التطبيق'), leading: const MenuBtn()),
+      appBar: bar('عن التطبيق'),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         const Text('صنايعي قريب يوصلك بأقرب صنايعي في منطقتك بالاتصال أو الواتساب مباشرة، مجانًا للزبائن.', style: TextStyle(height: 1.6)),
         const SizedBox(height: 14),

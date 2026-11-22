@@ -7,6 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'core.dart';
 import 'theme.dart';
 
+/// الاسم الأول والثاني فقط (الكامل يظهر في ملف الصنايعي)
+String shortName(String n) {
+  final parts = n.trim().split(RegExp(r'\s+'));
+  return parts.take(2).join(' ');
+}
+
 void toast(BuildContext c, String m) {
   ScaffoldMessenger.of(c)
     ..hideCurrentSnackBar()
@@ -182,7 +188,7 @@ class ProviderCard extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Flexible(child: Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                  Flexible(child: Text(shortName((p['name'] ?? '').toString()), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
                   const SizedBox(width: 6),
                   TierBadge(jobs: (p['jobs'] ?? 0) as int),
                   if (p['verified'] == true) const Padding(padding: EdgeInsetsDirectional.only(start: 4), child: Icon(Icons.verified_rounded, color: C.blue, size: 18)),
@@ -234,7 +240,7 @@ class ProviderGridCard extends StatelessWidget {
             ]),
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Flexible(child: Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
+              Flexible(child: Text(shortName((p['name'] ?? '').toString()), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
               const SizedBox(width: 4),
               TierBadge(jobs: (p['jobs'] ?? 0) as int, size: 18),
               if (p['verified'] == true) const Padding(padding: EdgeInsetsDirectional.only(start: 2), child: Icon(Icons.verified_rounded, color: C.blue, size: 16)),

@@ -24,7 +24,7 @@ class _LocationScreenState extends State<LocationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_st == null ? 'موقعي' : _st!.name), leading: _st == null ? null : BackButton(onPressed: () => setState(() => _st = null))),
+      appBar: AppBar(automaticallyImplyLeading: false, title: Text(_st == null ? 'موقعي' : _st!.name), leading: BackButton(onPressed: () { if (_st == null) { Navigator.pop(context); } else { setState(() => _st = null); } })),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         if (_st == null) ...[
           FilledButton.icon(

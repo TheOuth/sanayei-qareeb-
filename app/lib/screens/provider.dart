@@ -82,10 +82,9 @@ class _ProviderScreenState extends State<ProviderScreen> {
     final p = _p;
     return Scaffold(
       drawer: const AppDrawer(current: 'home'),
-      appBar: AppBar(
-        title: const Text('الصنايعي'),
+      appBar: bar(
+        'الصنايعي',
         actions: [
-          const MenuBtn(),
           if (p != null && p.isNotEmpty && p['username'] != null)
             IconButton(
               icon: const Icon(Icons.share_rounded),

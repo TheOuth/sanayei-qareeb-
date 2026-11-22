@@ -52,7 +52,7 @@ class _ListScreenState extends State<ListScreen> {
     final s = widget.service;
     return Scaffold(
       drawer: const AppDrawer(current: 'home'),
-      appBar: AppBar(title: Text('${s.icon} ${s.name}'), actions: const [MenuBtn()]),
+      appBar: bar('${s.icon} ${s.name}'),
       body: Builder(builder: (_) {
         if (_loc == null) {
           return Center(

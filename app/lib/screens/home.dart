@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -76,7 +77,32 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final found = Meta.search(_query);
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_key.currentState?.isDrawerOpen ?? false) {
+          Navigator.pop(context);
+          return;
+        }
+        if (_tab == 1) {
+          setState(() => _tab = 0);
+          return;
+        }
+        final exit = await showDialog<bool>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('الخروج من التطبيق'),
+            content: const Text('هل تريد الخروج من صنايعي قريب؟'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('البقاء')),
+              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('خروج')),
+            ],
+          ),
+        );
+        if (exit == true) SystemNavigator.pop();
+      },
+      child: Scaffold(
       key: _key,
       drawer: AppDrawer(current: 'home', onLocation: _pickLoc),
       onDrawerChanged: (open) { if (open) setState(() {}); },
@@ -103,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SliverToBoxAdapter(child: SizedBox(height: 30)),
         ]),
       ),
-    );
+    ));
   }
 
   Widget _tabs() {

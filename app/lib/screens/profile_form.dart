@@ -270,6 +270,16 @@ class _ProfileFormState extends State<ProfileForm> {
       _dd<StateG>('الولاية', _st, Meta.states, (v) => v.name, (v) => setState(() { _st = v; _city = null; })),
       const SizedBox(height: 10),
       _dd<City>('المدينة / المنطقة', _city, _st?.cities ?? [], (v) => v.name, (v) => setState(() => _city = v)),
+      if (!reg) Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(color: const Color(0xFFFFF4D6), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFF0C95A))),
+        child: const Row(children: [
+          Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF9A6B00)),
+          SizedBox(width: 8),
+          Expanded(child: Text('إذا انتقلت لمدينة أخرى قم بتحديث موقعك الحالي', style: TextStyle(fontSize: 12.5, color: Color(0xFF6B4A00)))),
+        ]),
+      ),
       const SizedBox(height: 10),
       TextField(controller: _hood, decoration: const InputDecoration(labelText: 'الحي (اختياري)')),
       const SizedBox(height: 8),

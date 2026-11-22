@@ -17,6 +17,14 @@ class MenuBtn extends StatelessWidget {
       );
 }
 
+/// شريط علوي موحّد: سهم رجوع + عنوان + زر القائمة
+AppBar bar(String title, {List<Widget> actions = const [], bool menu = true}) => AppBar(
+      automaticallyImplyLeading: false,
+      leading: const BackButton(),
+      title: Text(title),
+      actions: [...actions, if (menu) const MenuBtn()],
+    );
+
 class AppDrawer extends StatelessWidget {
   /// home | requests | dash | login | register | about
   final String current;
@@ -64,7 +72,8 @@ class AppDrawer extends StatelessWidget {
             child: Row(children: [
               ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.asset('assets/icon.png', width: 44, height: 44)),
               const SizedBox(width: 10),
-              const Text('صنايعي قريب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Expanded(child: Text('صنايعي قريب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+              IconButton(icon: const Icon(Icons.close_rounded), tooltip: 'إغلاق', onPressed: () => Navigator.pop(context)),
             ]),
           ),
           const Divider(height: 1),

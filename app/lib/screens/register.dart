@@ -10,7 +10,7 @@ class RegisterScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const AppDrawer(current: 'register'),
-      appBar: AppBar(title: const Text('سجّل كصنايعي'), leading: const MenuBtn()),
+      appBar: bar('سجّل كصنايعي'),
       body: ProfileForm(
         isRegister: true,
         onSubmit: (body) async {

@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const AppDrawer(current: 'login'),
-      appBar: AppBar(title: const Text('تسجيل دخول الصنايعي'), leading: const MenuBtn()),
+      appBar: bar('تسجيل دخول الصنايعي'),
       body: ListView(padding: const EdgeInsets.all(20), children: [
         const SizedBox(height: 10),
         TextField(controller: _ph, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'رقم الهاتف', hintText: '09xxxxxxxx')),

@@ -126,7 +126,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final me = _me;
     return Scaffold(
       drawer: const AppDrawer(current: 'dash'),
-      appBar: AppBar(title: const Text('لوحتي'), leading: const MenuBtn(), actions: [IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout)]),
+      appBar: bar('لوحتي', actions: [IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout)]),
       body: _err != null
           ? ErrorRetry(_err!, _load)
           : me == null
@@ -332,7 +332,7 @@ class _EditScreenState extends State<_EditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('تعديل الملف')),
+      appBar: bar('تعديل الملف', menu: false),
       body: ProfileForm(
         isRegister: false,
         initial: widget.me,

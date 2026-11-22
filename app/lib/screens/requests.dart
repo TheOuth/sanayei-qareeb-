@@ -41,7 +41,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
       context: context,
       builder: (_) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: Text('كيف كانت الخدمة مع ${r['provider_name']}؟'),
+          title: Text('كيف كانت الخدمة مع ${shortName((r['provider_name'] ?? '').toString())}؟'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Wrap(spacing: 6, children: [
@@ -82,7 +82,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const AppDrawer(current: 'requests'),
-      appBar: AppBar(title: const Text('طلباتي'), leading: const MenuBtn()),
+      appBar: bar('طلباتي'),
       body: _err != null
           ? ErrorRetry(_err!, _load)
           : _items == null
@@ -100,7 +100,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
                           final d = DateTime.fromMillisecondsSinceEpoch(r['ts'] as int);
                           return Card(
                             child: ListTile(
-                              title: Text(r['provider_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
+                              title: Text(shortName((r['provider_name'] ?? '').toString()), style: const TextStyle(fontWeight: FontWeight.w700)),
                               subtitle: Text('${Meta.serviceName((r['service'] ?? '').toString())} · ${r['channel'] == 'call' ? 'اتصال' : 'واتساب'} · ${d.day}/${d.month}\n${_status(r['status'])}'),
                               isThreeLine: true,
                               trailing: r['status'] == 'new' ? FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 36)), onPressed: () => _rate(r), child: const Text('قيّم')) : null,
