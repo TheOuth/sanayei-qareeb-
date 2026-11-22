@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core.dart';
 import '../widgets.dart';
-import 'dashboard.dart';
 import 'register.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -25,7 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (r['ok'] == true) {
         await Store.signIn(r['id'], r['token']);
         if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const DashboardScreen()), (r) => r.isFirst);
+        Navigator.of(context).popUntil((r) => r.isFirst);
+        toast(context, 'تم تسجيل الدخول. لوحتك من القائمة الجانبية');
       } else {
         final e = (r['error'] ?? 'invalid').toString();
         toast(context, e == 'invalid' ? 'الرقم أو كلمة السر غير صحيحة' : errMsg(e));

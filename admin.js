@@ -52,7 +52,7 @@
     });
     on('mt_x', 'click', closeModal);
     on('mt_wa', 'click', function () { window.open('https://wa.me/' + SQ.util.digits(x.phone) + '?text=' + encodeURIComponent(ta.value), '_blank'); });
-    on('mt_em', 'click', function () { window.location.href = 'mailto:?subject=' + encodeURIComponent(T[cur].subject) + '&body=' + encodeURIComponent(ta.value.replace(/\*/g, '')); });
+    on('mt_em', 'click', function () { if (!x.email) toast('لا يوجد بريد لهذا الصنايعي بعد، أضفه من تعديل الملف'); window.location.href = 'mailto:' + encodeURIComponent(x.email || '') + '?subject=' + encodeURIComponent(T[cur].subject) + '&body=' + encodeURIComponent(ta.value.replace(/\*/g, '')); });
     on('mt_cp', 'click', function () { ta.select(); try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand('copy'); } toast('تم نسخ الرسالة'); });
   }
   function appUrl() { return location.origin + location.pathname.replace(/admin\.html$/, ''); }
@@ -187,7 +187,7 @@
   async function provAction(a, p, btn) {
     if (!p) return;
     if (a === 'edit') return openProvForm(p);
-    if (a === 'msg') return msgModal({ name: p.name, phone: p.whatsapp || p.phone, jobs: p.jobs || 0, verified: p.verified, username: p.username });
+    if (a === 'msg') return msgModal({ name: p.name, phone: p.whatsapp || p.phone, jobs: p.jobs || 0, verified: p.verified, username: p.username, email: p.email || '' });
     if (a === 'uname') {
       modal('<h3>اسم المستخدم لـ ' + esc(p.name) + '</h3><p class="note">للتعديل بعد تواصل الصنايعي مع الدعم. لا يستهلك مرته الواحدة. رابطه: <span class="ltr">' + esc(appUrl()) + '#/u/' + esc(p.username || '') + '</span></p>' +
         '<label class="field"><span>الاسم (حروف إنجليزية صغيرة وأرقام و _)</span><input id="un_v" class="ltr" maxlength="20" autocapitalize="none" value="' + esc(p.username || '') + '"></label>' +
@@ -238,6 +238,7 @@
       '<label class="field"><span>الاسم الكامل</span><input id="f_nm" value="' + esc(d.name || '') + '"></label>' +
       U.photoHtml('f_ph_') + U.birthHtml('f_bd', d.birth_date, 'اختياري هنا. اكتب التاريخ الحقيقي كما في الوثيقة.') +
       '<label class="field"><span>رقم الهاتف</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="f_ph" class="ltr" inputmode="tel" value="' + esc(localPhone(d.phone)) + '" placeholder="' + SQ.COUNTRY.phoneHint + '"></div></label>' +
+      '<label class="field"><span>البريد الإلكتروني (اختياري)</span><input id="f_em" class="ltr" type="email" value="' + esc(d.email || '') + '"></label>' +
       '<label class="field"><span>رقم الواتساب (اتركه فارغا إن كان نفس الهاتف)</span><div class="phone-wrap"><b>' + SQ.COUNTRY.dial + '</b><input id="f_wa" class="ltr" inputmode="tel" value="' + esc(d.whatsapp && d.whatsapp !== d.phone ? localPhone(d.whatsapp) : '') + '"></div></label>' +
       U.svcFieldHtml('f_sv') +
       '<div class="row2"><label class="field"><span>الولاية</span><select id="f_st">' + U.stateOptions(d.state_id) + '</select></label><label class="field"><span>المدينة</span><select id="f_ct">' + U.cityOptions(d.state_id, d.city_id) + '</select></label></div>' +
@@ -264,7 +265,7 @@
       if (!services.length) return toast('اختر خدمة واحدة على الأقل');
       if (!st || !ct) return toast('اختر الولاية والمدينة');
       if (g('f_ex') === '' || g('f_pr') === '') return toast('اكتب الخبرة وسعر الكشف');
-      var o = { name: nm, birth_date: U.birthVal('f_bd'), phone: ph, whatsapp: wa, services: services, state_id: st, city_id: ct, hood: g('f_hd').trim(), radius: g('f_rd'), experience: +g('f_ex'), price: +g('f_pr'),
+      var o = { email: g('f_em').trim(), name: nm, birth_date: U.birthVal('f_bd'), phone: ph, whatsapp: wa, services: services, state_id: st, city_id: ct, hood: g('f_hd').trim(), radius: g('f_rd'), experience: +g('f_ex'), price: +g('f_pr'),
         bio: g('f_bio').trim(), photo: photoSt.photo, from: g('f_fr') || '08:00', to: g('f_to') || '20:00', admin_note: g('f_nt').trim() };
       var cc = SQ.findCity(ct).city;
       if (isNew || ct !== d.city_id) { o.lat = cc.lat; o.lng = cc.lng; }

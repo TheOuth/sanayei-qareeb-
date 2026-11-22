@@ -146,10 +146,17 @@ class _HomeScreenState extends State<HomeScreen> {
         else if (list == null) const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
         else if (list.isEmpty) const Empty('لا يوجد مقدمو خدمات بهذا الاسم')
         else ...[
-          for (final p in list) Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: ProviderCard(p: p as Map, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderScreen(id: p['id'])))),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: list.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, mainAxisExtent: 214),
+            itemBuilder: (_, i) {
+              final p = list![i] as Map;
+              return ProviderGridCard(p: p, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderScreen(id: p['id']))));
+            },
           ),
+          const SizedBox(height: 8),
           if (_more && n.isEmpty) Center(child: OutlinedButton(onPressed: _loadingMore ? null : () => _load(more: true), child: Text(_loadingMore ? 'جارٍ التحميل…' : 'عرض المزيد'))),
         ],
       ]),
@@ -166,11 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Column(children: [
-            Container(
-              width: 46, height: 46,
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-              child: ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.asset('assets/icon.png')),
-            ),
+            ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.asset('assets/icon.png', width: 46, height: 46)),
             const SizedBox(height: 8),
             InkWell(
               onTap: () => _key.currentState?.openDrawer(),
@@ -277,7 +280,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _drawer() {
     void go(Widget w) {
       Navigator.pop(context);
-      Navigator.push(context, MaterialPageRoute(builder: (_) => w));
+      Navigator.push(context, MaterialPageRoute(builder: (_) => w)).then((_) {
+        if (mounted) setState(() {});
+      });
     }
     return Drawer(
       child: SafeArea(

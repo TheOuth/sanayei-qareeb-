@@ -20,6 +20,7 @@ class _ProfileFormState extends State<ProfileForm> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
   final _wa = TextEditingController();
+  final _email = TextEditingController();
   final _pw = TextEditingController();
   final _hood = TextEditingController();
   final _exp = TextEditingController();
@@ -45,6 +46,7 @@ class _ProfileFormState extends State<ProfileForm> {
       _name.text = (i['name'] ?? '').toString();
       _wa.text = localPhone((i['whatsapp'] ?? '').toString());
       _hood.text = (i['hood'] ?? '').toString();
+      _email.text = (i['email'] ?? '').toString();
       _exp.text = (i['experience'] ?? '').toString();
       _price.text = (i['price'] ?? '').toString();
       _bio.text = (i['bio'] ?? '').toString();
@@ -145,6 +147,9 @@ class _ProfileFormState extends State<ProfileForm> {
       body['phone'] = ph;
       body['password'] = _pw.text;
     } else {
+      final em = _email.text.trim();
+      if (em.isNotEmpty && !RegExp(r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$').hasMatch(em)) return toast(context, 'البريد الإلكتروني غير صحيح');
+      body['email'] = em;
       if (_lat == null) { body.remove('lat'); body.remove('lng'); }
     }
     setState(() => _busy = true);
@@ -182,6 +187,10 @@ class _ProfileFormState extends State<ProfileForm> {
       ],
       const SizedBox(height: 10),
       TextField(controller: _wa, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, decoration: InputDecoration(labelText: 'رقم الواتساب', helperText: reg ? 'اتركه فارغًا لو هو نفس رقم الهاتف' : null)),
+      if (!reg) ...[
+        const SizedBox(height: 10),
+        TextField(controller: _email, keyboardType: TextInputType.emailAddress, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'البريد الإلكتروني (اختياري)', helperText: 'للرسائل المهمة مثل التهنئة والتوثيق')),
+      ],
       if (reg) ...[
         const SizedBox(height: 10),
         TextField(controller: _pw, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة السر (6 أحرف على الأقل)')),

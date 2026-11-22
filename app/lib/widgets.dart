@@ -209,6 +209,49 @@ class ProviderCard extends StatelessWidget {
   }
 }
 
+class ProviderGridCard extends StatelessWidget {
+  final Map p;
+  final VoidCallback onTap;
+  const ProviderGridCard({super.key, required this.p, required this.onTap});
+  @override
+  Widget build(BuildContext context) {
+    final services = (p['services'] as List).map((e) => Meta.serviceName(e.toString())).take(2).join('، ');
+    final d = p['distance_km'];
+    final avail = p['available'] == true;
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Stack(clipBehavior: Clip.none, children: [
+              Avatar(photo: p['photo'], name: p['name'] ?? '', size: 64),
+              Positioned(
+                bottom: 0, left: 0,
+                child: Container(width: 14, height: 14, decoration: BoxDecoration(color: avail ? C.green : Colors.grey, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2))),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Flexible(child: Text(p['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
+              const SizedBox(width: 4),
+              TierBadge(jobs: (p['jobs'] ?? 0) as int, size: 18),
+              if (p['verified'] == true) const Padding(padding: EdgeInsetsDirectional.only(start: 2), child: Icon(Icons.verified_rounded, color: C.blue, size: 16)),
+            ]),
+            const SizedBox(height: 2),
+            Text(services, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: C.mute, fontSize: 12)),
+            const SizedBox(height: 6),
+            Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int),
+            const SizedBox(height: 2),
+            Text(avail ? (d != null ? 'متاح · $d كم' : 'متاح') : 'غير متاح', style: TextStyle(fontSize: 11, color: avail ? C.green : C.mute)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class Empty extends StatelessWidget {
   final String text;
   final IconData icon;
