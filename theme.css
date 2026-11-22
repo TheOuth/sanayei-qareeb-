@@ -267,3 +267,18 @@ body.admin .acard .ava{width:46px;height:46px}
 .t-gold{background:linear-gradient(135deg,#FFF3CC,#FFE08A);color:#8A5A00}
 .pinfo>.tier{margin-top:3px}.gtier{display:block;margin-top:2px}.gtier .tier{font-size:10.5px;padding:2px 7px}
 .tierbox .pbar{margin-top:10px}
+
+/* جداول */
+.tbl-wrap{overflow-x:auto;border-radius:16px;background:#fff;box-shadow:var(--shadow-1);margin:8px 0}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:520px}
+.tbl th{background:var(--teal-l);color:var(--teal-d);font-weight:600;text-align:start;padding:10px 12px;white-space:nowrap}
+.tbl td{padding:10px 12px;border-top:1px solid var(--hair);vertical-align:top}
+.tbl .nw{white-space:nowrap}.okc{color:#1B8A4B;font-weight:600}
+
+/* علامة الثقة بجوار الاسم */
+.tb{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;vertical-align:middle;cursor:pointer;margin-inline-start:4px}
+.tb.t-gray{background:#EEF1F5;color:#6B7686}.tb.t-blue{background:#E3F0FF;color:#1E6FD0}.tb.t-gold{background:linear-gradient(135deg,#FFF3CC,#FFD966);color:#8A5A00}
+.tbbub{position:fixed;z-index:120;border:0;border-radius:12px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;color:#fff;box-shadow:var(--shadow-2);opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s var(--ease);cursor:pointer;white-space:nowrap}
+.tbbub.show{opacity:1;transform:none}
+.tbbub.t-gray{background:#6B7686}.tbbub.t-blue{background:#2B8CF0}.tbbub.t-gold{background:#B8860B}
+@media (prefers-reduced-motion:reduce){.tbbub{transition:none}}

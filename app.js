@@ -133,6 +133,44 @@
   }
 
   /* شبكة الصنايعية أسفل الرئيسية: تُحمَّل عند الاقتراب منها لتوفير الاستهلاك */
+  var tbReg = {};
+  function trustBadge(p) {
+    var t = SQ.tierOf(p.jobs); if (!t && !p.verified) return '';
+    tbReg[p.id] = p;
+    return '<span class="tb t-' + (t ? t.id : 'gray') + '" role="button" tabindex="0" data-tb="' + p.id + '" aria-label="موثوق">' + SQ.I('shield', 17) + '</span>';
+  }
+  function trustModal(p) {
+    var j = p.jobs || 0, t = SQ.tierOf(j), nx = SQ.nextTier(j);
+    var yes = '<b class="okc">✓ نعم</b>', no = '<span class="muted">لا</span>';
+    modal('<h3>لماذا ' + esc(p.name) + ' موثوق؟</h3><div class="tbl-wrap"><table class="tbl"><tbody>' +
+      '<tr><th>الهوية</th><td>' + (p.verified ? yes + ' · تحقق منها فريق التطبيق' : no + ' · لم يتم التحقق بعد') + '</td></tr>' +
+      '<tr><th>الأعمال المؤكدة</th><td>' + j + (nx ? ' <small class="muted">(' + (nx.min - j) + ' للوصول إلى «' + nx.name + '»)</small>' : '') + '</td></tr>' +
+      '<tr><th>الشارة الحالية</th><td>' + (t ? '<span class="tier t-' + t.id + '">' + SQ.I('check', 12) + ' ' + t.name + '</span>' : '<span class="muted">لا يوجد بعد</span>') + '</td></tr>' +
+      '<tr><th>التقييم</th><td>' + (p.rating != null ? '★ ' + p.rating + ' (' + p.rating_n + ')' : 'جديد') + '</td></tr></tbody></table></div>' +
+      '<h3 style="margin-top:14px">كيف تحصل على التوثيق؟</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>العلامة</th><th>الشرط</th></tr></thead><tbody>' +
+      '<tr><td><span class="tier t-gray">' + SQ.I('check', 12) + ' موثّق</span></td><td>أرسل لفريق التطبيق على واتساب وثيقة سارية وصورة لك معها، وبعد التحقق تُفعَّل علامتك.</td></tr>' +
+      SQ.TIERS.slice().reverse().map(function (x) { return '<tr><td><span class="tier t-' + x.id + '">' + SQ.I('check', 12) + ' ' + x.name + '</span></td><td>' + x.min + ' أعمال مؤكدة من عملاء مختلفين.</td></tr>'; }).join('') +
+      '</tbody></table></div><p class="note">العمل يُحسب مؤكدا حين يقول العميل «تمت الخدمة» من «طلباتي» ولا يعترض الصنايعي.</p><button class="btn primary" id="tbClose" style="width:100%">حسنا</button>');
+    on('tbClose', 'click', closeModal);
+  }
+  var tbTimer = null;
+  function hideBubble() { var b = document.getElementById('tbBubble'); if (b) b.remove(); clearTimeout(tbTimer); }
+  document.addEventListener('click', function (e) {
+    var bub = e.target.closest('#tbBubble');
+    if (bub) { e.preventDefault(); e.stopPropagation(); var p = tbReg[bub.getAttribute('data-id')]; hideBubble(); if (p) trustModal(p); return; }
+    var tb = e.target.closest('.tb');
+    if (!tb) { hideBubble(); return; }
+    e.preventDefault(); e.stopPropagation(); hideBubble();
+    var id = tb.getAttribute('data-tb'), r = tb.getBoundingClientRect(), c = (tb.className.match(/t-(gray|blue|gold)/) || [0, 'gray'])[1];
+    var el = document.createElement('button'); el.id = 'tbBubble'; el.className = 'tbbub t-' + c; el.setAttribute('data-id', id); el.textContent = 'موثوق · اعرف لماذا';
+    document.body.appendChild(el);
+    var w = el.offsetWidth, x = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+    el.style.left = x + 'px'; el.style.top = (r.bottom + 8) + 'px';
+    requestAnimationFrame(function () { el.classList.add('show'); });
+    tbTimer = setTimeout(hideBubble, 5000);
+  }, true);
+  window.addEventListener('hashchange', hideBubble);
+
   function tierTag(p, long) {
     var t = SQ.tierOf(p.jobs); if (!t) return '';
     return '<span class="tier t-' + t.id + '" title="' + p.jobs + ' عمل مؤكد">' + SQ.I('check', 12) + (long ? ' صنايعي ' + t.name + ' · ' + p.jobs + ' عمل مؤكد' : ' ' + t.name) + '</span>';
@@ -143,8 +181,8 @@
     var cats = ids.map(function (i) { return SQ.catOf(svc(i)).id; }).join(' ');
     return '<button class="gcard" data-id="' + p.id + '" data-s="' + esc(first) + '" data-cats="' + cats + '" data-n="' + esc(normAr(p.name + ' ' + ids.map(function (i) { return svc(i).name; }).join(' '))) + '">' +
       '<span class="gph">' + U.avatar(p, p.verified ? 'sq ver' : 'sq') + (p.available ? '<i class="dot on" title="متاح الآن"></i>' : '<i class="dot"></i>') + '</span>' +
-      '<b class="gname">' + esc(p.name) + (p.verified ? ' <span class="vmark" title="موثّق">' + SQ.I('shield', 15) + '</span>' : '') + '</b>' +
-      (tierTag(p) ? '<span class="gtier">' + tierTag(p) + '</span>' : '') + '<span class="gstar">' + (p.rating != null ? '<span class="star">' + SQ.I('star', 13, 'sf') + ' ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
+      '<b class="gname">' + esc(p.name) + ' ' + trustBadge(p) + '</b>' +
+      '<span class="gstar">' + (p.rating != null ? '<span class="star">' + SQ.I('star', 13, 'sf') + ' ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
       '<span class="gchips">' + chips + '</span></button>';
   }
   var gridState = { offset: 0, loading: false, done: false, io: null };
@@ -190,7 +228,7 @@
     el.innerHTML = '<div class="card"><div class="spin">...</div></div>';
     db.providerSelf(pid, getTok()).then(function (me) {
       var st = STATUS[me.status] || STATUS.pending;
-      el.innerHTML = '<div class="card mecard"><div class="mehead">' + U.avatar(me) + '<div><b>' + esc(me.name) + '</b>' + (me.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + '<div class="muted">' + esc(svcNames(me.services)) + '</div><span class="badge ' + st[1] + '">' + st[0] + '</span></div></div>' +
+      el.innerHTML = '<div class="card mecard"><div class="mehead">' + U.avatar(me) + '<div><b>' + esc(me.name) + '</b>' + ' ' + trustBadge(me) + '<div class="muted">' + esc(svcNames(me.services)) + '</div><span class="badge ' + st[1] + '">' + st[0] + '</span></div></div>' +
         '<div class="pbar"><i style="width:' + (me.pct || 0) + '%"></i></div><small class="muted">اكتمال ملفك ' + (me.pct || 0) + '%</small>' +
         '<div class="btnrow mt"><a class="btn primary" href="#/p/home">لوحتي</a><a class="btn ghost" href="#/p/profile">ملفي الشخصي</a></div></div>';
     }).catch(function () { el.innerHTML = '<div class="card"><a class="btn primary" href="#/p/login">ادخل إلى حسابك</a></div>'; });
@@ -266,7 +304,7 @@
     var em = p.distance_km != null ? SQ.geo.eta(p.distance_km) : null;
     var eta = em != null ? 'يصل في حوالي ' + em + (em <= 10 ? ' دقائق' : ' دقيقة') : '';
     return '<div class="card click pcard-wrap" data-id="' + p.id + '"><div class="pcard">' + U.avatar(p) + '' +
-      '<div class="pinfo"><div class="pname">' + esc(p.name) + (p.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' + tierTag(p) +
+      '<div class="pinfo"><div class="pname">' + esc(p.name) + ' ' + trustBadge(p) + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' +
       '<div class="psvc">' + esc(svcNames(p.services)) + '</div>' +
       '<div class="meta">' +
       (dist ? '<span class="mi">' + SQ.I('pin', 15) + ' ' + dist + '</span>' : '') + (eta ? '<span class="mi">' + SQ.I('clock', 15) + ' ' + eta + '</span>' : '') +
@@ -285,8 +323,8 @@
     page({
       title: p.name, back: '#/c/list/' + sid,
       body: demoNote() +
-        '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + (p.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
-        '<div style="margin:-4px 0 10px">' + tierTag(p, true) + '</div><div class="stats"><div class="stat"><b>' + (p.rating != null ? '★ ' + p.rating : 'جديد') + '</b><small>' + p.rating_n + ' تقييم</small></div>' +
+        '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + ' ' + trustBadge(p) + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
+        '<div class="stats"><div class="stat"><b>' + (p.rating != null ? '★ ' + p.rating : 'جديد') + '</b><small>' + p.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + p.ok + ' - ' + p.fail + '</b><small>ناجحة - فاشلة</small></div>' +
         '<div class="stat"><b>' + p.experience + '</b><small>سنة خبرة</small></div></div>' +
         '<div class="card">' +

@@ -9,7 +9,7 @@
   try { code = sessionStorage.getItem('sq_admin') || ''; } catch (e) {}
   document.body.classList.add('admin');
 
-  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['services', 'الخدمات'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
+  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
   var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
@@ -70,7 +70,7 @@
   async function render() {
     if (!code) return login();
     try { ov = await db.adminOverview(code); } catch (e) { if (guard(e)) return; ov = null; }
-    ({ overview: viewOverview, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, services: viewServices, reports: viewReports, settings: viewSettings })[tab]();
+    ({ overview: viewOverview, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings })[tab]();
   }
 
   /* ---------- نظرة عامة ---------- */
@@ -279,6 +279,42 @@
     el.innerHTML = list.length ? list.map(function (r) {
       return '<div class="card"><div class="pname">' + esc(r.provider_name) + '</div><div class="psvc">' + esc(U.svc(r.service).icon + ' ' + U.svc(r.service).name) + ' · ' + esc(SQ.cityName(r.city_id) || '') + '</div><div class="meta"><span>' + (r.channel === 'call' ? '📞 اتصال' : '💬 واتساب') + '</span><span>' + pill(REQ[r.status] || r.status, r.status === 'done' ? '' : r.status === 'failed' ? 'bad' : 'warn') + '</span>' + (r.confirm === 'done' ? '<span>' + pill('الصنايعي: نفّذ' + (r.amount ? ' · ' + Number(r.amount).toLocaleString('en') : ''), '') + '</span>' : r.confirm === 'not_done' ? '<span>' + pill('الصنايعي: لم تتم', 'warn') + '</span>' : '') + '<span class="muted">' + U.timeAgo(r.ts) + '</span></div></div>';
     }).join('') : '<div class="empty"><div class="big">📋</div>لا توجد طلبات</div>';
+  }
+
+  /* ---------- دفعيات العمولة ---------- */
+  async function viewPayments() {
+    shell('<div id="paybox"><div class="spin">جاري التحميل...</div></div>');
+    var list, cfg = {};
+    try { list = await db.adminCommissionLedger(code); cfg = await db.adminGetSettings(code); } catch (e) { return fail(e); }
+    var fx = +cfg.commission_fixed || 0, box = document.getElementById('paybox'); if (!box) return;
+    function due(x) { return x.jobs * fx; }
+    var T = list.reduce(function (a, x) { a.d += due(x); a.p += x.paid; a.n += x.pay_count; return a; }, { d: 0, p: 0, n: 0 });
+    box.innerHTML = '<div class="stats"><div class="stat"><b>' + T.d.toLocaleString('en') + '</b><small>المستحق</small></div><div class="stat"><b>' + T.p.toLocaleString('en') + '</b><small>المحصّل (' + T.n + ' دفعة)</small></div><div class="stat"><b>' + (T.d - T.p).toLocaleString('en') + '</b><small>المتبقي</small></div></div>' +
+      '<p class="note">العمولة الحالية ' + fx.toLocaleString('en') + ' جنيه لكل خدمة مؤكدة من الطرفين، وتُطبّق على كل الأعمال السابقة. غيّرها من الإعدادات.</p>' +
+      (list.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>الصنايعي</th><th>أعمال مؤكدة</th><th>المستحق</th><th>المدفوع</th><th>المتبقي</th><th>عدد الدفعات</th><th>آخر دفعة</th><th></th></tr></thead><tbody>' +
+        list.map(function (x, i) {
+          var rest = due(x) - x.paid;
+          return '<tr><td><b>' + esc(x.name) + '</b><br><small class="ltr muted">' + esc(x.phone) + '</small></td><td>' + x.jobs + '</td><td>' + due(x).toLocaleString('en') + '</td><td>' + x.paid.toLocaleString('en') + '</td><td>' + (rest > 0 ? '<span class="dangertxt">' + rest.toLocaleString('en') + '</span>' : rest < 0 ? '<span class="muted">+' + (-rest).toLocaleString('en') + ' مقدم</span>' : '<span class="okc">مسدد</span>') + '</td><td>' + x.pay_count + '</td><td>' + (x.last_paid ? fmtDate(x.last_paid) : '—') + '</td><td class="nw"><button class="mini" data-pi="' + i + '" data-pa="add">+ دفعة</button> <button class="mini" data-pi="' + i + '" data-pa="log">السجل</button></td></tr>';
+        }).join('') + '</tbody></table></div>' : '<div class="empty"><div class="big">💰</div>لا توجد أعمال مؤكدة ولا دفعيات بعد</div>');
+    box.onclick = function (e) {
+      var b = e.target.closest('[data-pa]'); if (!b) return; var x = list[+b.getAttribute('data-pi')];
+      if (b.getAttribute('data-pa') === 'add') {
+        modal('<h3>تسجيل دفعة من ' + esc(x.name) + '</h3><label class="field"><span>المبلغ (جنيه)</span><input id="pm_a" class="ltr" inputmode="numeric" value="' + (fx || '') + '"></label><label class="field"><span>ملاحظة (اختياري: بنكك، كاش، رقم العملية)</span><input id="pm_n" maxlength="100"></label><div class="row2 mt"><button class="btn ghost" id="pm_x">إلغاء</button><button class="btn primary" id="pm_ok">تسجيل</button></div>');
+        on('pm_x', 'click', closeModal);
+        on('pm_ok', 'click', async function () {
+          var v = String(document.getElementById('pm_a').value).replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/\D/g, '');
+          if (!v || +v <= 0) return toast('اكتب المبلغ');
+          try { await db.adminAddPayment(code, x.provider_id, +v, document.getElementById('pm_n').value.trim()); closeModal(); toast('تم تسجيل الدفعة'); viewPayments(); } catch (err) { closeModal(); fail(err); }
+        });
+      } else {
+        modal('<h3>دفعات ' + esc(x.name) + '</h3>' + (x.payments.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead><tbody>' + x.payments.map(function (p) { return '<tr><td>' + fmtDate(p.ts) + '</td><td>' + Number(p.amount).toLocaleString('en') + '</td><td>' + esc(p.note || '') + '</td><td><button class="mini" data-del="' + p.id + '" title="حذف">🗑</button></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="note">لا توجد دفعات.</p>') + '<button class="btn ghost mt" id="pl_x" style="width:100%">إغلاق</button>');
+        on('pl_x', 'click', closeModal);
+        var mb = document.getElementById('modal'); mb.onclick = async function (ev) {
+          var dl = ev.target.closest('[data-del]'); if (!dl) return;
+          try { await db.adminDeletePayment(code, dl.getAttribute('data-del')); closeModal(); toast('تم حذف الدفعة'); viewPayments(); } catch (err) { closeModal(); fail(err); }
+        };
+      }
+    };
   }
 
   /* ---------- الطلبات المؤكدة من الطرفين ---------- */

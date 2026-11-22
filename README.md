@@ -128,3 +128,8 @@
 - `supabase-v7.sql`: `verify_doc/verified_at`، `job_count`، `jobs` في `provider_public`، `admin_set_verified(+doc)`، عمولة في `app_config/admin_save_settings`.
 - شارات: ≥3 رمادي «منجز»، ≥10 أزرق «متميز»، ≥25 ذهبي (العتبات في `SQ.TIERS` بـ data.js).
 - العمولة (مبلغ ثابت + نسبة) تُضبط من الإعدادات وتُحسب في تبويب «المؤكدة».
+
+## v10 — دفعيات العمولة وعلامة الثقة
+- `supabase-v8.sql`: جدول `commission_payments` + `admin_add_payment/admin_delete_payment/admin_commission_ledger`. العمولة الحالية 5000 جنيه ثابتة (app_settings).
+- لوحة المدير: تبويب «الدفعيات» (جدول: أعمال مؤكدة، مستحق، مدفوع، متبقي، عدد الدفعات، آخر دفعة، تسجيل/سجل).
+- علامة ثقة (رمادي/أزرق/ذهبي) بجوار الاسم: نقرة تظهر «موثوق» 5 ثوان، وبنقرتها جدول يشرح السبب وطريقة الحصول على التوثيق.

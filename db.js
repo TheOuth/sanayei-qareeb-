@@ -495,6 +495,17 @@
       });
       return Object.keys(m).map(function (k) { return m[k]; }).sort(function (a, b) { return b.both - a.both || b.total - a.total; });
     },
+    adminAddPayment: async function (code, id, amount, note) {
+      this.admin(code); amount = Math.round(+amount); if (!(amount > 0)) throw new Error('invalid'); if (!this.find(id)) throw new Error('not_found');
+      this.d.payments = this.d.payments || []; var x = { id: uid(), provider_id: id, amount: amount, note: String(note || '').slice(0, 200), ts: Date.now() }; this.d.payments.push(x); save(this.d); return x.id;
+    },
+    adminDeletePayment: async function (code, pid) { this.admin(code); this.d.payments = (this.d.payments || []).filter(function (x) { return x.id !== pid; }); save(this.d); return true; },
+    adminCommissionLedger: async function (code) {
+      this.admin(code); var self = this, pays = this.d.payments || [], m = {};
+      this.d.requests.forEach(function (q) { if (q.status === 'done' && q.pconfirm === 'done') { var p = self.find(q.provider_id); if (p) { m[p.id] = m[p.id] || { provider_id: p.id, name: p.name, phone: p.phone, jobs: 0, paid: 0, pay_count: 0, last_paid: null, payments: [] }; m[p.id].jobs++; } } });
+      pays.forEach(function (x) { var p = self.find(x.provider_id); if (!p) return; var r = m[p.id] = m[p.id] || { provider_id: p.id, name: p.name, phone: p.phone, jobs: 0, paid: 0, pay_count: 0, last_paid: null, payments: [] }; r.paid += x.amount; r.pay_count++; r.last_paid = Math.max(r.last_paid || 0, x.ts); r.payments.push(x); });
+      return Object.keys(m).map(function (k) { m[k].payments.sort(function (a, b) { return b.ts - a.ts; }); return m[k]; }).sort(function (a, b) { return b.jobs - a.jobs; });
+    },
     adminRequests: async function (code, limit, status) {
       this.admin(code); var self = this;
       return this.d.requests.filter(function (q) { return !status || q.status === status; })
@@ -596,6 +607,9 @@
     providerRequests: function (id, t) { return SB.rpc('provider_requests', { p_id: id, p_token: t }); },
     providerConfirm: function (id, t, rid, done, amount) { return SB.rpc('provider_confirm_request', { p_id: id, p_token: t, p_request: rid, p_done: !!done, p_amount: amount == null ? null : amount }); },
     adminConfirmReport: function (code, days) { return SB.rpc('admin_confirm_report', { p_code: code, p_days: days || 30 }); },
+    adminAddPayment: function (code, id, amount, note) { return SB.rpc('admin_add_payment', { p_code: code, p_id: id, p_amount: amount, p_note: note || '' }); },
+    adminDeletePayment: function (code, pid) { return SB.rpc('admin_delete_payment', { p_code: code, p_pid: pid }); },
+    adminCommissionLedger: function (code) { return SB.rpc('admin_commission_ledger', { p_code: code }); },
     adminRequests: function (code, limit, status) { return SB.rpc('admin_requests', { p_code: code, p_limit: limit || 100, p_status: status || '' }); },
     adminServices: function (code) { return SB.rpc('admin_services', { p_code: code }); },
     adminSaveService: function (code, id, name, icon, active, cat) { return SB.rpc('admin_save_service', { p_code: code, p_id: id || '', p_name: name, p_icon: icon || '', p_active: active == null ? true : !!active, p_cat: cat == null ? null : cat }); },
