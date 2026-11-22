@@ -74,11 +74,12 @@ jobs:
           flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Build APK
         working-directory: app
-        run: flutter build apk --release
+        run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
-        with: { name: sanayei-native-apk, path: app/build/app/outputs/flutter-apk/app-release.apk }
+        with: { name: sanayei-native-apk, path: app/build/app/outputs/flutter-apk/*.apk }
       - name: Publish release
         env: { GH_TOKEN: '${{ github.token }}' }
         run: |
-          cp app/build/app/outputs/flutter-apk/app-release.apk sanayei-qareeb-native.apk
-          gh release create "native-${{ github.run_number }}" sanayei-qareeb-native.apk --title "التطبيق الأصلي #${{ github.run_number }}" --notes "تطبيق أندرويد أصلي (Flutter) للتجربة."
+          cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk sanayei-qareeb-native.apk
+          cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk sanayei-qareeb-native-32bit.apk
+          gh release create "native-${{ github.run_number }}" sanayei-qareeb-native.apk sanayei-qareeb-native-32bit.apk --title "التطبيق الأصلي #${{ github.run_number }}" --notes "تطبيق أندرويد أصلي (Flutter) للتجربة."
