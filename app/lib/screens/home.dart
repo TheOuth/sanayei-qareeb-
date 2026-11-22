@@ -10,6 +10,7 @@ import 'requests.dart';
 import 'login.dart';
 import 'register.dart';
 import 'dashboard.dart';
+import 'dart:async';
 import 'about.dart';
 import 'app_drawer.dart';
 
@@ -19,7 +20,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+  Timer? _poll;
   final _q = TextEditingController();
   String _query = '';
   List? _featured;
@@ -33,11 +35,19 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     Store.tick.addListener(_onTick);
+    WidgetsBinding.instance.addObserver(this);
+    Store.refreshUnread();
+    _poll = Timer.periodic(const Duration(seconds: 90), (_) => Store.refreshUnread());
     if (Store.loggedIn && Store.meName.isEmpty) Store.refreshMe();
     Meta.refresh().then((_) {
       if (mounted) setState(() {});
     });
     _load();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) Store.refreshUnread();
   }
 
   void _onTick() {
@@ -47,6 +57,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     Store.tick.removeListener(_onTick);
+    WidgetsBinding.instance.removeObserver(this);
+    _poll?.cancel();
     super.dispose();
   }
 
@@ -231,6 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ]),
           const SizedBox(width: 12),
           const Expanded(child: Padding(padding: EdgeInsets.only(top: 10), child: Text('صنايعي قريب', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)))),
+          if (Store.loggedIn) const BellBtn(light: true),
           if (Store.loggedIn)
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen())).then((_) { if (mounted) setState(() {}); }),

@@ -104,6 +104,18 @@ Future<dynamic> callFunction(String name, Map<String, dynamic> body) async {
 class Store {
   static late SharedPreferences p;
   static final ValueNotifier<int> tick = ValueNotifier(0);
+  static final ValueNotifier<int> unread = ValueNotifier(0);
+
+  static Future<void> refreshUnread() async {
+    if (!loggedIn) {
+      unread.value = 0;
+      return;
+    }
+    try {
+      final c = await Api.rpc('provider_notif_count', {'p_id': pid, 'p_token': token});
+      unread.value = (c is num) ? c.toInt() : 0;
+    } catch (_) {}
+  }
   static Future<void> init() async => p = await SharedPreferences.getInstance();
 
   static String get anon {
@@ -123,6 +135,7 @@ class Store {
     await p.setString('pid', id);
     await p.setString('token', t);
     tick.value++;
+    refreshUnread();
   }
 
   static Future<void> signOut() async {
@@ -130,6 +143,7 @@ class Store {
     await p.remove('token');
     await p.remove('me_photo');
     await p.remove('me_name');
+    unread.value = 0;
     tick.value++;
   }
 

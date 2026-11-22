@@ -44,6 +44,7 @@
     modal('<h3>رسالة إلى ' + esc(x.name) + '</h3><div class="seg" id="mt_t" style="flex-wrap:wrap;gap:6px">' + T.map(function (t, i) { return '<button class="chip' + (i === 0 ? ' on' : '') + '" data-i="' + i + '">' + t.label + '</button>'; }).join('') + '</div>' +
       '<label class="field mt"><span>نص الرسالة (يمكنك تعديله قبل الإرسال)</span><textarea id="mt_b" rows="10" style="min-height:220px"></textarea></label>' +
       '<div class="btnrow"><button class="btn wa" id="mt_wa">💬 واتساب</button><button class="btn ghost" id="mt_em">✉️ إيميل</button><button class="btn ghost" id="mt_cp">📋 نسخ</button></div>' +
+      (x.id ? '<button class="btn ghost mt" id="mt_in" style="width:100%">🔔 إرسال كإشعار داخل التطبيق</button>' : '') +
       '<button class="btn ghost mt" id="mt_x" style="width:100%">إغلاق</button>');
     var ta = document.getElementById('mt_b'); ta.value = T[0].body;
     document.getElementById('mt_t').addEventListener('click', function (e) {
@@ -53,6 +54,10 @@
     on('mt_x', 'click', closeModal);
     on('mt_wa', 'click', function () { window.open('https://wa.me/' + SQ.util.digits(x.phone) + '?text=' + encodeURIComponent(ta.value), '_blank'); });
     on('mt_em', 'click', function () { if (!x.email) toast('لا يوجد بريد لهذا الصنايعي بعد، أضفه من تعديل الملف'); window.location.href = 'mailto:' + encodeURIComponent(x.email || '') + '?subject=' + encodeURIComponent(T[cur].subject) + '&body=' + encodeURIComponent(ta.value.replace(/\*/g, '')); });
+    on('mt_in', 'click', async function () {
+      var body = ta.value.replace(/\*/g, '').trim(); if (!body) return toast('الرسالة فارغة');
+      try { await db.adminSendNotification(code, x.id, T[cur].label, body); toast('وصلت الرسالة لجرس الصنايعي'); } catch (e) { toast(U.errMsg ? U.errMsg(e) : 'تعذر الإرسال'); }
+    });
     on('mt_cp', 'click', function () { ta.select(); try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand('copy'); } toast('تم نسخ الرسالة'); });
   }
   function appUrl() { return location.origin + location.pathname.replace(/admin\.html$/, ''); }
@@ -187,7 +192,7 @@
   async function provAction(a, p, btn) {
     if (!p) return;
     if (a === 'edit') return openProvForm(p);
-    if (a === 'msg') return msgModal({ name: p.name, phone: p.whatsapp || p.phone, jobs: p.jobs || 0, verified: p.verified, username: p.username, email: p.email || '' });
+    if (a === 'msg') return msgModal({ id: p.id, name: p.name, phone: p.whatsapp || p.phone, jobs: p.jobs || 0, verified: p.verified, username: p.username, email: p.email || '' });
     if (a === 'uname') {
       modal('<h3>اسم المستخدم لـ ' + esc(p.name) + '</h3><p class="note">للتعديل بعد تواصل الصنايعي مع الدعم. لا يستهلك مرته الواحدة. رابطه: <span class="ltr">' + esc(appUrl()) + '#/u/' + esc(p.username || '') + '</span></p>' +
         '<label class="field"><span>الاسم (حروف إنجليزية صغيرة وأرقام و _)</span><input id="un_v" class="ltr" maxlength="20" autocapitalize="none" value="' + esc(p.username || '') + '"></label>' +
@@ -373,7 +378,7 @@
     var cfg2 = {}; try { cfg2 = await db.adminGetSettings(code); } catch (e) {}
     function due(x) { return Math.round(x.both * (+cfg2.commission_fixed || 0) + x.amount * (+cfg2.commission_pct || 0) / 100); }
     var tot = list.reduce(function (a, x) { a.t += x.total; a.b += x.both; a.m += x.mismatch; a.s += x.amount; a.d += due(x); return a; }, { t: 0, b: 0, m: 0, s: 0, d: 0 });
-    el.onclick = function (e) { var b = e.target.closest('[data-msg]'); if (!b) return; var x = list.filter(function (y) { return y.provider_id === b.getAttribute('data-msg'); })[0]; if (x) msgModal({ name: x.name, phone: x.phone, jobs: x.both, verified: x.verified }); };
+    el.onclick = function (e) { var b = e.target.closest('[data-msg]'); if (!b) return; var x = list.filter(function (y) { return y.provider_id === b.getAttribute('data-msg'); })[0]; if (x) msgModal({ id: x.provider_id, name: x.name, phone: x.phone, jobs: x.both, verified: x.verified }); };
     el.innerHTML = '<div class="stats"><div class="stat"><b>' + tot.t + '</b><small>كل الطلبات</small></div><div class="stat"><b>' + tot.b + '</b><small>مؤكدة من الطرفين</small></div><div class="stat"><b>' + tot.m + '</b><small>غير متطابقة</small></div></div>' + ((+cfg2.commission_fixed > 0 || +cfg2.commission_pct > 0) ? '<div class="card"><div class="kv"><span>العمولة المستحقة (تقديرية)</span><b>' + tot.d.toLocaleString('en') + ' جنيه</b></div></div>' : '') +
       '<p class="note">المؤكد من الطرفين = قال الزبون "تمت الخدمة" وأكد الصنايعي التنفيذ. المبلغ يصرّح به الصنايعي، فاعتبره تقديريا. "غير متطابق" يحتاج مراجعتك.</p>' +
       '<div class="agrid">' + (list.length ? list.map(function (x) {
@@ -458,10 +463,17 @@
       '<label class="field"><span>بريد الدعم</span><input id="c_em" class="ltr" type="email" value="' + esc(cfg.support_email || '') + '"></label><button class="btn primary" id="c_save" style="width:100%">حفظ</button></div>' +
       '<div class="card"><b>عمولة الطلب</b><p class="note">تُحسب على الخدمات المؤكدة من الطرفين فقط، وتظهر للصنايعية في ملفهم. اتركها 0 لتعطيلها. أبلغ الصنايعية بها قبل تفعيلها.</p>' +
       '<div class="row2"><label class="field"><span>مبلغ ثابت لكل خدمة (جنيه)</span><input id="c_fx" class="ltr" inputmode="numeric" value="' + esc(String(cfg.commission_fixed || 0)) + '"></label><label class="field"><span>نسبة من المبلغ (%)</span><input id="c_pc" class="ltr" inputmode="decimal" value="' + esc(String(cfg.commission_pct || 0)) + '"></label></div></div>' +
+      '<div class="card"><b>إشعار لجميع الصنايعية</b><p class="note">يصل إلى جرس الرسائل في تطبيق كل صنايعي (تحديث جديد، تنبيه، إعلان).</p><label class="field"><span>العنوان</span><input id="bc_t" maxlength="100"></label><label class="field"><span>النص</span><textarea id="bc_b" rows="3" maxlength="500"></textarea></label><button class="btn primary" id="bc_send" style="width:100%">🔔 إرسال للجميع</button></div>' +
       '<div class="card"><b>تغيير رمز المدير</b>' + U.pwHtml('k_new', 'الرمز الجديد', '8 أحرف على الأقل، لا تشاركه') + U.pwHtml('k_new2', 'أعد كتابته') + '<button class="btn primary" id="k_save" style="width:100%">تغيير الرمز</button></div>' +
       '<div class="card"><b>نسخة احتياطية</b><p class="note">نزّل بيانات كل الصنايعية في ملف يفتح في Excel. أنصح بفعل ذلك أسبوعيا.</p><button class="btn ghost" id="c_csv" style="width:100%">⬇ تنزيل كل الصنايعية (CSV)</button></div>' +
       '<div class="card"><b>روابط</b><div class="kv"><span>التطبيق</span><a href="' + esc(appUrl()) + '" target="_blank" rel="noopener">فتح</a></div><div class="kv"><span>سياسة الخصوصية</span><a href="' + esc(appUrl()) + 'privacy-policy.html" target="_blank" rel="noopener">فتح</a></div></div></div>');
     on('c_csv', 'click', function () { exportCsv({}); });
+    on('bc_send', 'click', async function () {
+      var t = document.getElementById('bc_t').value.trim(), b = document.getElementById('bc_b').value.trim();
+      if (!t) return toast('اكتب عنوانا للإشعار');
+      if (!confirm('إرسال هذا الإشعار لجميع الصنايعية؟')) return;
+      try { await db.adminSendNotification(code, null, t, b); document.getElementById('bc_t').value = ''; document.getElementById('bc_b').value = ''; toast('تم الإرسال للجميع'); } catch (e) { toast('تعذر الإرسال'); }
+    });
     on('c_save', 'click', async function () {
       try { await db.adminSaveSettings(code, { support_whatsapp: document.getElementById('c_wa').value.replace(/\D/g, ''), support_email: document.getElementById('c_em').value.trim(), commission_pct: document.getElementById('c_pc').value, commission_fixed: document.getElementById('c_fx').value }); toast('تم الحفظ'); } catch (e) { fail(e); }
     });

@@ -7,6 +7,7 @@ import 'register.dart';
 import 'dashboard.dart';
 import 'about.dart';
 import 'location.dart';
+import 'notifications.dart';
 
 /// زر القائمة (ثلاث خطوط) يفتح القائمة الجانبية للصفحة الحالية
 class MenuBtn extends StatelessWidget {
@@ -18,12 +19,48 @@ class MenuBtn extends StatelessWidget {
 }
 
 /// شريط علوي موحّد: سهم رجوع + عنوان + زر القائمة
-AppBar bar(String title, {List<Widget> actions = const [], bool menu = true}) => AppBar(
+AppBar bar(String title, {List<Widget> actions = const [], bool menu = true, bool bell = true}) => AppBar(
       automaticallyImplyLeading: false,
       leading: const BackButton(),
       title: Text(title),
-      actions: [...actions, if (menu) const MenuBtn()],
+      actions: [...actions, if (bell) const BellBtn(), if (menu) const MenuBtn()],
     );
+
+/// جرس الرسائل للصنايعي المسجّل، وعليه عدّاد أحمر للرسائل غير المقروءة
+class BellBtn extends StatelessWidget {
+  final bool light;
+  const BellBtn({super.key, this.light = false});
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: Store.tick,
+      builder: (_, __, ___) {
+        if (!Store.loggedIn) return const SizedBox.shrink();
+        return ValueListenableBuilder<int>(
+          valueListenable: Store.unread,
+          builder: (ctx, n, ___) => IconButton(
+            tooltip: 'الرسائل',
+            onPressed: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+            icon: Stack(clipBehavior: Clip.none, children: [
+              Icon(n > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_rounded, size: 28, color: light ? Colors.white : null),
+              if (n > 0)
+                Positioned(
+                  top: -5, right: -5,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(color: C.red, borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white, width: 1.5)),
+                    alignment: Alignment.center,
+                    child: Text(n > 99 ? '99+' : '$n', style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w700, height: 1.1)),
+                  ),
+                ),
+            ]),
+          ),
+        );
+      },
+    );
+  }
+}
 
 class AppDrawer extends StatelessWidget {
   /// home | requests | dash | login | register | about
