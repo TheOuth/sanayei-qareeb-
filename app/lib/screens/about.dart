@@ -1,0 +1,25 @@
+import 'package:flutter/material.dart';
+import '../core.dart';
+import '../theme.dart';
+import '../widgets.dart';
+
+class AboutScreen extends StatelessWidget {
+  const AboutScreen({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final wa = (Meta.cfg['support_whatsapp'] ?? '').toString().replaceAll(RegExp(r'\D'), '');
+    final mail = (Meta.cfg['support_email'] ?? '').toString();
+    return Scaffold(
+      appBar: AppBar(title: const Text('عن التطبيق')),
+      body: ListView(padding: const EdgeInsets.all(16), children: [
+        const Text('صنايعي قريب يوصلك بأقرب صنايعي في منطقتك بالاتصال أو الواتساب مباشرة، مجانًا للزبائن.', style: TextStyle(height: 1.6)),
+        const SizedBox(height: 14),
+        if (wa.isNotEmpty) Card(child: ListTile(leading: const Icon(Icons.chat_rounded, color: C.green), title: const Text('الدعم على واتساب'), onTap: () => openUrl('https://wa.me/$wa'))),
+        if (mail.isNotEmpty) Card(child: ListTile(leading: const Icon(Icons.email_outlined), title: Text(mail), onTap: () => openUrl('mailto:$mail'))),
+        Card(child: ListTile(leading: const Icon(Icons.privacy_tip_outlined), title: const Text('سياسة الخصوصية'), onTap: () => openUrl('${Config.siteUrl}/privacy-policy.html'))),
+        const SizedBox(height: 20),
+        const Center(child: Text('الإصدار 1.0.0', style: TextStyle(color: C.mute, fontSize: 12))),
+      ]),
+    );
+  }
+}

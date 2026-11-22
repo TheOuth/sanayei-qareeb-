@@ -1,0 +1,241 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// إعدادات الخادم: غيّر هذين السطرين (أو مرّرهما وقت البناء) لنقل التطبيق لخادم آخر.
+/// flutter build apk --dart-define=API_URL=https://... --dart-define=API_KEY=...
+class Config {
+  static const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://pwqtvixjkpvyajqmfqpa.supabase.co');
+  static const apiKey = String.fromEnvironment('API_KEY', defaultValue: 'sb_publishable_sFHW2864oPilfQvjs3txaA__QjKY0sG');
+  static const siteUrl = 'https://theouth.github.io';
+  static const commissionNote = 5000;
+}
+
+class ApiError implements Exception {
+  final String code;
+  ApiError(this.code);
+  @override
+  String toString() => code;
+}
+
+String errMsg(Object e) {
+  final c = e is ApiError ? e.code : e.toString();
+  const m = {
+    'forbidden': 'غير مسموح. سجّل الدخول من جديد',
+    'invalid_phone': 'رقم الهاتف غير صحيح',
+    'weak': 'كلمة السر قصيرة (6 أحرف على الأقل)',
+    'birth_required': 'تاريخ الميلاد مطلوب',
+    'invalid_birth': 'تاريخ الميلاد غير صحيح',
+    'underage': 'التطبيق لمن هم 18 سنة فأكثر',
+    'invalid_username': 'اسم المستخدم: حروف إنجليزية وأرقام (3 إلى 20) ويبدأ بحرف',
+    'taken': 'اسم المستخدم محجوز',
+    'already': 'تم هذا الإجراء من قبل',
+    'duplicate': 'هذا الرقم مسجّل من قبل',
+    'invalid': 'بيانات غير صحيحة',
+    'not_found': 'غير موجود',
+    'locked': 'تم إيقاف الدخول مؤقتًا. حاول بعد 15 دقيقة',
+    'no_password': 'لا توجد كلمة سر لهذا الحساب',
+  };
+  if (m.containsKey(c)) return m[c]!;
+  if (c.contains('SocketException') || c.contains('ClientException') || c.contains('Failed host')) return 'لا يوجد اتصال بالإنترنت';
+  if (c.contains('TimeoutException')) return 'الاتصال بطيء، حاول مرة أخرى';
+  return 'حدث خطأ، حاول مرة أخرى';
+}
+
+class Api {
+  static Future<dynamic> rpc(String fn, [Map<String, dynamic>? args]) async {
+    final r = await http
+        .post(Uri.parse('${Config.apiUrl}/rest/v1/rpc/$fn'),
+            headers: {'Content-Type': 'application/json', 'apikey': Config.apiKey},
+            body: jsonEncode(args ?? {}))
+        .timeout(const Duration(seconds: 25));
+    dynamic data;
+    try {
+      data = r.body.isEmpty ? null : jsonDecode(utf8.decode(r.bodyBytes));
+    } catch (_) {}
+    if (r.statusCode >= 300) {
+      var m = (data is Map ? (data['message'] ?? data['hint']) : null)?.toString() ?? 'HTTP ${r.statusCode}';
+      if (m.contains('duplicate key')) m = 'duplicate';
+      throw ApiError(m);
+    }
+    return data;
+  }
+}
+
+/// تخزين محلي بسيط (هوية الجهاز، جلسة الصنايعي، آخر موقع، كاش خفيف)
+class Store {
+  static late SharedPreferences p;
+  static Future<void> init() async => p = await SharedPreferences.getInstance();
+
+  static String get anon {
+    var a = p.getString('anon');
+    if (a == null) {
+      final r = Random.secure();
+      a = 'a' + List.generate(24, (_) => r.nextInt(36).toRadixString(36)).join();
+      p.setString('anon', a);
+    }
+    return a;
+  }
+
+  static String? get pid => p.getString('pid');
+  static String? get token => p.getString('token');
+  static bool get loggedIn => pid != null && token != null;
+  static Future<void> signIn(String id, String t) async {
+    await p.setString('pid', id);
+    await p.setString('token', t);
+  }
+
+  static Future<void> signOut() async {
+    await p.remove('pid');
+    await p.remove('token');
+  }
+
+  static Map<String, dynamic>? get loc {
+    final s = p.getString('loc');
+    return s == null ? null : (jsonDecode(s) as Map<String, dynamic>);
+  }
+
+  static Future<void> setLoc(Map<String, dynamic>? l) async {
+    if (l == null) {
+      await p.remove('loc');
+    } else {
+      await p.setString('loc', jsonEncode(l));
+    }
+  }
+
+  static Future<void> cachePut(String k, dynamic v) async => p.setString('c_$k', jsonEncode({'t': DateTime.now().millisecondsSinceEpoch, 'v': v}));
+  static dynamic cacheGet(String k, {int maxAgeMin = 1 << 30}) {
+    final s = p.getString('c_$k');
+    if (s == null) return null;
+    final o = jsonDecode(s);
+    if (DateTime.now().millisecondsSinceEpoch - (o['t'] as int) > maxAgeMin * 60000) return null;
+    return o['v'];
+  }
+}
+
+class City {
+  final String id, name;
+  final double lat, lng;
+  City(this.id, this.name, this.lat, this.lng);
+}
+
+class StateG {
+  final String id, name;
+  final List<City> cities;
+  StateG(this.id, this.name, this.cities);
+}
+
+class Category {
+  final String id, name, icon;
+  final int color;
+  Category(this.id, this.name, this.icon, this.color);
+}
+
+class Service {
+  final String id, name, icon, cat;
+  Service(this.id, this.name, this.icon, this.cat);
+}
+
+class Meta {
+  static List<StateG> states = [];
+  static List<Category> cats = [];
+  static List<Service> services = [];
+  static Map<String, String> keywords = {};
+  static Map<String, dynamic> cfg = {};
+
+  static Future<void> load() async {
+    final g = jsonDecode(await rootBundle.loadString('assets/geo.json')) as List;
+    states = g
+        .map((s) => StateG(s['id'], s['name'],
+            (s['cities'] as List).map((c) => City(c['id'], c['name'], (c['lat'] as num).toDouble(), (c['lng'] as num).toDouble())).toList()))
+        .toList();
+    final m = jsonDecode(await rootBundle.loadString('assets/meta.json'));
+    cats = (m['categories'] as List)
+        .map((c) => Category(c['id'], c['name'], c['icon'], int.parse('FF${(c['color'] as String).substring(1)}', radix: 16)))
+        .toList();
+    keywords = Map<String, String>.from(m['keywords'] as Map);
+    _setServices(m['services'] as List, fromAsset: true);
+    // الخدمات المحدّثة من الخادم (كاش ثم تحديث في الخلفية)
+    final c = Store.cacheGet('services');
+    if (c != null) _setServices(c as List);
+  }
+
+  static void _setServices(List l, {bool fromAsset = false}) {
+    final out = <Service>[];
+    for (final s in l) {
+      if (!fromAsset && s['active'] == false) continue;
+      var cat = (s['cat'] is String && (s['cat'] as String).isNotEmpty) ? s['cat'] as String : 'other';
+      if (fromAsset && s['cat'] is Map) cat = (s['cat'] as Map)['id'] as String;
+      out.add(Service(s['id'], s['name'], s['icon'] ?? '', cat));
+    }
+    if (out.isNotEmpty) services = out;
+  }
+
+  static Future<void> refresh() async {
+    try {
+      final r = await Api.rpc('list_services') as List;
+      await Store.cachePut('services', r);
+      _setServices(r);
+    } catch (_) {}
+    try {
+      final c = await Api.rpc('app_config');
+      if (c is Map) cfg = Map<String, dynamic>.from(c);
+      await Store.cachePut('cfg', cfg);
+    } catch (_) {
+      final c = Store.cacheGet('cfg');
+      if (c is Map) cfg = Map<String, dynamic>.from(c);
+    }
+  }
+
+  static Service? service(String id) {
+    for (final s in services) if (s.id == id) return s;
+    return null;
+  }
+
+  static String serviceName(String id) => service(id)?.name ?? id;
+
+  static Category cat(String id) => cats.firstWhere((c) => c.id == id, orElse: () => cats.last);
+
+  static City? city(String id) {
+    for (final s in states) for (final c in s.cities) if (c.id == id) return c;
+    return null;
+  }
+
+  static String cityName(String id) => city(id)?.name ?? '';
+  static StateG? stateOf(String cityId) {
+    for (final s in states) for (final c in s.cities) if (c.id == cityId) return s;
+    return null;
+  }
+
+  static String norm(String s) => s
+      .replaceAll(RegExp('[ً-ٟـ]'), '')
+      .replaceAll(RegExp('[أإآ]'), 'ا')
+      .replaceAll('ى', 'ي')
+      .replaceAll('ة', 'ه')
+      .toLowerCase()
+      .trim();
+
+  static List<Service> search(String q) {
+    final n = norm(q);
+    if (n.isEmpty) return services;
+    return services.where((s) => norm(s.name).contains(n) || norm(keywords[s.id] ?? '').contains(n)).toList();
+  }
+
+  static String tierOf(int jobs) => jobs >= 25 ? 'gold' : (jobs >= 10 ? 'blue' : (jobs >= 3 ? 'gray' : ''));
+  static String tierName(String t) => t == 'gold' ? 'ذهبي' : (t == 'blue' ? 'متميز' : (t == 'gray' ? 'منجز' : ''));
+}
+
+String normalizePhone(String raw) {
+  var d = raw.replaceAllMapped(RegExp('[٠-٩]'), (m) => (m[0]!.codeUnitAt(0) - 1632).toString()).replaceAll(RegExp(r'\D'), '');
+  if (d.startsWith('00')) d = d.substring(2);
+  if (d.startsWith('249')) d = d.substring(3);
+  if (d.startsWith('0')) d = d.substring(1);
+  return RegExp(r'^[19]\d{8}$').hasMatch(d) ? '+249$d' : '';
+}
+
+String localPhone(String p) {
+  final n = normalizePhone(p);
+  return n.isEmpty ? p : '0${n.substring(4)}';
+}

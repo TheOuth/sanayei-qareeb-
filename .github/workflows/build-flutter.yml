@@ -1,0 +1,76 @@
+name: build-flutter
+on:
+  workflow_dispatch:
+  push:
+    paths: ['app/**', '.github/workflows/build-flutter.yml']
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable, cache: true }
+      - name: Generate Android scaffolding
+        run: |
+          flutter --version
+          flutter create --platforms=android --org sd.sanayei --project-name qareeb /tmp/gen
+          rm -rf app/android && cp -r /tmp/gen/android app/android
+      - name: Patch manifest, signing
+        working-directory: app
+        run: |
+          python3 - <<'PY'
+          import re,glob
+          p='android/app/src/main/AndroidManifest.xml'
+          s=open(p,encoding='utf8').read()
+          s=re.sub(r'android:label="[^"]*"','android:label="صنايعي قريب"',s,count=1)
+          perms='''<uses-permission android:name="android.permission.INTERNET"/>
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+              <queries>
+                  <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent>
+                  <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="tel"/></intent>
+                  <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="mailto"/></intent>
+                  <intent><action android:name="android.intent.action.PICK"/><data android:mimeType="image/*"/></intent>
+              </queries>
+              '''
+          s=s.replace('<application',perms+'<application',1)
+          open(p,'w',encoding='utf8').write(s)
+          print(s)
+          PY
+          cp ../android/test.keystore android/app/test.keystore
+          cat >> android/app/build.gradle.kts <<'KTS'
+
+          android {
+              signingConfigs {
+                  create("sq") {
+                      storeFile = file("test.keystore")
+                      storePassword = "sanayei-test"
+                      keyAlias = "sanayei"
+                      keyPassword = "sanayei-test"
+                  }
+              }
+              buildTypes {
+                  getByName("release") { signingConfig = signingConfigs.getByName("sq") }
+              }
+          }
+          KTS
+      - name: Deps, icons, analyze
+        working-directory: app
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+      - name: Build APK
+        working-directory: app
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with: { name: sanayei-native-apk, path: app/build/app/outputs/flutter-apk/app-release.apk }
+      - name: Publish release
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: |
+          cp app/build/app/outputs/flutter-apk/app-release.apk sanayei-qareeb-native.apk
+          gh release create "native-${{ github.run_number }}" sanayei-qareeb-native.apk --title "التطبيق الأصلي #${{ github.run_number }}" --notes "تطبيق أندرويد أصلي (Flutter) للتجربة."
