@@ -123,3 +123,8 @@
 - `supabase-v6.sql`: أعمدة تأكيد الصنايعي والمبلغ، `provider_requests`، `provider_confirm_request`، `admin_confirm_report`.
 - الصنايعي: قسم «طلبات العملاء» في الرئيسية (تمت الخدمة + مبلغ اختياري / لم تتم).
 - المدير: تبويب «المؤكدة» (طلبات مؤكدة من الطرفين، غير المتطابقة، المبالغ).
+
+## v9 — توثيق + شارات + عمولة
+- `supabase-v7.sql`: `verify_doc/verified_at`، `job_count`، `jobs` في `provider_public`، `admin_set_verified(+doc)`، عمولة في `app_config/admin_save_settings`.
+- شارات: ≥3 رمادي «منجز»، ≥10 أزرق «متميز»، ≥25 ذهبي (العتبات في `SQ.TIERS` بـ data.js).
+- العمولة (مبلغ ثابت + نسبة) تُضبط من الإعدادات وتُحسب في تبويب «المؤكدة».

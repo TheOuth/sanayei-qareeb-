@@ -149,7 +149,7 @@
       '<div class="psvc">' + esc(U.svcNames(p.services)) + '</div>' +
       '<div class="meta"><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + p.experience + ' سنة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
       '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span>🔖 رقم الطلب <b class="ltr">' + refOf(p) + '</b></span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
-      (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') + (p.admin_note ? '<p class="note">📝 ' + esc(p.admin_note) + '</p>' : '') +
+      (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') + (p.admin_note ? '<p class="note">📝 ' + esc(p.admin_note) + '</p>' : '') + (p.verified && p.verify_doc ? '<p class="note">✔ التحقق: ' + esc(p.verify_doc) + '</p>' : '') +
       '<div class="btnrow">' + act.join('') + '<a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">' + (p.status === 'pending' ? '💬 رسالة التأكيد' : 'واتساب') + '</a><button class="btn ghost" data-act="verify" data-id="' + p.id + '">' + (p.verified ? 'إلغاء التوثيق' : '✔ توثيق') + '</button><a class="btn ghost" href="tel:' + esc(p.phone) + '">📞</a>' +
       '<button class="btn ghost" data-act="edit" data-id="' + p.id + '">✏️ تعديل</button><button class="btn ghost" data-act="pw" data-id="' + p.id + '">🔑 كلمة سر</button><button class="btn danger" data-act="del" data-id="' + p.id + '">🗑</button></div></div>';
   }
@@ -158,7 +158,19 @@
     if (!p) return;
     if (a === 'edit') return openProvForm(p);
     if (a === 'pw') return openResetPw(p);
-    if (a === 'verify') { try { await db.adminSetVerified(code, p.id, !p.verified); toast(p.verified ? 'أُلغي التوثيق' : 'تم توثيق الصنايعي ✔'); refreshAll(); } catch (e) { fail(e); } return; }
+    if (a === 'verify') {
+      if (p.verified) { try { await db.adminSetVerified(code, p.id, false); toast('أُلغي التوثيق'); refreshAll(); } catch (e) { fail(e); } return; }
+      modal('<h3>توثيق ' + esc(p.name) + '</h3><p class="note">سجّل ما تحققت منه فقط. لا تحفظ صور الهوية، واحذفها من واتساب بعد التحقق.</p>' +
+        '<label class="field"><span>نوع الوثيقة التي رأيتها</span><select id="vd"><option>بطاقة قومية</option><option>رخصة قيادة</option><option>جواز سفر</option><option>شهادة مهنية</option><option>تزكية من صنايعي موثّق</option><option>معرفة شخصية</option></select></label>' +
+        '<label class="field"><span>ملاحظة (اختياري)</span><input id="vn" maxlength="120" placeholder="مثال: صورة مع الهوية تطابقت"></label>' +
+        '<div class="row2 mt"><button class="btn ghost" id="vx">إلغاء</button><button class="btn primary" id="vk">توثيق</button></div>');
+      on('vx', 'click', closeModal);
+      on('vk', 'click', async function () {
+        var doc = document.getElementById('vd').value + ' · ' + new Date().toISOString().slice(0, 10) + (document.getElementById('vn').value.trim() ? ' · ' + document.getElementById('vn').value.trim() : '');
+        try { await db.adminSetVerified(code, p.id, true, doc); closeModal(); toast('تم توثيق الصنايعي ✔'); refreshAll(); } catch (e) { closeModal(); fail(e); }
+      });
+      return;
+    }
     if (a === 'del') {
       modal('<h3>حذف الصنايعي</h3><p>سيُحذف <b>' + esc(p.name) + '</b> وكل طلباته وتقييماته نهائيا. هذا لا يمكن التراجع عنه. يمكنك بدل ذلك <b>إيقافه</b>.</p><div class="row2 mt"><button class="btn ghost" id="dn">إلغاء</button><button class="btn danger" id="dy">نعم، احذف</button></div>');
       on('dn', 'click', closeModal);
@@ -277,12 +289,14 @@
     var list;
     try { list = await db.adminConfirmReport(code, cdays); } catch (e) { return fail(e); }
     var el = document.getElementById('clist'); if (!el) return;
-    var tot = list.reduce(function (a, x) { a.t += x.total; a.b += x.both; a.m += x.mismatch; a.s += x.amount; return a; }, { t: 0, b: 0, m: 0, s: 0 });
-    el.innerHTML = '<div class="stats"><div class="stat"><b>' + tot.t + '</b><small>كل الطلبات</small></div><div class="stat"><b>' + tot.b + '</b><small>مؤكدة من الطرفين</small></div><div class="stat"><b>' + tot.m + '</b><small>غير متطابقة</small></div></div>' +
+    var cfg2 = {}; try { cfg2 = await db.adminGetSettings(code); } catch (e) {}
+    function due(x) { return Math.round(x.both * (+cfg2.commission_fixed || 0) + x.amount * (+cfg2.commission_pct || 0) / 100); }
+    var tot = list.reduce(function (a, x) { a.t += x.total; a.b += x.both; a.m += x.mismatch; a.s += x.amount; a.d += due(x); return a; }, { t: 0, b: 0, m: 0, s: 0, d: 0 });
+    el.innerHTML = '<div class="stats"><div class="stat"><b>' + tot.t + '</b><small>كل الطلبات</small></div><div class="stat"><b>' + tot.b + '</b><small>مؤكدة من الطرفين</small></div><div class="stat"><b>' + tot.m + '</b><small>غير متطابقة</small></div></div>' + ((+cfg2.commission_fixed > 0 || +cfg2.commission_pct > 0) ? '<div class="card"><div class="kv"><span>العمولة المستحقة (تقديرية)</span><b>' + tot.d.toLocaleString('en') + ' جنيه</b></div></div>' : '') +
       '<p class="note">المؤكد من الطرفين = قال الزبون "تمت الخدمة" وأكد الصنايعي التنفيذ. المبلغ يصرّح به الصنايعي، فاعتبره تقديريا. "غير متطابق" يحتاج مراجعتك.</p>' +
       '<div class="agrid">' + (list.length ? list.map(function (x) {
         return '<div class="card"><div class="pname">' + esc(x.name) + (x.verified ? ' ✓' : '') + '</div><div class="meta"><span>طلبات: ' + x.total + '</span><span>الزبائن: ' + x.client_done + '</span><span>الصنايعي: ' + x.provider_done + '</span></div>' +
-          '<div class="meta"><span>' + pill('مؤكدة: ' + x.both, x.both ? '' : 'warn') + '</span>' + (x.mismatch ? '<span>' + pill('غير متطابقة: ' + x.mismatch, 'bad') + '</span>' : '') + '<span class="muted">' + Number(x.amount).toLocaleString('en') + ' جنيه</span></div></div>';
+          '<div class="meta"><span>' + pill('مؤكدة: ' + x.both, x.both ? '' : 'warn') + '</span>' + (x.mismatch ? '<span>' + pill('غير متطابقة: ' + x.mismatch, 'bad') + '</span>' : '') + '<span class="muted">' + Number(x.amount).toLocaleString('en') + ' جنيه</span>' + (due(x) ? '<span>' + pill('عمولة: ' + due(x).toLocaleString('en'), 'warn') + '</span>' : '') + '</div></div>';
       }).join('') : '<div class="empty"><div class="big">🤝</div>لا توجد بيانات في هذه الفترة</div>') + '</div>';
   }
 
@@ -360,12 +374,14 @@
     shell('<div class="agrid"><div class="card"><b>بيانات الدعم</b><p class="note">تظهر للصنايعية والزبائن في زر "تواصل مع الدعم".</p>' +
       '<label class="field"><span>واتساب الدعم (بصيغة دولية بدون +)</span><input id="c_wa" class="ltr" inputmode="tel" placeholder="249912345678" value="' + esc(cfg.support_whatsapp || '') + '"></label>' +
       '<label class="field"><span>بريد الدعم</span><input id="c_em" class="ltr" type="email" value="' + esc(cfg.support_email || '') + '"></label><button class="btn primary" id="c_save" style="width:100%">حفظ</button></div>' +
+      '<div class="card"><b>عمولة الطلب</b><p class="note">تُحسب على الخدمات المؤكدة من الطرفين فقط، وتظهر للصنايعية في ملفهم. اتركها 0 لتعطيلها. أبلغ الصنايعية بها قبل تفعيلها.</p>' +
+      '<div class="row2"><label class="field"><span>مبلغ ثابت لكل خدمة (جنيه)</span><input id="c_fx" class="ltr" inputmode="numeric" value="' + esc(String(cfg.commission_fixed || 0)) + '"></label><label class="field"><span>نسبة من المبلغ (%)</span><input id="c_pc" class="ltr" inputmode="decimal" value="' + esc(String(cfg.commission_pct || 0)) + '"></label></div></div>' +
       '<div class="card"><b>تغيير رمز المدير</b>' + U.pwHtml('k_new', 'الرمز الجديد', '8 أحرف على الأقل، لا تشاركه') + U.pwHtml('k_new2', 'أعد كتابته') + '<button class="btn primary" id="k_save" style="width:100%">تغيير الرمز</button></div>' +
       '<div class="card"><b>نسخة احتياطية</b><p class="note">نزّل بيانات كل الصنايعية في ملف يفتح في Excel. أنصح بفعل ذلك أسبوعيا.</p><button class="btn ghost" id="c_csv" style="width:100%">⬇ تنزيل كل الصنايعية (CSV)</button></div>' +
       '<div class="card"><b>روابط</b><div class="kv"><span>التطبيق</span><a href="' + esc(appUrl()) + '" target="_blank" rel="noopener">فتح</a></div><div class="kv"><span>سياسة الخصوصية</span><a href="' + esc(appUrl()) + 'privacy-policy.html" target="_blank" rel="noopener">فتح</a></div></div></div>');
     on('c_csv', 'click', function () { exportCsv({}); });
     on('c_save', 'click', async function () {
-      try { await db.adminSaveSettings(code, { support_whatsapp: document.getElementById('c_wa').value.replace(/\D/g, ''), support_email: document.getElementById('c_em').value.trim() }); toast('تم الحفظ'); } catch (e) { fail(e); }
+      try { await db.adminSaveSettings(code, { support_whatsapp: document.getElementById('c_wa').value.replace(/\D/g, ''), support_email: document.getElementById('c_em').value.trim(), commission_pct: document.getElementById('c_pc').value, commission_fixed: document.getElementById('c_fx').value }); toast('تم الحفظ'); } catch (e) { fail(e); }
     });
     on('k_save', 'click', async function () {
       var a = document.getElementById('k_new').value, b = document.getElementById('k_new2').value;

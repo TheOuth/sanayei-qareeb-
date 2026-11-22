@@ -134,8 +134,12 @@
         experience: p.experience, price: p.price, bio: p.bio, from: p.from, to: p.to, available: isAvail(p),
         distance_km: d == null ? null : Math.round(d * 10) / 10,
         rating: p.stats.n >= C.minReviewsForStars ? p.stats.avg : null, rating_n: p.stats.n,
-        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || '', verified: !!p.verified
+        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || '', verified: !!p.verified, jobs: this.jobs(p.id)
       };
+    },
+    jobs: function (id) {
+      var s = {}; this.d.requests.forEach(function (q) { if (q.provider_id === id && q.status === 'done' && q.pconfirm !== 'not_done') s[q.anon_id] = 1; });
+      return Object.keys(s).length;
     },
     find: function (id) { return this.d.providers.filter(function (p) { return p.id === id; })[0]; },
     auth: function (id, token) {
@@ -325,7 +329,7 @@
       return this.d.services.slice().sort(function (a, b) { return a.sort - b.sort; })
         .map(function (s) { return { id: s.id, name: s.name, icon: s.icon, active: s.active, cat: s.cat || SQ.catOf(s).id }; });
     },
-    appConfig: async function () { return { support_whatsapp: this.d.settings.support_whatsapp || '', support_email: this.d.settings.support_email || '' }; },
+    appConfig: async function () { return { support_whatsapp: this.d.settings.support_whatsapp || '', support_email: this.d.settings.support_email || '', commission_pct: +this.d.settings.commission_pct || 0, commission_fixed: +this.d.settings.commission_fixed || 0 }; },
 
     /* ===== حسابات الصنايعية ===== */
     providerLogin: async function (phone, pw) {
@@ -389,7 +393,7 @@
         available: p.status === 'approved' && isAvail(p), flag: !!p.available, has_password: !!p.password, admin_note: p.admin_note || '',
         last_seen: p.last_seen, created: p.created, requests_total: rq.length, requests_week: rq.filter(function (q) { return q.ts > week; }).length,
         rating_n: p.stats.n, rating: p.stats.n > 0 ? p.stats.avg : null, ok: p.stats.ok, fail: p.stats.fail,
-        photo: p.photo || '', pct: pct(p), verified: !!p.verified
+        photo: p.photo || '', pct: pct(p), verified: !!p.verified, verify_doc: p.verify_doc || '', verified_at: p.verified_at || null
       };
     },
     adminOverview: async function (code) {
@@ -456,7 +460,7 @@
       };
       this.d.providers.push(p); save(this.d); return { id: p.id };
     },
-    adminSetVerified: async function (code, id, v) { this.admin(code); var p = this.find(id); if (p) p.verified = !!v; save(this.d); return true; },
+    adminSetVerified: async function (code, id, v, doc) { this.admin(code); var p = this.find(id); if (p) { p.verified = !!v; p.verify_doc = v ? (doc != null ? String(doc).slice(0, 200) : (p.verify_doc || '')) : ''; p.verified_at = v ? (p.verified_at || Date.now()) : null; } save(this.d); return true; },
     adminResetPassword: async function (code, id, pw) {
       this.admin(code); var p = this.find(id); if (!p) throw new Error('not_found');
       if (String(pw || '').length < 6) throw new Error('weak');
@@ -528,7 +532,7 @@
     },
     adminGetSettings: async function (code) { this.admin(code); return this.appConfig(); },
     adminSaveSettings: async function (code, o) {
-      this.admin(code); this.d.settings.support_whatsapp = o.support_whatsapp || ''; this.d.settings.support_email = o.support_email || ''; save(this.d); return true;
+      this.admin(code); this.d.settings.support_whatsapp = o.support_whatsapp || ''; this.d.settings.support_email = o.support_email || ''; this.d.settings.commission_pct = Math.max(0, Math.min(30, +o.commission_pct || 0)); this.d.settings.commission_fixed = Math.max(0, Math.min(100000, +o.commission_fixed || 0)); save(this.d); return true;
     },
     adminChangeCode: async function (code, nw) {
       this.admin(code); if (String(nw || '').length < 8) throw new Error('weak'); this.d.adminCode = nw; save(this.d); return true;
@@ -595,7 +599,7 @@
     adminRequests: function (code, limit, status) { return SB.rpc('admin_requests', { p_code: code, p_limit: limit || 100, p_status: status || '' }); },
     adminServices: function (code) { return SB.rpc('admin_services', { p_code: code }); },
     adminSaveService: function (code, id, name, icon, active, cat) { return SB.rpc('admin_save_service', { p_code: code, p_id: id || '', p_name: name, p_icon: icon || '', p_active: active == null ? true : !!active, p_cat: cat == null ? null : cat }); },
-    adminSetVerified: function (code, id, v) { return SB.rpc('admin_set_verified', { p_code: code, p_id: id, p_value: !!v }); },
+    adminSetVerified: function (code, id, v, doc) { return SB.rpc('admin_set_verified', { p_code: code, p_id: id, p_value: !!v, p_doc: doc == null ? null : String(doc) }); },
     adminReorderServices: function (code, ids) { return SB.rpc('admin_reorder_services', { p_code: code, p_ids: ids }); },
     adminDeleteService: function (code, id) { return SB.rpc('admin_delete_service', { p_code: code, p_id: id }); },
     adminGetSettings: function (code) { return SB.rpc('admin_get_settings', { p_code: code }); },

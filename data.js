@@ -42,6 +42,11 @@
   ];
 
   // تصنيفات الخدمات (المدير يحدد تصنيف كل خدمة من لوحته)
+  /* شارات الإنجاز حسب عدد الأعمال المؤكدة (عملاء مختلفون قالوا "تمت الخدمة") */
+  SQ.TIERS = [{ id: 'gold', min: 25, name: 'ذهبي' }, { id: 'blue', min: 10, name: 'متميز' }, { id: 'gray', min: 3, name: 'منجز' }];
+  SQ.tierOf = function (jobs) { jobs = +jobs || 0; for (var i = 0; i < SQ.TIERS.length; i++) if (jobs >= SQ.TIERS[i].min) return SQ.TIERS[i]; return null; };
+  SQ.nextTier = function (jobs) { jobs = +jobs || 0; var n = null; for (var i = SQ.TIERS.length - 1; i >= 0; i--) if (jobs < SQ.TIERS[i].min) { n = SQ.TIERS[i]; break; } return n; };
+
   SQ.CATEGORIES = [
     { id: 'home', name: 'البيت والصيانة', icon: '🏠', color: '#2B8CF0' },
     { id: 'energy', name: 'الطاقة والمياه', icon: '⚡', color: '#F08C2B' },

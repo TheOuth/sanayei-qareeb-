@@ -125,7 +125,7 @@
     db.myRequests(anon).then(function (l) {
       var due = l.filter(function (r) { return r.status === 'new' && Date.now() - r.ts > C.reviewDelayHours * 3600e3; })[0], box = document.getElementById('dueBox');
       if (!due || !box) return;
-      box.innerHTML = '<div class="banner">تمت الشغلانة مع ' + esc(due.provider_name) + '؟<br><button class="btn primary" id="dueBtn">قيّم الآن</button></div>';
+      box.innerHTML = '<div class="banner">تمت الشغلانة مع ' + esc(due.provider_name) + '؟ تأكيدك يرفع ترتيب الصنايعي ويمنحه شارة إنجاز.<br><button class="btn primary" id="dueBtn">قيّم الآن</button></div>';
       on('dueBtn', 'click', function () { go('#/c/rate/' + due.id); });
     }).catch(function () {});
     renderProvPanel();
@@ -133,6 +133,10 @@
   }
 
   /* شبكة الصنايعية أسفل الرئيسية: تُحمَّل عند الاقتراب منها لتوفير الاستهلاك */
+  function tierTag(p, long) {
+    var t = SQ.tierOf(p.jobs); if (!t) return '';
+    return '<span class="tier t-' + t.id + '" title="' + p.jobs + ' عمل مؤكد">' + SQ.I('check', 12) + (long ? ' صنايعي ' + t.name + ' · ' + p.jobs + ' عمل مؤكد' : ' ' + t.name) + '</span>';
+  }
   function gridCard(p) {
     var ids = p.services || [], first = ids[0] || '';
     var chips = ids.slice(0, 2).map(function (i) { return '<span class="mchip">' + esc(svc(i).name) + '</span>'; }).join('') + (ids.length > 2 ? '<span class="mchip more">+' + (ids.length - 2) + '</span>' : '');
@@ -140,7 +144,7 @@
     return '<button class="gcard" data-id="' + p.id + '" data-s="' + esc(first) + '" data-cats="' + cats + '" data-n="' + esc(normAr(p.name + ' ' + ids.map(function (i) { return svc(i).name; }).join(' '))) + '">' +
       '<span class="gph">' + U.avatar(p, p.verified ? 'sq ver' : 'sq') + (p.available ? '<i class="dot on" title="متاح الآن"></i>' : '<i class="dot"></i>') + '</span>' +
       '<b class="gname">' + esc(p.name) + (p.verified ? ' <span class="vmark" title="موثّق">' + SQ.I('shield', 15) + '</span>' : '') + '</b>' +
-      '<span class="gstar">' + (p.rating != null ? '<span class="star">' + SQ.I('star', 13, 'sf') + ' ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
+      (tierTag(p) ? '<span class="gtier">' + tierTag(p) + '</span>' : '') + '<span class="gstar">' + (p.rating != null ? '<span class="star">' + SQ.I('star', 13, 'sf') + ' ' + p.rating + '</span> <small>(' + p.rating_n + ')</small>' : '<small class="muted">جديد</small>') + (p.distance_km != null ? ' <small class="muted">· ' + (p.distance_km < 1 ? '<1' : p.distance_km) + ' كم</small>' : '') + '</span>' +
       '<span class="gchips">' + chips + '</span></button>';
   }
   var gridState = { offset: 0, loading: false, done: false, io: null };
@@ -262,7 +266,7 @@
     var em = p.distance_km != null ? SQ.geo.eta(p.distance_km) : null;
     var eta = em != null ? 'يصل في حوالي ' + em + (em <= 10 ? ' دقائق' : ' دقيقة') : '';
     return '<div class="card click pcard-wrap" data-id="' + p.id + '"><div class="pcard">' + U.avatar(p) + '' +
-      '<div class="pinfo"><div class="pname">' + esc(p.name) + (p.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' +
+      '<div class="pinfo"><div class="pname">' + esc(p.name) + (p.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + (p.demo ? ' <span class="demo">تجريبي</span>' : '') + '</div>' + tierTag(p) +
       '<div class="psvc">' + esc(svcNames(p.services)) + '</div>' +
       '<div class="meta">' +
       (dist ? '<span class="mi">' + SQ.I('pin', 15) + ' ' + dist + '</span>' : '') + (eta ? '<span class="mi">' + SQ.I('clock', 15) + ' ' + eta + '</span>' : '') +
@@ -282,7 +286,7 @@
       title: p.name, back: '#/c/list/' + sid,
       body: demoNote() +
         '<div class="phead">' + U.avatar(p) + '<div class="h2" style="margin:0">' + esc(p.name) + (p.verified ? ' <span class="vtag">' + SQ.I('shield', 13) + ' موثّق</span>' : '') + '</div><div class="muted">' + esc(svcNames(p.services)) + '</div></div>' +
-        '<div class="stats"><div class="stat"><b>' + (p.rating != null ? '★ ' + p.rating : 'جديد') + '</b><small>' + p.rating_n + ' تقييم</small></div>' +
+        '<div style="margin:-4px 0 10px">' + tierTag(p, true) + '</div><div class="stats"><div class="stat"><b>' + (p.rating != null ? '★ ' + p.rating : 'جديد') + '</b><small>' + p.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + p.ok + ' - ' + p.fail + '</b><small>ناجحة - فاشلة</small></div>' +
         '<div class="stat"><b>' + p.experience + '</b><small>سنة خبرة</small></div></div>' +
         '<div class="card">' +
@@ -611,6 +615,7 @@
         '<div class="stat"><b>' + (me.rating != null ? '★ ' + me.rating : 'جديد') + '</b><small>' + me.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + me.ok + ' - ' + me.fail + '</b><small>ناجحة - فاشلة</small></div></div>' +
         '<div class="card"><div class="kv"><span>الخدمات</span><span>' + esc(svcNames(me.services)) + '</span></div><div class="kv"><span>المنطقة</span><span>' + esc((me.hood ? me.hood + '، ' : '') + SQ.cityName(me.city_id)) + '</span></div><div class="kv"><span>أوقات العمل</span><span>' + esc(me.from + ' - ' + me.to) + ' <button class="linkbtn" id="hrs2">تعديل</button></span></div></div>' +
+        tierProgress(me) +
         '<div class="h2 mt">طلبات العملاء</div><div id="preqs"><div class="spin">جاري التحميل...</div></div>' +
         '<p class="note">يتحول وضعك تلقائيا إلى "مشغول" لو ما فتحت التطبيق ' + C.availableTimeoutHours + ' ساعات، أو خارج أوقات عملك.</p>',
       foot: '<button class="btn wa" id="share">📤 شارك رابط ملفي</button>'
@@ -635,6 +640,14 @@
       if (navigator.share) navigator.share({ text: txt }).catch(function () {});
       else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
     });
+  }
+
+  function tierProgress(me) {
+    var j = me.jobs || 0, t = SQ.tierOf(j), n = SQ.nextTier(j), cfg = SQ.cfg || {};
+    var com = (+cfg.commission_pct > 0 || +cfg.commission_fixed > 0)
+      ? '<p class="note" style="margin:8px 0 0">عمولة التطبيق على كل خدمة مؤكدة: ' + [(+cfg.commission_fixed > 0 ? Number(cfg.commission_fixed).toLocaleString('en') + ' ' + SQ.COUNTRY.currency : ''), (+cfg.commission_pct > 0 ? cfg.commission_pct + '% من المبلغ' : '')].filter(Boolean).join(' + ') + '.</p>' : '';
+    return '<div class="card tierbox"><div class="kv"><span>شارة الإنجاز</span><span>' + (t ? tierTag(me, true) : '<span class="muted">لم تبدأ بعد</span>') + '</span></div>' +
+      (n ? '<div class="pbar"><i style="width:' + Math.min(100, Math.round(j / n.min * 100)) + '%"></i></div><p class="note" style="margin:6px 0 0">' + j + ' من ' + n.min + ' أعمال مؤكدة للوصول إلى شارة «' + n.name + '». كل عمل يؤكده عميل مختلف يُحسب.</p>' : '<p class="note" style="margin:6px 0 0">وصلت لأعلى شارة. شكرا لك.</p>') + com + '</div>';
   }
 
   /* طلبات العملاء: تأكيد الصنايعي لإتمام الخدمة */
