@@ -29,6 +29,11 @@ String errMsg(Object e) {
     'birth_required': 'تاريخ الميلاد مطلوب',
     'invalid_birth': 'تاريخ الميلاد غير صحيح',
     'underage': 'التطبيق لمن هم 18 سنة فأكثر',
+    'wait': 'انتظر دقيقة ثم أعد إرسال الرمز',
+    'limit': 'وصلت للحد اليومي لإرسال الرموز، حاول غدًا',
+    'not_configured': 'خدمة البريد غير مفعّلة بعد',
+    'send_failed': 'تعذّر إرسال البريد، تأكد من العنوان وحاول لاحقًا',
+    'no_email': 'احفظ بريدك أولًا',
     'invalid_email': 'البريد الإلكتروني غير صحيح',
     'invalid_username': 'اسم المستخدم: حروف إنجليزية وأرقام (3 إلى 20) ويبدأ بحرف',
     'taken': 'اسم المستخدم محجوز',
@@ -63,6 +68,20 @@ class Api {
     }
     return data;
   }
+}
+
+
+Future<dynamic> callFunction(String name, Map<String, dynamic> body) async {
+  final r = await http
+      .post(Uri.parse('${Config.apiUrl}/functions/v1/$name'),
+          headers: {'Content-Type': 'application/json', 'apikey': Config.apiKey}, body: jsonEncode(body))
+      .timeout(const Duration(seconds: 30));
+  dynamic data;
+  try {
+    data = jsonDecode(utf8.decode(r.bodyBytes));
+  } catch (_) {}
+  if (r.statusCode >= 300) throw ApiError((data is Map ? data['error'] : null)?.toString() ?? 'failed');
+  return data;
 }
 
 /// تخزين محلي بسيط (هوية الجهاز، جلسة الصنايعي، آخر موقع، كاش خفيف)

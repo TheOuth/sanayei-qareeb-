@@ -33,7 +33,7 @@ class _ProfileFormState extends State<ProfileForm> {
   String _radius = '10';
   String _from = '08:00', _to = '20:00';
   String _photo = '';
-  bool _busy = false, _ok18 = false;
+  bool _busy = false, _ok18 = false, _sending = false;
   double? _lat, _lng;
 
   static const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -90,6 +90,68 @@ class _ProfileFormState extends State<ProfileForm> {
     } catch (_) {
       if (mounted) toast(context, 'تعذّر اختيار الصورة');
     }
+  }
+
+  bool get _emailSaved => widget.initial != null && (widget.initial!['email'] ?? '').toString().isNotEmpty && _email.text.trim().toLowerCase() == widget.initial!['email'].toString();
+  bool _verified = false;
+
+  Future<void> _sendCode() async {
+    setState(() => _sending = true);
+    try {
+      await callFunction('send-email-code', {'id': Store.pid, 'token': Store.token});
+      if (!mounted) return;
+      toast(context, 'أرسلنا رمزًا من 4 أرقام إلى بريدك (تفقد الرسائل غير المرغوبة أيضًا)');
+      await _enterCode();
+    } catch (e) {
+      if (mounted) toast(context, errMsg(e));
+    }
+    if (mounted) setState(() => _sending = false);
+  }
+
+  Future<void> _enterCode() async {
+    final c = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('أدخل رمز التأكيد'),
+        content: TextField(controller: c, keyboardType: TextInputType.number, maxLength: 4, textAlign: TextAlign.center, style: const TextStyle(fontSize: 28, letterSpacing: 10), decoration: const InputDecoration(counterText: '')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                final r = await Api.rpc('verify_email_code', {'p_id': Store.pid, 'p_token': Store.token, 'p_code': c.text.trim()});
+                if (r['ok'] == true) {
+                  if (mounted) { setState(() => _verified = true); toast(context, 'تم توثيق بريدك ✓'); }
+                } else {
+                  final e = r['error'];
+                  final m = e == 'wrong' ? 'الرمز غير صحيح (متبقي ${r['left']} محاولات)' : e == 'expired' ? 'انتهت صلاحية الرمز، اطلب رمزًا جديدًا' : e == 'too_many' ? 'محاولات كثيرة، اطلب رمزًا جديدًا' : 'اطلب رمزًا جديدًا';
+                  if (mounted) toast(context, m);
+                }
+              } catch (e) {
+                if (mounted) toast(context, errMsg(e));
+              }
+            },
+            child: const Text('تأكيد'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emailStatus() {
+    final verified = _verified || (widget.initial?['email_verified'] == true && _emailSaved);
+    if (_email.text.trim().isEmpty) return const SizedBox.shrink();
+    if (verified) return const Padding(padding: EdgeInsets.only(top: 6), child: Row(children: [Icon(Icons.verified_rounded, color: C.green, size: 18), SizedBox(width: 6), Text('بريد موثّق', style: TextStyle(color: C.green, fontWeight: FontWeight.w600))]));
+    if (!_emailSaved) return const Padding(padding: EdgeInsets.only(top: 6), child: Text('احفظ التعديلات أولًا ثم أكّد بريدك برمز من 4 أرقام', style: TextStyle(color: C.mute, fontSize: 12)));
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: OutlinedButton.icon(onPressed: _sending ? null : _sendCode, icon: const Icon(Icons.mark_email_read_outlined, size: 18), label: Text(_sending ? 'جارٍ الإرسال…' : 'أرسل رمز التأكيد')),
+      ),
+    );
   }
 
   Future<void> _gpsPoint() async {
@@ -189,7 +251,8 @@ class _ProfileFormState extends State<ProfileForm> {
       TextField(controller: _wa, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, decoration: InputDecoration(labelText: 'رقم الواتساب', helperText: reg ? 'اتركه فارغًا لو هو نفس رقم الهاتف' : null)),
       if (!reg) ...[
         const SizedBox(height: 10),
-        TextField(controller: _email, keyboardType: TextInputType.emailAddress, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'البريد الإلكتروني (اختياري)', helperText: 'للرسائل المهمة مثل التهنئة والتوثيق')),
+        TextField(controller: _email, keyboardType: TextInputType.emailAddress, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'البريد الإلكتروني (اختياري)', helperText: 'للرسائل المهمة مثل التهنئة والتوثيق'), onChanged: (_) => setState(() {})),
+        _emailStatus(),
       ],
       if (reg) ...[
         const SizedBox(height: 10),
