@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../core.dart';
 import '../theme.dart';
@@ -90,36 +91,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       if (mounted) toast(context, errMsg(e));
     }
-  }
-
-  Future<void> _username() async {
-    final c = TextEditingController(text: (_me!['username'] ?? '').toString());
-    await showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('اسم المستخدم'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('يمكن تغييره مرة واحدة فقط. حروف إنجليزية وأرقام، يبدأ بحرف.', style: TextStyle(fontSize: 12)),
-          const SizedBox(height: 8),
-          TextField(controller: c, textDirection: TextDirection.ltr),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              try {
-                await Api.rpc('set_username', {'p_id': _id, 'p_token': _tk, 'p_username': c.text.trim()});
-                _load();
-              } catch (e) {
-                if (mounted) toast(context, errMsg(e));
-              }
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _logout() async {
@@ -230,17 +201,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.alternate_email_rounded),
-            title: Text(me['username'] ?? ''),
-            subtitle: const Text('اسم المستخدم لرابط المشاركة'),
-            trailing: Wrap(children: [
-              IconButton(icon: const Icon(Icons.share_rounded), onPressed: () => Share.share('${me['name']} على صنايعي قريب\n${Config.siteUrl}/#/u/${me['username']}')),
-              if (me['username_changed'] != true) IconButton(icon: const Icon(Icons.edit_rounded), onPressed: _username),
-            ]),
-          ),
-        ),
         const SizedBox(height: 16),
         Text('الطلبات (آخر 60 يومًا) — ${me['requests_week']} هذا الأسبوع', style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
@@ -274,16 +234,107 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class _EditScreen extends StatelessWidget {
+class _EditScreen extends StatefulWidget {
   final Map me;
   const _EditScreen({required this.me});
+  @override
+  State<_EditScreen> createState() => _EditScreenState();
+}
+
+class _EditScreenState extends State<_EditScreen> {
+  late String _user = (widget.me['username'] ?? '').toString();
+  late bool _changed = widget.me['username_changed'] == true;
+
+  String get _link => '${Config.siteUrl}/#/u/$_user';
+
+  Future<void> _rename() async {
+    final c = TextEditingController(text: _user);
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('تغيير اسم المستخدم'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('يمكن تغييره مرة واحدة فقط. حروف إنجليزية وأرقام، يبدأ بحرف.', style: TextStyle(fontSize: 12)),
+          const SizedBox(height: 8),
+          TextField(controller: c, textDirection: TextDirection.ltr),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final r = await Api.rpc('set_username', {'p_id': Store.pid, 'p_token': Store.token, 'p_username': c.text.trim()});
+                if (mounted) setState(() { _user = r.toString(); _changed = true; });
+              } catch (e) {
+                if (mounted) toast(context, errMsg(e));
+              }
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _box() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: const Color(0xFFE3F0FD), borderRadius: BorderRadius.circular(16), border: Border.all(color: C.blue.withOpacity(.3))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('رابط ملفك واسم المستخدم', style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('@$_user', textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: C.blue)),
+            const SizedBox(height: 4),
+            Text(_link, textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 12, color: C.mute)),
+          ]),
+        ),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: _link));
+                if (mounted) toast(context, 'تم نسخ الرابط');
+              },
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('نسخ'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: FilledButton.icon(
+              onPressed: () => Share.share('${widget.me['name']} على صنايعي قريب\n$_link'),
+              icon: const Icon(Icons.share_rounded, size: 18),
+              label: const Text('مشاركة'),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: _changed
+              ? const Text('تم استخدام تغيير الاسم. للتعديل تواصل مع الدعم.', style: TextStyle(fontSize: 12, color: C.mute))
+              : TextButton.icon(onPressed: _rename, icon: const Icon(Icons.edit_rounded, size: 16), label: const Text('تغيير اسم المستخدم (مرة واحدة)')),
+        ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('تعديل الملف')),
       body: ProfileForm(
         isRegister: false,
-        initial: me,
+        initial: widget.me,
+        header: _box(),
         onSubmit: (body) async {
           await Api.rpc('update_profile', {'p_id': Store.pid, 'p_token': Store.token, 'p': body});
           if (context.mounted) Navigator.pop(context);

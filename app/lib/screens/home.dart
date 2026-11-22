@@ -21,6 +21,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final _q = TextEditingController();
   String _query = '';
   List? _featured;
+  bool _more = false, _loadingMore = false;
+  int _tab = 0;
   Object? _err;
   Map<String, dynamic>? _loc = Store.loc;
   final _key = GlobalKey<ScaffoldState>();
@@ -34,16 +36,29 @@ class _HomeScreenState extends State<HomeScreen> {
     _load();
   }
 
-  Future<void> _load() async {
-    final cached = Store.cacheGet('featured', maxAgeMin: 30);
-    if (cached != null && _featured == null) setState(() => _featured = cached as List);
+  Future<void> _load({bool more = false}) async {
+    if (more) {
+      if (_loadingMore) return;
+      setState(() => _loadingMore = true);
+    } else {
+      final cached = Store.cacheGet('featured', maxAgeMin: 30);
+      if (cached != null && _featured == null) setState(() => _featured = cached as List);
+    }
     try {
-      final r = await Api.rpc('featured_providers', {'p_lat': _loc?['lat'], 'p_lng': _loc?['lng'], 'p_limit': 12, 'p_offset': 0});
+      final off = more ? (_featured?.length ?? 0) : 0;
+      final r = await Api.rpc('featured_providers', {'p_lat': _loc?['lat'], 'p_lng': _loc?['lng'], 'p_limit': 12, 'p_offset': off});
       final items = (r['items'] as List);
-      await Store.cachePut('featured', items);
-      if (mounted) setState(() { _featured = items; _err = null; });
+      if (!more) await Store.cachePut('featured', items);
+      if (mounted) {
+        setState(() {
+          _featured = more ? [...?_featured, ...items] : items;
+          _more = r['more'] == true;
+          _err = null;
+          _loadingMore = false;
+        });
+      }
     } catch (e) {
-      if (mounted && _featured == null) setState(() => _err = e);
+      if (mounted) setState(() { _loadingMore = false; if (_featured == null) _err = e; });
     }
   }
 
@@ -67,7 +82,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: () async { await _load(); await Meta.refresh(); setState(() {}); },
         child: CustomScrollView(slivers: [
           SliverToBoxAdapter(child: _hero()),
-          if (_query.isNotEmpty) ...[
+          SliverToBoxAdapter(child: _tabs()),
+          if (_tab == 1) ...[
+            SliverToBoxAdapter(child: _providersTab()),
+          ] else if (_query.isNotEmpty) ...[
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               sliver: found.isEmpty
@@ -78,13 +96,63 @@ class _HomeScreenState extends State<HomeScreen> {
                       itemBuilder: (_, i) => _serviceTile(found[i]),
                     ),
             ),
-          ] else ...[
+          ] else
             for (final c in Meta.cats) ..._catSection(c),
-            SliverToBoxAdapter(child: _featuredSection()),
-            const SliverToBoxAdapter(child: SizedBox(height: 30)),
-          ],
+          const SliverToBoxAdapter(child: SizedBox(height: 30)),
         ]),
       ),
+    );
+  }
+
+  Widget _tabs() {
+    Widget t(int i, String label, IconData ic) {
+      final on = _tab == i;
+      return Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() => _tab = i),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            decoration: BoxDecoration(color: on ? C.blue : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(ic, size: 18, color: on ? Colors.white : C.mute),
+              const SizedBox(width: 6),
+              Text(label, style: TextStyle(fontWeight: FontWeight.w700, color: on ? Colors.white : C.mute)),
+            ]),
+          ),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.hair)),
+        child: Row(children: [t(0, 'الخدمات', Icons.handyman_rounded), t(1, 'مقدمو الخدمات', Icons.groups_rounded)]),
+      ),
+    );
+  }
+
+  Widget _providersTab() {
+    final n = Meta.norm(_query);
+    var list = _featured;
+    if (list != null && n.isNotEmpty) {
+      list = list.where((p) => Meta.norm((p['name'] ?? '').toString()).contains(n) || (p['services'] as List).any((s) => Meta.norm(Meta.serviceName(s.toString())).contains(n))).toList();
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (list == null && _err != null) ErrorRetry(_err!, _load)
+        else if (list == null) const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+        else if (list.isEmpty) const Empty('لا يوجد مقدمو خدمات بهذا الاسم')
+        else ...[
+          for (final p in list) Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: ProviderCard(p: p as Map, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderScreen(id: p['id'])))),
+          ),
+          if (_more && n.isEmpty) Center(child: OutlinedButton(onPressed: _loadingMore ? null : () => _load(more: true), child: Text(_loadingMore ? 'جارٍ التحميل…' : 'عرض المزيد'))),
+        ],
+      ]),
     );
   }
 
@@ -96,15 +164,26 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 10, 16, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            width: 46, height: 46,
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
-            child: ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.asset('assets/icon.png')),
-          ),
-          const SizedBox(width: 10),
-          const Expanded(child: Text('صنايعي قريب', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700))),
-          IconButton(onPressed: () => _key.currentState?.openDrawer(), icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 28)),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Column(children: [
+            Container(
+              width: 46, height: 46,
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+              child: ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.asset('assets/icon.png')),
+            ),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () => _key.currentState?.openDrawer(),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 46, height: 40,
+                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.menu_rounded, color: Colors.white, size: 26),
+              ),
+            ),
+          ]),
+          const SizedBox(width: 12),
+          const Expanded(child: Padding(padding: EdgeInsets.only(top: 10), child: Text('صنايعي قريب', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)))),
         ]),
         const SizedBox(height: 14),
         const Text('خدمتك لحدّ بيتك', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
@@ -131,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
           controller: _q,
           onChanged: (v) => setState(() => _query = v),
           decoration: InputDecoration(
-            hintText: 'ابحث: سباك، كهربائي، تكييف…',
+            hintText: _tab == 0 ? 'ابحث: سباك، كهربائي، تكييف…' : 'ابحث باسم الصنايعي أو خدمته',
             prefixIcon: const Icon(Icons.search_rounded),
             suffixIcon: _query.isEmpty ? null : IconButton(icon: const Icon(Icons.close_rounded), onPressed: () { _q.clear(); setState(() => _query = ''); }),
           ),
@@ -193,23 +272,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     ];
-  }
-
-  Widget _featuredSection() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('صنايعية مميزون', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 10),
-        if (_featured == null && _err != null) ErrorRetry(_err!, _load)
-        else if (_featured == null) const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
-        else if (_featured!.isEmpty) const Empty('لا يوجد صنايعية بعد')
-        else for (final p in _featured!) Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: ProviderCard(p: p as Map, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderScreen(id: p['id'])))),
-        ),
-      ]),
-    );
   }
 
   Widget _drawer() {

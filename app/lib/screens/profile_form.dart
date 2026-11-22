@@ -9,8 +9,9 @@ import '../widgets.dart';
 class ProfileForm extends StatefulWidget {
   final bool isRegister;
   final Map? initial;
+  final Widget? header;
   final Future<void> Function(Map<String, dynamic>) onSubmit;
-  const ProfileForm({super.key, required this.isRegister, this.initial, required this.onSubmit});
+  const ProfileForm({super.key, required this.isRegister, this.initial, this.header, required this.onSubmit});
   @override
   State<ProfileForm> createState() => _ProfileFormState();
 }
@@ -161,6 +162,7 @@ class _ProfileFormState extends State<ProfileForm> {
     final nowY = DateTime.now().year;
     Widget sec(String t) => Padding(padding: const EdgeInsets.only(top: 18, bottom: 8), child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: C.navy)));
     return ListView(padding: const EdgeInsets.all(16), children: [
+      if (widget.header != null) widget.header!,
       Center(
         child: GestureDetector(
           onTap: _pickPhoto,
