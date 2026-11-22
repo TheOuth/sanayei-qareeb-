@@ -15,7 +15,7 @@
   /* ---------- هيكل الصفحة ---------- */
   function page(o) {
     var back = o.back ? '<a class="back" href="' + o.back + '" aria-label="رجوع">' + SQ.I('back', 22) + '</a>' : '<span class="back ghost"></span>';
-    var menu = o.menu ? '<button class="back" id="menuBtn" aria-label="القائمة">' + SQ.I('dots', 22) + '</button>' : '<span class="back ghost"></span>';
+    var menu = o.menu ? '<button class="back" id="menuBtn" aria-label="القائمة">' + SQ.I('menu', 22) + '</button>' : '<span class="back ghost"></span>';
     var tabbar = o.tab ? '<nav class="tabbar"><a class="' + (o.tab === 'home' ? 'on' : '') + '" href="#/p/home"><i>' + SQ.I('home', 24) + '</i><small>الرئيسية</small></a><a class="' + (o.tab === 'profile' ? 'on' : '') + '" href="#/p/profile"><i>' + SQ.I('user', 24) + '</i><small>ملفي</small></a></nav>' : '';
     var bottom = (o.foot || tabbar) ? '<div class="bottom">' + (o.foot ? '<div class="foot">' + o.foot + '</div>' : '') + tabbar + '</div>' : '';
     $app.innerHTML = '<header class="top">' + back + '<h1>' + esc(o.title || C.appName) + '</h1>' + menu + '</header><main class="main">' + o.body + '</main>' + bottom;
@@ -62,8 +62,8 @@
     }).join('');
     var chips = '<div class="catchips"><button class="chip on" data-c="">الكل</button>' + cats.map(function (c) { return '<button class="chip" data-c="' + c.id + '">' + SQ.catIcon(c, 16) + ' ' + esc(c.name) + '</button>'; }).join('') + '</div>';
     $app.innerHTML =
-      '<div class="home"><header class="hero"><div class="herotop"><div class="logo sm">' + SVG_LOGO + '</div><div class="hname"><b>' + esc(C.appName) + '</b><small>' + esc(C.tagline) + '</small></div>' +
-      '<button class="back" id="menuBtn" aria-label="القائمة">' + SQ.I('dots', 22) + '</button></div>' +
+      '<div class="home"><header class="hero"><div class="herotop"><div class="hlogo"><div class="logo sm">' + SVG_LOGO + '</div>' +
+      '<button class="back" id="menuBtn" aria-label="القائمة">' + SQ.I('menu', 24) + '</button></div><div class="hname"><b>' + esc(C.appName) + '</b><small>' + esc(C.tagline) + '</small></div></div>' +
       '<div class="searchbar"><span class="sico">' + SQ.I('search', 22) + '</span><input id="hq" type="search" placeholder="ابحث: سباك، كهربائي، تكييف..." autocomplete="off" enterkeyhint="search"><button id="hqx" hidden aria-label="مسح">✕</button></div>' +
       '<button class="locchip2" id="chLoc">' + SQ.I('pin', 17) + ' ' + (loc ? esc(locLabel()) + ' · تغيير' : 'حدد موقعك ليظهر لك الأقرب') + '</button></header>' +
       '<div class="sides"><div class="seg" id="seg" data-side="' + side + '"><i class="thumb"></i><button class="side' + (side === 'client' ? ' on' : '') + '" data-side="client">' + SQ.I('client', 21) + '<b>أحتاج خدمة</b></button>' +
@@ -219,7 +219,7 @@
     var pid = getPid();
     if (!pid) {
       el.innerHTML = '<div class="provhero"><div class="pe">' + SQ.I('wrench', 30) + '</div><h2>اعرض مهارتك للناس القريبين منك</h2><p>سجّل مجانا في دقائق، وفريق صنايعي قريب يراجع طلبك ويؤكد بياناتك.</p>' +
-        '<ul class="perks"><li><i>' + SQ.I('gift', 20) + '</i>مجاني بلا عمولة</li><li><i>' + SQ.I('pin', 20) + '</i>يصلك الزبون الأقرب إليك</li><li><i>' + SQ.I('phone', 20) + '</i>الزبون يتصل بك مباشرة</li><li><i>' + SQ.I('star', 20) + '</i>تقييماتك تبني سمعتك</li></ul>' +
+        '<ul class="perks"><li><i>' + SQ.I('gift', 20) + '</i>اعرض خدمتك حسب المهارات العندك</li><li><i>' + SQ.I('pin', 20) + '</i>يصلك الزبون الأقرب إليك</li><li><i>' + SQ.I('phone', 20) + '</i>الزبون يتصل بك مباشرة</li><li><i>' + SQ.I('star', 20) + '</i>تقييماتك تبني سمعتك</li></ul>' +
         '<button class="btn primary" id="bNew">سجّل الآن مجانا</button><button class="btn ghost" id="bIn">عندي حساب؟ دخول</button></div>' +
         '<div class="card how"><b>كيف يعمل؟</b><ol><li>تسجّل بياناتك وخدماتك ومنطقتك</li><li>نؤكد حسابك معك على واتساب ويُوثَّق ملفك</li><li>تفعّل "متاح" فيصلك الزبائن</li></ol></div>';
       on('bNew', 'click', function () { go('#/p/1'); }); on('bIn', 'click', function () { go('#/p/login'); });
@@ -313,6 +313,15 @@
       '<span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span>' +
       '</div></div></div></div>';
   }
+
+  async function viewByUsername(u) {
+    loading('ملف الصنايعي');
+    var id = null;
+    try { id = await db.providerByUsername(u); } catch (e) {}
+    if (!id) { toast('لم نجد صنايعيا بهذا الاسم'); return go('#/'); }
+    return viewClientProvider(id, 'other');
+  }
+  function shareUrl(p) { return location.href.split('#')[0] + '#/u/' + (p.username || ('c/p/' + p.id)); }
 
   async function viewClientProvider(id, sid) {
     loading('ملف الصنايعي');
@@ -528,11 +537,11 @@
       var same = document.getElementById('same').checked, wa = same ? ph : SQ.util.normalizePhone(document.getElementById('wa').value);
       var pw = document.getElementById('pw').value;
       if (nm.length < 3) return toast('اكتب اسمك الكامل');
-      var be = U.birthErr(document.getElementById('bd').value, true); if (be) return toast(be);
+      var be = U.birthErr(U.birthVal('bd'), true); if (be) return toast(be);
       if (!ph) return toast('رقم الهاتف غير صحيح');
       if (!wa) return toast('رقم الواتساب غير صحيح');
       if (pw.length < 6) return toast('كلمة السر قصيرة (6 أحرف أو أرقام على الأقل)');
-      reg.name = nm; reg.birth_date = document.getElementById('bd').value; reg.phone = ph; reg.whatsapp = wa; reg.wa = document.getElementById('wa').value; reg.waSame = same; regPw = pw; regSave(); go('#/p/2');
+      reg.name = nm; reg.birth_date = U.birthVal('bd'); reg.phone = ph; reg.whatsapp = wa; reg.wa = document.getElementById('wa').value; reg.waSame = same; regPw = pw; regSave(); go('#/p/2');
     });
   }
 
@@ -676,7 +685,7 @@
     on('hrs', 'click', editHours); on('hrs2', 'click', editHours); on('addPw', 'click', function () { openPwModal(me); });
     on('sw', 'click', async function () { try { await db.setAvailable(pid, tk, !flag); route(); } catch (e) { toast(errMsg(e)); } });
     on('share', 'click', function () {
-      var url = location.href.split('#')[0] + '#/c/p/' + pid + '/' + me.services[0];
+      var url = shareUrl(me);
       var txt = 'أنا ' + me.name + '، ' + svcNames(me.services) + '. تقدر تتواصل معي من تطبيق ' + C.appName + ': ' + url;
       if (navigator.share) navigator.share({ text: txt }).catch(function () {});
       else window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
@@ -753,6 +762,7 @@
         '<div class="stats"><div class="stat"><b>' + (me.rating != null ? '★ ' + me.rating : 'جديد') + '</b><small>' + me.rating_n + ' تقييم</small></div>' +
         '<div class="stat"><b>' + me.ok + ' - ' + me.fail + '</b><small>ناجحة - فاشلة</small></div><div class="stat"><b>' + me.experience + '</b><small>سنة خبرة</small></div></div>' +
         '<div class="card"><div class="cardhead"><b>بياناتي</b><button class="linkbtn" id="edit">✏️ تعديل</button></div>' +
+        '<div class="kv"><span>اسم المستخدم</span><span class="ltr">@' + esc(me.username || '') + (me.username_changed ? '' : ' <button class="linkbtn" id="unm">تغيير</button>') + '</span></div>' +
         '<div class="kv"><span>الهاتف</span><span class="ltr">' + esc(me.phone) + '</span></div>' +
         '<div class="kv"><span>الواتساب</span><span class="ltr">' + esc(me.whatsapp) + '</span></div>' +
         '<div class="kv"><span>المنطقة</span><span>' + esc((me.hood ? me.hood + '، ' : '') + SQ.cityName(me.city_id) + ' - ' + SQ.stateName(me.state_id)) + '</span></div>' +
@@ -760,7 +770,7 @@
         '<div class="kv"><span>سعر الكشف</span><span>' + Number(me.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span></div>' +
         '<div class="kv"><span>أوقات العمل</span><span>من ' + esc(me.from) + ' إلى ' + esc(me.to) + '</span></div>' +
         (me.bio ? '<div class="kv"><span>الوصف</span><span style="text-align:left">' + esc(me.bio) + '</span></div>' : '') +
-        '<p class="note">لتغيير رقم الهاتف تواصل مع الدعم.</p></div>' +
+        '<p class="note">لتغيير رقم الهاتف تواصل مع الدعم. رابط ملفك: <span class="ltr">' + esc(shareUrl(me)) + '</span>' + (me.username_changed ? '<br>اسم المستخدم لا يُغيَّر إلا مرة واحدة، وللتعديل تواصل مع الدعم.' : '<br>يمكنك تغيير اسم المستخدم مرة واحدة فقط.') + '</p></div>' +
         (me.status === 'approved' ? '<div class="card"><b>آخر التقييمات</b>' + (revs.length ? revs.map(function (r) {
           return '<div class="rev"><span class="star">' + '★'.repeat(r.stars) + '</span> <small class="muted">' + (r.success ? 'شغلانة ناجحة' : 'شغلانة فاشلة') + ' · ' + timeAgo(r.ts) + '</small>' + (r.comment ? '<div>' + esc(r.comment) + '</div>' : '') + '</div>';
         }).join('') : '<p class="muted">لا توجد تقييمات بعد</p>') + '</div>' : '') +
@@ -771,6 +781,17 @@
     });
     bindMenu();
     on('edit', 'click', function () { go('#/p/edit'); });
+    on('unm', 'click', function () {
+      modal('<h3>اسم المستخدم</h3><p class="note">يُستخدم في رابط ملفك للمشاركة. <b>يمكنك تغييره مرة واحدة فقط</b>، وبعدها لا يغيّره إلا فريق الدعم.</p>' +
+        '<label class="field"><span>الاسم الجديد (حروف إنجليزية صغيرة وأرقام و _)</span><input id="unv" class="ltr" maxlength="20" autocapitalize="none" autocomplete="off" value="' + esc(me.username || '') + '"></label>' +
+        '<div class="row2 mt"><button class="btn ghost" id="unx">إلغاء</button><button class="btn primary" id="unk">حفظ</button></div>');
+      on('unx', 'click', closeModal);
+      on('unk', 'click', async function () {
+        var v = document.getElementById('unv').value.trim().toLowerCase();
+        if (!/^[a-z][a-z0-9_]{2,19}$/.test(v)) return toast(errMsg(new Error('invalid_username')));
+        try { await db.setUsername(pid, tk, v); closeModal(); toast('تم حفظ اسم المستخدم'); route(); } catch (e) { toast(errMsg(e)); }
+      });
+    });
     on('pw', 'click', function () { openPwModal(me); });
     on('out', 'click', confirmLogout);
     on('del', 'click', function () {
@@ -843,13 +864,13 @@
       var st = document.getElementById('st').value, ct = document.getElementById('ct').value, bio = document.getElementById('bio').value.trim();
       var ex = document.getElementById('ex').value, pr = document.getElementById('pr').value;
       if (nm.length < 3) return toast('اكتب اسمك الكامل');
-      var be = U.birthErr(document.getElementById('bd').value, true); if (be) return toast(be);
+      var be = U.birthErr(U.birthVal('bd'), true); if (be) return toast(be);
       if (!wa) return toast('رقم الواتساب غير صحيح');
       if (!ed.services.length) return toast('اختر خدمة واحدة على الأقل');
       if (!st || !ct) return toast('اختر الولاية والمدينة');
       if (ex === '' || pr === '') return toast('اكتب الخبرة وسعر الكشف');
       if (bio.length < 5) return toast('اكتب وصفا قصيرا لمهارتك');
-      var o = { name: nm, birth_date: document.getElementById('bd').value, whatsapp: wa, services: ed.services, state_id: st, city_id: ct, hood: document.getElementById('hd').value.trim(), radius: ed.radius,
+      var o = { name: nm, birth_date: U.birthVal('bd'), whatsapp: wa, services: ed.services, state_id: st, city_id: ct, hood: document.getElementById('hd').value.trim(), radius: ed.radius,
         experience: +ex, price: +pr, bio: bio, photo: ed.photo, from: document.getElementById('fr').value || '08:00', to: document.getElementById('to').value || '20:00' };
       if (ed.lat != null) { o.lat = ed.lat; o.lng = ed.lng; }
       else if (ct !== me.city_id) { var cc = SQ.findCity(ct).city; o.lat = cc.lat; o.lng = cc.lng; }
@@ -864,6 +885,7 @@
     var h = (location.hash || '#/').replace(/^#/, ''), p = h.split('/').filter(Boolean);
     try {
       if (!p.length) return viewHome();
+      if (p[0] === 'u' && p[1]) return viewByUsername(decodeURIComponent(p[1]));
       if (p[0] === 'c') {
         if (p[1] === 'p') { if (!store.get('role')) store.set('role', 'client'); return viewClientProvider(p[2], p[3] || 'other'); } // رابط مشاركة الصنايعي
         if (p[1] === 'loc') return viewClientLoc();

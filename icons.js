@@ -5,6 +5,7 @@
   var P = {
     search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
     pin: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+    menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     dots: '<circle cx="12" cy="5.5" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="12" cy="18.5" r="1.4"/>',
     back: '<path d="M9 5l7 7-7 7"/>',
     chev: '<path d="M15 5l-7 7 7 7"/>',

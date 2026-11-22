@@ -129,6 +129,7 @@
     init: function () {
       this.d = load();
       if (!this.d || !this.d.v) { this.d = seed(); save(this.d); }
+      var selfL = this, miss = false; this.d.providers.forEach(function (p) { if (!p.username) { p.username = selfL.genUsername(); miss = true; } }); if (miss) save(this.d);
       var d = this.d, ch = false;
       if (!d.services) { d.services = SQ.SERVICES.map(function (s, i) { return { id: s.id, name: s.name, icon: s.icon, sort: (i + 1) * 10, active: true, cat: SQ.catOf(s).id }; }); ch = true; }
       if (!d.settings) { d.settings = { support_whatsapp: '', support_email: '' }; ch = true; }
@@ -141,9 +142,19 @@
         experience: p.experience, price: p.price, bio: p.bio, from: p.from, to: p.to, available: isAvail(p),
         distance_km: d == null ? null : Math.round(d * 10) / 10,
         rating: p.stats.n >= C.minReviewsForStars ? p.stats.avg : null, rating_n: p.stats.n,
-        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || '', verified: !!p.verified, jobs: this.jobs(p.id), age: ageOf(p.birth_date)
+        ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || '', verified: !!p.verified, jobs: this.jobs(p.id), age: ageOf(p.birth_date), username: p.username || ''
       };
     },
+    genUsername: function () { var u, self = this; do { u = 's' + Math.random().toString(36).replace(/[^a-z0-9]/g, '').slice(0, 6); } while (this.d.providers.some(function (p) { return p.username === u; })); return u; },
+    checkUsername: function (v, id) {
+      var u = String(v || '').trim().toLowerCase();
+      if (!/^[a-z][a-z0-9_]{2,19}$/.test(u) || ['admin', 'support', 'sanayei', 'app', 'help', 'api', 'null', 'root', 'www'].indexOf(u) >= 0) throw new Error('invalid_username');
+      if (this.d.providers.some(function (p) { return p.username === u && p.id !== id; })) throw new Error('taken');
+      return u;
+    },
+    setUsername: async function (id, token, v) { var p = this.auth(id, token); if (p.username_changed) throw new Error('already'); p.username = this.checkUsername(v, id); p.username_changed = true; save(this.d); return p.username; },
+    adminSetUsername: async function (code, id, v) { this.admin(code); var p = this.find(id); if (!p) throw new Error('not_found'); p.username = this.checkUsername(v, id); save(this.d); return p.username; },
+    providerByUsername: async function (u) { u = String(u || '').toLowerCase(); var p = this.d.providers.filter(function (x) { return (x.username || '') === u && x.status === 'approved'; })[0]; return p ? p.id : null; },
     jobs: function (id) {
       var s = {}; this.d.requests.forEach(function (q) { if (q.provider_id === id && q.status === 'done' && q.pconfirm !== 'not_done') s[q.anon_id] = 1; });
       return Object.keys(s).length;
@@ -216,7 +227,7 @@
       if (x.photo && (x.photo.indexOf('data:image/jpeg;base64,') !== 0 || x.photo.length > 60000)) throw new Error('invalid');
       var bd = checkBirth(x.birth_date, true);
       var p = {
-        birth_date: bd,
+        birth_date: bd, username: this.genUsername(),
         photo: x.photo || '',
         password: x.password, fails: 0, locked_until: 0, admin_note: '',
         id: uid(), token: uid(), name: x.name, phone: x.phone, whatsapp: x.whatsapp, state_id: x.state_id, city_id: x.city_id,
@@ -234,7 +245,7 @@
       var week = Date.now() - 7 * 86400000;
       var r = this.pub(p, null);
       r.status = p.status; r.flag = !!p.available; r.in_hours = isOpen(p.from, p.to); r.radius = p.radius; r.has_password = !!p.password; r.pct = pct(p);
-      r.birth_date = p.birth_date || null;
+      r.birth_date = p.birth_date || null; r.username_changed = !!p.username_changed;
       r.requests_week = this.d.requests.filter(function (q) { return q.provider_id === id && q.ts > week; }).length;
       return r;
     },
@@ -404,7 +415,8 @@
         available: p.status === 'approved' && isAvail(p), flag: !!p.available, has_password: !!p.password, admin_note: p.admin_note || '',
         last_seen: p.last_seen, created: p.created, requests_total: rq.length, requests_week: rq.filter(function (q) { return q.ts > week; }).length,
         rating_n: p.stats.n, rating: p.stats.n > 0 ? p.stats.avg : null, ok: p.stats.ok, fail: p.stats.fail,
-        photo: p.photo || '', pct: pct(p), verified: !!p.verified, verify_doc: p.verify_doc || '', verified_at: p.verified_at || null, birth_date: p.birth_date || null, age: ageOf(p.birth_date)
+        photo: p.photo || '', pct: pct(p), verified: !!p.verified, verify_doc: p.verify_doc || '', verified_at: p.verified_at || null, birth_date: p.birth_date || null, age: ageOf(p.birth_date),
+        username: p.username || '', username_changed: !!p.username_changed, jobs: this.jobs(p.id)
       };
     },
     adminOverview: async function (code) {
@@ -463,7 +475,7 @@
       if (!o.services || !o.services.length) throw new Error('invalid');
       var bd2 = checkBirth(o.birth_date, false);
       var city = SQ.findCity(o.city_id), p = {
-        birth_date: bd2,
+        birth_date: bd2, username: this.genUsername(),
         photo: o.photo || '', id: uid(), token: uid(), password: o.password, fails: 0, locked_until: 0, admin_note: o.admin_note || '',
         name: o.name, phone: o.phone, whatsapp: o.whatsapp || o.phone, state_id: o.state_id, city_id: o.city_id, hood: o.hood || '',
         lat: o.lat != null ? o.lat : (city ? city.city.lat : 0), lng: o.lng != null ? o.lng : (city ? city.city.lng : 0),
@@ -623,6 +635,9 @@
     adminAddPayment: function (code, id, amount, note) { return SB.rpc('admin_add_payment', { p_code: code, p_id: id, p_amount: amount, p_note: note || '' }); },
     adminDeletePayment: function (code, pid) { return SB.rpc('admin_delete_payment', { p_code: code, p_pid: pid }); },
     adminCommissionLedger: function (code) { return SB.rpc('admin_commission_ledger', { p_code: code }); },
+    setUsername: function (id, t, u) { return SB.rpc('set_username', { p_id: id, p_token: t, p_username: u }); },
+    adminSetUsername: function (code, id, u) { return SB.rpc('admin_set_username', { p_code: code, p_id: id, p_username: u }); },
+    providerByUsername: function (u) { return SB.rpc('provider_id_by_username', { p: u }); },
     adminRequests: function (code, limit, status) { return SB.rpc('admin_requests', { p_code: code, p_limit: limit || 100, p_status: status || '' }); },
     adminServices: function (code) { return SB.rpc('admin_services', { p_code: code }); },
     adminSaveService: function (code, id, name, icon, active, cat) { return SB.rpc('admin_save_service', { p_code: code, p_id: id || '', p_name: name, p_icon: icon || '', p_active: active == null ? true : !!active, p_cat: cat == null ? null : cat }); },

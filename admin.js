@@ -25,6 +25,36 @@
     if (p.status === 'suspended') return hi + 'نود إبلاغك بأنه تم إيقاف ظهور حسابك في ' + C.appName + ' مؤقتا لمراجعته. يرجى الرد على هذه الرسالة لنتواصل معك ونحل الأمر سريعا.' + SIGN;
     return hi + 'معك فريق ' + C.appName + '.' + SIGN;
   }
+  /* قوالب الرسائل اليدوية (واتساب / إيميل / نسخ) */
+  function msgTemplates(x) {
+    var hi = 'السلام عليكم ورحمة الله وبركاته أخي/أختي ' + x.name + ' 🌿\n', t = SQ.tierOf(x.jobs), nx = SQ.nextTier(x.jobs), url = appUrl() + (x.username ? '#/u/' + x.username : '');
+    var next = nx ? '\nباقي لك ' + (nx.min - x.jobs) + ' من الأعمال المؤكدة لتصل إلى شارة «' + nx.name + '».' : '\nوصلت إلى أعلى شارة إنجاز، شكرا لتميزك!';
+    var how = '*كيف تحصل على علامة التوثيق؟*\n' +
+      '✅ *توثيق الهوية:* أرسل لنا هنا صورة وثيقة سارية (بطاقة قومية أو رخصة قيادة أو جواز) مع صورة لك وأنت تحمل الوثيقة. بعد التحقق تُفعَّل علامتك، ونحذف الصور من محادثتنا.\n' +
+      '🏅 *شارات الإنجاز:* تظهر تلقائيا مع كل عمل يؤكده عملاء مختلفون: ' + SQ.TIERS.slice().reverse().map(function (s) { return s.min + ' أعمال ← ' + s.name; }).join('، ') + '.\n\n' +
+      '💡 اطلب من عملائك تأكيد «تمت الخدمة» من «طلباتي» في التطبيق، وأكّد أنت العمل من لوحتك.';
+    return [
+      { id: 'done', label: 'تهنئة بإتمام خدمة', subject: 'مبروك! تم تأكيد خدمة جديدة', body: hi + 'مبروك 🎉 تم *تأكيد إتمامك لخدمة جديدة* عبر تطبيق *' + C.appName + '* ✅\nمجموع أعمالك المؤكدة: *' + x.jobs + '*.' + (t ? '\nشارتك الحالية: *' + t.name + '*.' : '') + next + '\n\nشكرا لجودة عملك وأمانتك، ونتمنى لك المزيد من الطلبات.' + SIGN },
+      { id: 'badge', label: 'تهنئة بالحصول على شارة', subject: 'مبروك شارتك الجديدة', body: hi + (t ? 'مبروك 🏅 حصلت على شارة *«' + t.name + '»* في تطبيق *' + C.appName + '* بعد ' + x.jobs + ' عمل مؤكد من عملائك.\nستظهر الشارة بجوار اسمك وتزيد ثقة الناس بك وترفع ظهورك.' + next : 'نشكرك على انضمامك إلى *' + C.appName + '* 🌿\nأول شارة إنجاز تحصل عليها بعد *' + SQ.TIERS[SQ.TIERS.length - 1].min + ' أعمال مؤكدة*، ونحن بجانبك لتصلها.') + '\n\nرابط ملفك للمشاركة:\n' + url + SIGN },
+      { id: 'how', label: 'كيف تحصل على علامة التوثيق', subject: 'كيف تحصل على علامة التوثيق في ' + C.appName, body: hi + 'نود مساعدتك في رفع ثقة الناس بك داخل *' + C.appName + '*.\n\n' + how + SIGN }
+    ];
+  }
+  function msgModal(x) {
+    var T = msgTemplates(x), cur = 0;
+    modal('<h3>رسالة إلى ' + esc(x.name) + '</h3><div class="seg" id="mt_t" style="flex-wrap:wrap;gap:6px">' + T.map(function (t, i) { return '<button class="chip' + (i === 0 ? ' on' : '') + '" data-i="' + i + '">' + t.label + '</button>'; }).join('') + '</div>' +
+      '<label class="field mt"><span>نص الرسالة (يمكنك تعديله قبل الإرسال)</span><textarea id="mt_b" rows="10" style="min-height:220px"></textarea></label>' +
+      '<div class="btnrow"><button class="btn wa" id="mt_wa">💬 واتساب</button><button class="btn ghost" id="mt_em">✉️ إيميل</button><button class="btn ghost" id="mt_cp">📋 نسخ</button></div>' +
+      '<button class="btn ghost mt" id="mt_x" style="width:100%">إغلاق</button>');
+    var ta = document.getElementById('mt_b'); ta.value = T[0].body;
+    document.getElementById('mt_t').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-i]'); if (!b) return; cur = +b.getAttribute('data-i'); ta.value = T[cur].body;
+      U.each('#mt_t .chip', function (c) { c.classList.toggle('on', c === b); });
+    });
+    on('mt_x', 'click', closeModal);
+    on('mt_wa', 'click', function () { window.open('https://wa.me/' + SQ.util.digits(x.phone) + '?text=' + encodeURIComponent(ta.value), '_blank'); });
+    on('mt_em', 'click', function () { window.location.href = 'mailto:?subject=' + encodeURIComponent(T[cur].subject) + '&body=' + encodeURIComponent(ta.value.replace(/\*/g, '')); });
+    on('mt_cp', 'click', function () { ta.select(); try { navigator.clipboard.writeText(ta.value); } catch (e) { document.execCommand('copy'); } toast('تم نسخ الرسالة'); });
+  }
   function appUrl() { return location.origin + location.pathname.replace(/admin\.html$/, ''); }
   function localPhone(p) { return SQ.util.localPhone(p); }
   function fmtDate(ts) { var d = new Date(ts); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
@@ -147,16 +177,29 @@
     if (p.status === 'suspended' || p.status === 'rejected') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ اعتماد</button>');
     return '<div class="card acard"><div class="top2">' + U.avatar(p) + '<div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + ' ' + (p.verified ? '<span class="vtag">✔ موثّق</span>' : pill('غير موثّق', 'warn')) + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + '</div></div>' +
       '<div class="psvc">' + esc(U.svcNames(p.services)) + '</div>' +
-      '<div class="meta"><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + (p.age ? '🎂 ' + p.age + ' سنة' : '<span class="dangertxt">بلا تاريخ ميلاد</span>') + '</span><span>' + p.experience + ' سنة خبرة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
+      '<div class="meta"><span class="ltr">@' + esc(p.username || '') + '</span><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + (p.age ? '🎂 ' + p.age + ' سنة' : '<span class="dangertxt">بلا تاريخ ميلاد</span>') + '</span><span>' + p.experience + ' سنة خبرة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
       '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span>🔖 رقم الطلب <b class="ltr">' + refOf(p) + '</b></span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
       (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') + (p.admin_note ? '<p class="note">📝 ' + esc(p.admin_note) + '</p>' : '') + (p.verified && p.verify_doc ? '<p class="note">✔ التحقق: ' + esc(p.verify_doc) + '</p>' : '') +
       '<div class="btnrow">' + act.join('') + '<a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">' + (p.status === 'pending' ? '💬 رسالة التأكيد' : 'واتساب') + '</a><button class="btn ghost" data-act="verify" data-id="' + p.id + '">' + (p.verified ? 'إلغاء التوثيق' : '✔ توثيق') + '</button><a class="btn ghost" href="tel:' + esc(p.phone) + '">📞</a>' +
-      '<button class="btn ghost" data-act="edit" data-id="' + p.id + '">✏️ تعديل</button><button class="btn ghost" data-act="pw" data-id="' + p.id + '">🔑 كلمة سر</button><button class="btn danger" data-act="del" data-id="' + p.id + '">🗑</button></div></div>';
+      '<button class="btn ghost" data-act="msg" data-id="' + p.id + '">✉️ رسائل</button><button class="btn ghost" data-act="uname" data-id="' + p.id + '">@ المستخدم</button><button class="btn ghost" data-act="edit" data-id="' + p.id + '">✏️ تعديل</button><button class="btn ghost" data-act="pw" data-id="' + p.id + '">🔑 كلمة سر</button><button class="btn danger" data-act="del" data-id="' + p.id + '">🗑</button></div></div>';
   }
 
   async function provAction(a, p, btn) {
     if (!p) return;
     if (a === 'edit') return openProvForm(p);
+    if (a === 'msg') return msgModal({ name: p.name, phone: p.whatsapp || p.phone, jobs: p.jobs || 0, verified: p.verified, username: p.username });
+    if (a === 'uname') {
+      modal('<h3>اسم المستخدم لـ ' + esc(p.name) + '</h3><p class="note">للتعديل بعد تواصل الصنايعي مع الدعم. لا يستهلك مرته الواحدة. رابطه: <span class="ltr">' + esc(appUrl()) + '#/u/' + esc(p.username || '') + '</span></p>' +
+        '<label class="field"><span>الاسم (حروف إنجليزية صغيرة وأرقام و _)</span><input id="un_v" class="ltr" maxlength="20" autocapitalize="none" value="' + esc(p.username || '') + '"></label>' +
+        '<div class="row2 mt"><button class="btn ghost" id="un_x">إلغاء</button><button class="btn primary" id="un_ok">حفظ</button></div>');
+      on('un_x', 'click', closeModal);
+      on('un_ok', 'click', async function () {
+        var v = document.getElementById('un_v').value.trim().toLowerCase();
+        if (!/^[a-z][a-z0-9_]{2,19}$/.test(v)) return toast(U.errMsg(new Error('invalid_username')));
+        try { await db.adminSetUsername(code, p.id, v); closeModal(); toast('تم تعديل اسم المستخدم'); refreshAll(); } catch (e) { closeModal(); fail(e); }
+      });
+      return;
+    }
     if (a === 'pw') return openResetPw(p);
     if (a === 'verify') {
       if (p.verified) { try { await db.adminSetVerified(code, p.id, false); toast('أُلغي التوثيق'); refreshAll(); } catch (e) { fail(e); } return; }
@@ -215,13 +258,13 @@
       var nm = g('f_nm').trim(), ph = SQ.util.normalizePhone(g('f_ph')), waRaw = g('f_wa').trim(), wa = waRaw ? SQ.util.normalizePhone(waRaw) : ph;
       var st = g('f_st'), ct = g('f_ct');
       if (nm.length < 3) return toast('اكتب الاسم الكامل');
-      var be = U.birthErr(g('f_bd'), false); if (be) return toast(be);
+      var be = U.birthErr(U.birthVal('f_bd'), false); if (be) return toast(be);
       if (!ph) return toast('رقم الهاتف غير صحيح');
       if (!wa) return toast('رقم الواتساب غير صحيح');
       if (!services.length) return toast('اختر خدمة واحدة على الأقل');
       if (!st || !ct) return toast('اختر الولاية والمدينة');
       if (g('f_ex') === '' || g('f_pr') === '') return toast('اكتب الخبرة وسعر الكشف');
-      var o = { name: nm, birth_date: g('f_bd'), phone: ph, whatsapp: wa, services: services, state_id: st, city_id: ct, hood: g('f_hd').trim(), radius: g('f_rd'), experience: +g('f_ex'), price: +g('f_pr'),
+      var o = { name: nm, birth_date: U.birthVal('f_bd'), phone: ph, whatsapp: wa, services: services, state_id: st, city_id: ct, hood: g('f_hd').trim(), radius: g('f_rd'), experience: +g('f_ex'), price: +g('f_pr'),
         bio: g('f_bio').trim(), photo: photoSt.photo, from: g('f_fr') || '08:00', to: g('f_to') || '20:00', admin_note: g('f_nt').trim() };
       var cc = SQ.findCity(ct).city;
       if (isNew || ct !== d.city_id) { o.lat = cc.lat; o.lng = cc.lng; }
@@ -329,11 +372,12 @@
     var cfg2 = {}; try { cfg2 = await db.adminGetSettings(code); } catch (e) {}
     function due(x) { return Math.round(x.both * (+cfg2.commission_fixed || 0) + x.amount * (+cfg2.commission_pct || 0) / 100); }
     var tot = list.reduce(function (a, x) { a.t += x.total; a.b += x.both; a.m += x.mismatch; a.s += x.amount; a.d += due(x); return a; }, { t: 0, b: 0, m: 0, s: 0, d: 0 });
+    el.onclick = function (e) { var b = e.target.closest('[data-msg]'); if (!b) return; var x = list.filter(function (y) { return y.provider_id === b.getAttribute('data-msg'); })[0]; if (x) msgModal({ name: x.name, phone: x.phone, jobs: x.both, verified: x.verified }); };
     el.innerHTML = '<div class="stats"><div class="stat"><b>' + tot.t + '</b><small>كل الطلبات</small></div><div class="stat"><b>' + tot.b + '</b><small>مؤكدة من الطرفين</small></div><div class="stat"><b>' + tot.m + '</b><small>غير متطابقة</small></div></div>' + ((+cfg2.commission_fixed > 0 || +cfg2.commission_pct > 0) ? '<div class="card"><div class="kv"><span>العمولة المستحقة (تقديرية)</span><b>' + tot.d.toLocaleString('en') + ' جنيه</b></div></div>' : '') +
       '<p class="note">المؤكد من الطرفين = قال الزبون "تمت الخدمة" وأكد الصنايعي التنفيذ. المبلغ يصرّح به الصنايعي، فاعتبره تقديريا. "غير متطابق" يحتاج مراجعتك.</p>' +
       '<div class="agrid">' + (list.length ? list.map(function (x) {
         return '<div class="card"><div class="pname">' + esc(x.name) + (x.verified ? ' ✓' : '') + '</div><div class="meta"><span>طلبات: ' + x.total + '</span><span>الزبائن: ' + x.client_done + '</span><span>الصنايعي: ' + x.provider_done + '</span></div>' +
-          '<div class="meta"><span>' + pill('مؤكدة: ' + x.both, x.both ? '' : 'warn') + '</span>' + (x.mismatch ? '<span>' + pill('غير متطابقة: ' + x.mismatch, 'bad') + '</span>' : '') + '<span class="muted">' + Number(x.amount).toLocaleString('en') + ' جنيه</span>' + (due(x) ? '<span>' + pill('عمولة: ' + due(x).toLocaleString('en'), 'warn') + '</span>' : '') + '</div></div>';
+          '<div class="meta"><span>' + pill('مؤكدة: ' + x.both, x.both ? '' : 'warn') + '</span>' + (x.mismatch ? '<span>' + pill('غير متطابقة: ' + x.mismatch, 'bad') + '</span>' : '') + '<span class="muted">' + Number(x.amount).toLocaleString('en') + ' جنيه</span><button class="mini" data-msg="' + esc(x.provider_id) + '">✉️ رسالة</button>' + (due(x) ? '<span>' + pill('عمولة: ' + due(x).toLocaleString('en'), 'warn') + '</span>' : '') + '</div></div>';
       }).join('') : '<div class="empty"><div class="big">🤝</div>لا توجد بيانات في هذه الفترة</div>') + '</div>';
   }
 
