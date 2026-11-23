@@ -1,9 +1,13 @@
+import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// مفتاح الملاحة العام (للتنقل من الإشعارات)
+final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
 /// إعدادات الخادم: غيّر هذين السطرين (أو مرّرهما وقت البناء) لنقل التطبيق لخادم آخر.
 /// flutter build apk --dart-define=API_URL=https://... --dart-define=API_KEY=...
@@ -303,8 +307,13 @@ class Meta {
     return services.where((s) => norm(s.name).contains(n) || norm(keywords[s.id] ?? '').contains(n)).toList();
   }
 
-  static String tierOf(int jobs) => jobs >= 25 ? 'gold' : (jobs >= 10 ? 'blue' : (jobs >= 3 ? 'gray' : ''));
-  static String tierName(String t) => t == 'gold' ? 'ذهبي' : (t == 'blue' ? 'متميز' : (t == 'gray' ? 'منجز' : ''));
+  /// الشارة بحسب الأعمال المؤكدة فقط (الرمادية تمنحها الإدارة، وتأتي من الخادم في الحقل tier)
+  static String tierOf(int jobs) => jobs >= 100 ? 'gold' : (jobs >= 25 ? 'blue' : (jobs >= 5 ? 'green' : ''));
+  static String tierName(String t) => const {'gold': 'ذهبية', 'blue': 'زرقاء', 'green': 'خضراء', 'gray': 'رمادية'}[t] ?? '';
+  static String tierOfProvider(Map p) {
+    final t = (p['tier'] ?? '').toString();
+    return t.isNotEmpty ? t : tierOf((p['jobs'] ?? 0) as int);
+  }
 }
 
 String normalizePhone(String raw) {

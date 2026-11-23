@@ -3,6 +3,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/widgets.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core.dart';
+import 'screens/dashboard.dart';
+import 'screens/notifications.dart';
 
 /// الإشعارات الفورية (FCM). أي خطأ هنا لا يجب أن يوقف التطبيق.
 class Push with WidgetsBindingObserver {
@@ -36,6 +38,7 @@ class Push with WidgetsBindingObserver {
   }
 
   static bool _ready = false;
+  static RemoteMessage? _initial;
   static String? _fcm;
   static String _registered = '';
 
@@ -56,12 +59,31 @@ class Push with WidgetsBindingObserver {
       });
       // التطبيق مفتوح: نحدّث عدّاد الجرس فقط (النظام يعرض الإشعار وقت الخلفية)
       FirebaseMessaging.onMessage.listen((_) => Store.refreshUnread());
+      // الضغط على إشعار والتطبيق في الخلفية
+      FirebaseMessaging.onMessageOpenedApp.listen((m) => _open((m.data['kind'] ?? '').toString()));
+      _initial = await m.getInitialMessage(); // الضغط على إشعار والتطبيق مغلق
       Store.tick.addListener(sync);
       Store.onSignOut = _unregister;
       await sync();
     } catch (_) {
       _ready = false;
     }
+  }
+
+  /// تُستدعى بعد شاشة البداية لفتح الإشعار الذي بدأ التطبيق
+  static void openInitial() {
+    final m = _initial;
+    _initial = null;
+    if (m != null) _open((m.data['kind'] ?? '').toString());
+  }
+
+  /// طلب/تأكيد => لوحتي (الطلبات)، وغيرها => الرسائل
+  static void _open(String kind) {
+    final nav = navKey.currentState;
+    if (nav == null || !Store.loggedIn) return;
+    Store.refreshUnread();
+    final goDash = kind == 'request' || kind == 'confirm';
+    nav.push(MaterialPageRoute(builder: (_) => goDash ? const DashboardScreen() : const NotificationsScreen()));
   }
 
   /// يربط هذا الجهاز بحساب الصنايعي الحالي

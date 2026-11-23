@@ -572,6 +572,12 @@
     },
     adminSendNotification: async function (code) { this.admin(code); return true; },
     adminAudit: async function (code) { this.admin(code); return []; },
+    adminCounts: async function (code) { this.admin(code); return { badges: 0, custom: 0 }; },
+    adminBadges: async function (code) { this.admin(code); return []; },
+    adminBadgeDecide: async function (code) { this.admin(code); return true; },
+    adminSetBadge: async function (code) { this.admin(code); return true; },
+    adminCustomServices: async function (code) { this.admin(code); return []; },
+    adminDecideCustom: async function (code) { this.admin(code); return ''; },
     adminChangeCode: async function (code, nw) {
       this.admin(code); if (String(nw || '').length < 8) throw new Error('weak'); this.d.adminCode = nw; save(this.d); return true;
     },
@@ -649,6 +655,12 @@
     adminGetSettings: function (code) { return SB.rpc('admin_get_settings', { p_code: code }); },
     adminSaveSettings: function (code, o) { return SB.rpc('admin_save_settings', { p_code: code, p: o }); },
     adminChangeCode: function (code, nw) { return SB.rpc('admin_change_code', { p_code: code, p_new: nw }); },
+    adminCounts: function (code) { return SB.rpc('admin_counts', { p_code: code }); },
+    adminBadges: function (code, filter, q) { return SB.rpc('admin_badges', { p_code: code, p_filter: filter || 'pending', p_q: q || null }); },
+    adminBadgeDecide: function (code, id, approve, note) { return SB.rpc('admin_badge_decide', { p_code: code, p_id: id, p_approve: !!approve, p_note: note || null }); },
+    adminSetBadge: function (code, id, tier, reason) { return SB.rpc('admin_set_badge', { p_code: code, p_id: id, p_tier: tier || '', p_reason: reason || null }); },
+    adminCustomServices: function (code, status) { return SB.rpc('admin_custom_services', { p_code: code, p_status: status || 'pending' }); },
+    adminDecideCustom: function (code, id, o) { o = o || {}; return SB.rpc('admin_decide_custom', { p_code: code, p_id: id, p_action: o.action, p_name: o.name || null, p_icon: o.icon || null, p_cat: o.cat || null, p_existing: o.existing || null, p_note: o.note || null, p_suggest: o.suggest || null }); },
     adminAudit: function (code, n) { return SB.rpc('admin_audit', { p_code: code, p_limit: n || 100 }); },
     adminSendNotification: function (code, id, title, body) { return SB.rpc('admin_send_notification', { p_code: code, p_id: id, p_title: title, p_body: body }); }
   };

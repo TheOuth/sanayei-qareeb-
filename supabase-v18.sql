@@ -1,0 +1,4 @@
+-- v18: شارات (gray_status/badge_manual/badge_reason, provider_tier, admin_badges/admin_badge_decide/admin_set_badge),
+-- خدمات خاصة (custom_services, suggest_service, my_custom_services, admin_custom_services, admin_decide_custom, admin_counts),
+-- سجل أعمال في get_provider، register_provider يقبل custom_service، حدود الشارات 5/25/100.
+-- (التعريف الكامل مطبّق على القاعدة الحية: migration v18_badges_custom_services_history)

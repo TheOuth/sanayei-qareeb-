@@ -264,6 +264,7 @@ body.admin .acard .ava{width:46px;height:46px}
 .tier svg{flex:none}
 .t-gray{background:#EEF1F5;color:#5B6676}
 .t-blue{background:#E3F0FF;color:#1E6FD0}
+.t-green{background:#E3F7EA;color:#1A7F4B}
 .t-gold{background:linear-gradient(135deg,#FFF3CC,#FFE08A);color:#8A5A00}
 .pinfo>.tier{margin-top:3px}.gtier{display:block;margin-top:2px}.gtier .tier{font-size:10.5px;padding:2px 7px}
 .tierbox .pbar{margin-top:10px}
@@ -277,10 +278,10 @@ body.admin .acard .ava{width:46px;height:46px}
 
 /* علامة الثقة بجوار الاسم */
 .tb{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;vertical-align:middle;cursor:pointer;margin-inline-start:4px}
-.tb.t-gray{background:#EEF1F5;color:#6B7686}.tb.t-blue{background:#E3F0FF;color:#1E6FD0}.tb.t-gold{background:linear-gradient(135deg,#FFF3CC,#FFD966);color:#8A5A00}
+.tb.t-gray{background:#EEF1F5;color:#6B7686}.tb.t-blue{background:#E3F0FF;color:#1E6FD0}.tb.t-green{background:#E3F7EA;color:#1A7F4B}.tb.t-gold{background:linear-gradient(135deg,#FFF3CC,#FFD966);color:#8A5A00}
 .tbbub{position:fixed;z-index:120;border:0;border-radius:12px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;color:#fff;box-shadow:var(--shadow-2);opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s var(--ease);cursor:pointer;white-space:nowrap}
 .tbbub.show{opacity:1;transform:none}
-.tbbub.t-gray{background:#6B7686}.tbbub.t-blue{background:#2B8CF0}.tbbub.t-gold{background:#B8860B}
+.tbbub.t-gray{background:#6B7686}.tbbub.t-blue{background:#2B8CF0}.tbbub.t-green{background:#1FA463}.tbbub.t-gold{background:#B8860B}
 @media (prefers-reduced-motion:reduce){.tbbub{transition:none}}
 
 .tb{width:auto;height:auto;background:none!important;border-radius:0;line-height:0}

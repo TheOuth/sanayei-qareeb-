@@ -35,6 +35,8 @@ class _ProfileFormState extends State<ProfileForm> {
   String _from = '08:00', _to = '20:00';
   String _photo = '';
   bool _busy = false, _ok18 = false, _sending = false;
+  String _customName = '', _customNote = '';
+  List _customList = [];
   double? _lat, _lng;
 
   static const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
@@ -42,6 +44,7 @@ class _ProfileFormState extends State<ProfileForm> {
   @override
   void initState() {
     super.initState();
+    if (!widget.isRegister) _loadCustom();
     final i = widget.initial;
     if (i != null) {
       _name.text = (i['name'] ?? '').toString();
@@ -68,6 +71,63 @@ class _ProfileFormState extends State<ProfileForm> {
         _d = int.tryParse(bd.substring(8, 10));
       }
     }
+  }
+
+  Future<void> _loadCustom() async {
+    try {
+      final r = await Api.rpc('my_custom_services', {'p_id': Store.pid, 'p_token': Store.token});
+      if (mounted && r is List) setState(() => _customList = r);
+    } catch (_) {}
+  }
+
+  Future<void> _customDialog() async {
+    final n = TextEditingController(text: _customName);
+    final d = TextEditingController(text: _customNote);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('اقتراح خدمة خاصة'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('إن كانت خدمتك غير موجودة في القائمة اكتبها هنا. تراجعها الإدارة وقد تضيفها للجميع.', style: TextStyle(fontSize: 12.5, height: 1.5)),
+          const SizedBox(height: 10),
+          TextField(controller: n, maxLength: 40, decoration: const InputDecoration(labelText: 'اسم الخدمة')),
+          TextField(controller: d, maxLength: 200, maxLines: 2, decoration: const InputDecoration(labelText: 'وصف قصير (اختياري)')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('إرسال للإدارة')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final name = n.text.trim();
+    if (name.length < 2) return toast(context, 'اكتب اسم الخدمة');
+    if (widget.isRegister) {
+      setState(() { _customName = name; _customNote = d.text.trim(); });
+      return;
+    }
+    try {
+      await Api.rpc('suggest_service', {'p_id': Store.pid, 'p_token': Store.token, 'p_name': name, 'p_note': d.text.trim()});
+      if (mounted) toast(context, 'أرسلنا اقتراحك للإدارة وسنخبرك بالقرار في الرسائل');
+      await _loadCustom();
+    } catch (e) {
+      if (mounted) toast(context, errMsg(e));
+    }
+  }
+
+  Widget _customSection() {
+    final st = const {'pending': ['بانتظار موافقة الإدارة', Color(0xFFB45309)], 'approved': ['تمت الموافقة', C.green], 'rejected': ['لم تُقبل', C.red]};
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const SizedBox(height: 8),
+      OutlinedButton.icon(onPressed: _customDialog, icon: const Icon(Icons.add_circle_outline_rounded, size: 18), label: const Text('خدمتي غير موجودة؟ اقترح خدمة خاصة')),
+      if (widget.isRegister && _customName.isNotEmpty)
+        Padding(padding: const EdgeInsets.only(top: 6), child: Row(children: [const Icon(Icons.check_circle_rounded, color: C.green, size: 18), const SizedBox(width: 6), Expanded(child: Text('خدمة مقترحة: $_customName (تراجعها الإدارة)')), IconButton(onPressed: () => setState(() { _customName = ''; _customNote = ''; }), icon: const Icon(Icons.close_rounded, size: 18))])),
+      for (final c in _customList.where((x) => x['status'] != 'approved').take(5))
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Text('• ${c['name']} — ${(st[c['status']] ?? ['', C.mute])[0]}${(c['suggest'] ?? '').toString().isNotEmpty ? ' (اقتراح الإدارة: ${c['suggest']})' : ''}', style: TextStyle(fontSize: 12.5, color: (st[c['status']] ?? ['', C.mute])[1] as Color)),
+        ),
+    ]);
   }
 
   Future<void> _pickPhoto() async {
@@ -278,7 +338,7 @@ class _ProfileFormState extends State<ProfileForm> {
     }
     if (_d == null || _m == null || _y == null) return toast(context, 'اختر تاريخ ميلادك الحقيقي');
     if (_city == null) return toast(context, 'اختر مدينتك');
-    if (_services.isEmpty) return toast(context, 'اختر خدمة واحدة على الأقل');
+    if (_services.isEmpty && _customName.isEmpty) return toast(context, 'اختر خدمة واحدة على الأقل أو اقترح خدمة خاصة');
     final exp = int.tryParse(_exp.text.trim());
     if (exp == null) return toast(context, 'اكتب سنوات الخبرة');
     final wa = _wa.text.trim().isEmpty ? '' : normalizePhone(_wa.text);
@@ -304,6 +364,7 @@ class _ProfileFormState extends State<ProfileForm> {
     if (reg) {
       body['phone'] = ph;
       body['password'] = _pw.text;
+      if (_customName.isNotEmpty) { body['custom_service'] = _customName; body['custom_note'] = _customNote; }
     } else {
       final em = _email.text.trim();
       if (em.isNotEmpty && !RegExp(r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$').hasMatch(em)) return toast(context, 'البريد الإلكتروني غير صحيح');
@@ -389,6 +450,7 @@ class _ProfileFormState extends State<ProfileForm> {
             onSelected: (v) => setState(() => v ? _services.add(s.id) : _services.remove(s.id)),
           ),
       ]),
+      _customSection(),
       sec('نطاق التغطية'),
       Wrap(spacing: 6, children: [
         for (final r in const [['5', '5 كم'], ['10', '10 كم'], ['20', '20 كم'], ['all', 'كل المدينة']])

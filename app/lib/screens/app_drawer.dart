@@ -43,7 +43,7 @@ class BellBtn extends StatelessWidget {
             tooltip: 'الرسائل',
             onPressed: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
             icon: Stack(clipBehavior: Clip.none, children: [
-              Icon(n > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_rounded, size: 28, color: light ? Colors.white : null),
+              Icon(n > 0 ? Icons.mark_email_unread_rounded : Icons.mail_outline_rounded, size: 27, color: light ? Colors.white : null),
               if (n == 0)
                 ValueListenableBuilder<bool>(
                   valueListenable: Push.allowed,

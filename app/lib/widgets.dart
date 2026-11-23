@@ -109,48 +109,73 @@ class Avatar extends StatelessWidget {
 }
 
 class TierBadge extends StatelessWidget {
-  final int jobs;
+  final Map p;
   final double size;
-  const TierBadge({super.key, required this.jobs, this.size = 20});
+  const TierBadge({super.key, required this.p, this.size = 20});
   @override
   Widget build(BuildContext context) {
-    final t = Meta.tierOf(jobs);
-    if (t.isEmpty) return const SizedBox.shrink();
+    final t = Meta.tierOfProvider(p);
+    if (t.isEmpty && p['verified'] != true) return const SizedBox.shrink();
     return GestureDetector(
-      onTap: () => tierSheet(context, jobs),
-      child: Image.asset('assets/badges/badge-$t.png', width: size, height: size),
+      onTap: () => trustSheet(context, p),
+      child: t.isNotEmpty
+          ? Image.asset('assets/badges/badge-$t.png', width: size, height: size)
+          : Icon(Icons.verified_rounded, color: C.blue, size: size),
     );
   }
 }
 
-void tierSheet(BuildContext context, int jobs) {
-  final t = Meta.tierOf(jobs);
+/// نافذة «موثّق»: سبب التوثيق ومتطلبات كل شارة. [own] لملف الصنايعي نفسه.
+void trustSheet(BuildContext context, Map p, {bool own = false}) {
+  final jobs = (p['jobs'] ?? 0) as int;
+  final t = Meta.tierOfProvider(p);
+  final verified = p['verified'] == true;
+  final gs = (p['gray_status'] ?? '').toString();
+  final next = jobs >= 100 ? null : (jobs >= 25 ? 100 : (jobs >= 5 ? 25 : 5));
+  TableRow tr(Widget a, Widget b) => TableRow(children: [Padding(padding: const EdgeInsets.all(10), child: a), Padding(padding: const EdgeInsets.all(10), child: b)]);
+  Widget chip(String badge, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
+        badge == 'id' ? const Icon(Icons.verified_rounded, color: C.blue, size: 20) : Image.asset('assets/badges/badge-$badge.png', width: 20, height: 20),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ]);
   showModalBottomSheet(
     context: context,
+    isScrollControlled: true,
     backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-    builder: (_) => Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+    builder: (ctx) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: .78,
+      maxChildSize: .95,
+      builder: (_, sc) => ListView(controller: sc, padding: const EdgeInsets.fromLTRB(20, 18, 20, 28), children: [
         Row(children: [
-          if (t.isNotEmpty) Image.asset('assets/badges/badge-$t.png', width: 44, height: 44),
-          const SizedBox(width: 10),
-          const Text('صنايعي موثوق', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          if (t.isNotEmpty) Image.asset('assets/badges/badge-$t.png', width: 46, height: 46) else const Icon(Icons.verified_rounded, color: C.blue, size: 40),
+          const SizedBox(width: 12),
+          Expanded(child: Text(own ? 'شاراتك وكيف تحصل عليها' : 'موثّق · لماذا ${shortName((p['name'] ?? '').toString())}؟', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
         ]),
-        const SizedBox(height: 12),
-        Text('أنجز $jobs أعمال مؤكدة من عملاء مختلفين.'),
-        const SizedBox(height: 12),
-        Table(border: TableBorder.all(color: C.hair, borderRadius: BorderRadius.circular(8)), children: [
-          for (final r in [
-            ['الشارة', 'الأعمال المؤكدة'],
-            ['منجز (رمادية)', '3 أعمال'],
-            ['متميز (زرقاء)', '10 أعمال'],
-            ['ذهبي', '25 عملًا'],
-          ])
-            TableRow(children: [for (final x in r) Padding(padding: const EdgeInsets.all(8), child: Text(x))]),
+        const SizedBox(height: 14),
+        Table(border: TableBorder.all(color: C.hair, borderRadius: BorderRadius.circular(10)), columnWidths: const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(2)}, children: [
+          tr(const Text('الهوية'), Text(verified ? '✓ تحقق منها فريق التطبيق' : 'لم يتم التحقق بعد', style: TextStyle(color: verified ? C.green : C.mute, fontWeight: FontWeight.w600))),
+          tr(const Text('الأعمال المؤكدة'), Text('$jobs${next == null ? '' : '  (باقي ${next - jobs} للشارة التالية)'}')),
+          tr(const Text('الشارة الحالية'), t.isEmpty ? const Text('لا توجد بعد', style: TextStyle(color: C.mute)) : chip(t, 'شارة ${Meta.tierName(t)}')),
+          if (own && gs == 'pending') tr(const Text('ملفك'), const Text('مكتمل وبانتظار موافقة الإدارة على الشارة الرمادية', style: TextStyle(color: C.blue))),
+          if (own && gs == 'rejected') tr(const Text('ملفك'), const Text('لم تُمنح الشارة الرمادية. راجع بياناتك وتواصل مع الدعم', style: TextStyle(color: C.red))),
+          if (own && (p['badge_reason'] ?? '').toString().isNotEmpty) tr(const Text('سبب المنح'), Text(p['badge_reason'].toString())),
+        ]),
+        const SizedBox(height: 18),
+        const Text('كيف تحصل على التوثيق والشارات؟', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        Table(border: TableBorder.all(color: C.hair, borderRadius: BorderRadius.circular(10)), columnWidths: const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(2)}, children: [
+          tr(chip('id', 'هوية موثّقة'), const Text('أرسل لفريق الدعم على واتساب وثيقة سارية وصورة لك معها، وبعد التحقق تُفعَّل علامتك.', style: TextStyle(height: 1.5))),
+          tr(chip('gray', 'رمادية'), const Text('أكمل بيانات ملفك بالكامل (الصورة، الوصف، الحي، السعر، الخبرة). تراجعها الإدارة وتمنحك الشارة إن كانت البيانات صحيحة.', style: TextStyle(height: 1.5))),
+          tr(chip('green', 'خضراء'), const Text('أكمل 5 معاملات ناجحة', style: TextStyle(height: 1.5))),
+          tr(chip('blue', 'زرقاء'), const Text('أكمل 25 معاملة ناجحة', style: TextStyle(height: 1.5))),
+          tr(chip('gold', 'ذهبية'), const Text('أكمل 100 معاملة ناجحة', style: TextStyle(height: 1.5))),
         ]),
         const SizedBox(height: 10),
-        const Text('يُحسب العمل عندما يقول العميل "تمت الخدمة" ولا يعترض الصنايعي.', style: TextStyle(color: C.mute, fontSize: 12)),
+        const Text('تُحسب المعاملة الناجحة عندما يقول العميل «تمت الخدمة» ويؤكدها الصنايعي، ومن عملاء مختلفين.', style: TextStyle(color: C.mute, fontSize: 12, height: 1.5)),
+        const SizedBox(height: 14),
+        FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('حسنًا')),
       ]),
     ),
   );
@@ -194,8 +219,8 @@ class ProviderCard extends StatelessWidget {
                 Row(children: [
                   Flexible(child: Text(shortName((p['name'] ?? '').toString()), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
                   const SizedBox(width: 6),
-                  TierBadge(jobs: (p['jobs'] ?? 0) as int),
-                  if (p['verified'] == true) const Padding(padding: EdgeInsetsDirectional.only(start: 4), child: Icon(Icons.verified_rounded, color: C.blue, size: 18)),
+                  TierBadge(p: p),
+                  if (p['verified'] == true && Meta.tierOfProvider(p).isNotEmpty) Padding(padding: const EdgeInsetsDirectional.only(start: 4), child: GestureDetector(onTap: () => trustSheet(context, p), child: const Icon(Icons.verified_rounded, color: C.blue, size: 18))),
                 ]),
                 const SizedBox(height: 2),
                 Text(services, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.mute, fontSize: 13)),
@@ -246,8 +271,8 @@ class ProviderGridCard extends StatelessWidget {
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Flexible(child: Text(shortName((p['name'] ?? '').toString()), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
               const SizedBox(width: 4),
-              TierBadge(jobs: (p['jobs'] ?? 0) as int, size: 18),
-              if (p['verified'] == true) const Padding(padding: EdgeInsetsDirectional.only(start: 2), child: Icon(Icons.verified_rounded, color: C.blue, size: 16)),
+              TierBadge(p: p, size: 18),
+              if (p['verified'] == true && Meta.tierOfProvider(p).isNotEmpty) Padding(padding: const EdgeInsetsDirectional.only(start: 2), child: GestureDetector(onTap: () => trustSheet(context, p), child: const Icon(Icons.verified_rounded, color: C.blue, size: 16))),
             ]),
             const SizedBox(height: 2),
             Text(services, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: C.mute, fontSize: 12)),

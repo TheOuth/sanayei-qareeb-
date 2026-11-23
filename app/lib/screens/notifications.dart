@@ -41,6 +41,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'verify' => Icons.verified_rounded,
         'account' => Icons.manage_accounts_rounded,
         'broadcast' => Icons.campaign_rounded,
+        'service' => Icons.handyman_rounded,
         _ => Icons.mail_rounded,
       };
 
@@ -51,6 +52,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'badge' => C.gold,
         'verify' => C.blue,
         'account' => C.navy,
+        'service' => C.blue,
         _ => const Color(0xFF6D5BEF),
       };
 

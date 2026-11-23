@@ -118,8 +118,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _body(Map me) {
     final status = (me['status'] ?? '').toString();
     final jobs = (me['jobs'] ?? 0) as int;
-    final tier = Meta.tierOf(jobs);
-    final next = jobs >= 25 ? null : (jobs >= 10 ? 25 : (jobs >= 3 ? 10 : 3));
+    final tier = Meta.tierOfProvider(me);
+    final next = jobs >= 100 ? null : (jobs >= 25 ? 100 : (jobs >= 5 ? 25 : 5));
+    final gs = (me['gray_status'] ?? '').toString();
     final pending = _reqs.where((r) => r['confirm'] == null && r['client'] == 'done').toList();
     return ListView(padding: const EdgeInsets.all(16), children: [
       Card(
@@ -130,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [Flexible(child: Text(me['name'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))), const SizedBox(width: 6), TierBadge(jobs: jobs, size: 22)]),
+                Row(children: [Flexible(child: Text(me['name'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))), const SizedBox(width: 6), TierBadge(p: me, size: 22)]),
                 Text('اكتمال الملف ${me['pct']}%', style: const TextStyle(color: C.mute, fontSize: 12)),
               ]),
             ),
@@ -162,15 +163,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 10),
         Card(
-          child: Padding(
+          child: InkWell(
+           borderRadius: BorderRadius.circular(16),
+           onTap: () => trustSheet(context, me, own: true),
+           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 if (tier.isNotEmpty) Image.asset('assets/badges/badge-$tier.png', width: 34, height: 34),
                 const SizedBox(width: 8),
                 Expanded(child: Text(tier.isEmpty ? 'لم تحصل على شارة بعد' : 'شارة ${Meta.tierName(tier)}', style: const TextStyle(fontWeight: FontWeight.w700))),
-                Text('$jobs عمل مؤكد'),
+                Text('$jobs معاملة ناجحة'),
+                const Icon(Icons.info_outline_rounded, size: 18, color: C.blue),
               ]),
+              if (gs == 'pending') const Padding(padding: EdgeInsets.only(top: 8), child: Text('ملفك مكتمل ✓ وينتظر موافقة الإدارة على الشارة الرمادية.', style: TextStyle(color: C.blue, fontSize: 12.5, height: 1.4))),
+              if (gs == 'none' && (me['pct'] ?? 0) < 100) const Padding(padding: EdgeInsets.only(top: 8), child: Text('أكمل ملفك 100% (الصورة، الوصف، الحي، السعر، الخبرة) لتُراجَع للحصول على الشارة الرمادية.', style: TextStyle(color: C.mute, fontSize: 12.5, height: 1.4))),
               if (next != null) ...[
                 const SizedBox(height: 8),
                 LinearProgressIndicator(value: (jobs / next).clamp(0, 1).toDouble(), minHeight: 8, borderRadius: BorderRadius.circular(6)),
@@ -178,8 +185,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('باقي ${next - jobs} للشارة التالية', style: const TextStyle(color: C.mute, fontSize: 12)),
               ],
               const SizedBox(height: 6),
-              Text('يُحتسب العمل عندما يؤكد العميل ثم تؤكد أنت. تُحصَّل عمولة ثابتة ${Config.commissionNote} جنيه عن كل عمل مؤكد.', style: const TextStyle(color: C.mute, fontSize: 12, height: 1.4)),
+              Text('اضغط لمعرفة كيف تحصل على كل شارة. يُحتسب العمل عندما يؤكد العميل ثم تؤكد أنت. تُحصَّل عمولة ثابتة ${Config.commissionNote} جنيه عن كل عمل مؤكد.', style: const TextStyle(color: C.mute, fontSize: 12, height: 1.4)),
             ]),
+           ),
           ),
         ),
         const SizedBox(height: 10),

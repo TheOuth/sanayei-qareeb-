@@ -135,12 +135,12 @@
   /* شبكة الصنايعية أسفل الرئيسية: تُحمَّل عند الاقتراب منها لتوفير الاستهلاك */
   var tbReg = {};
   function trustBadge(p) {
-    var t = SQ.tierOf(p.jobs); if (!t && !p.verified) return '';
+    var t = SQ.tierId(p); if (!t && !p.verified) return '';
     tbReg[p.id] = p;
-    return '<span class="tb t-' + (t ? t.id : 'gray') + '" role="button" tabindex="0" data-tb="' + p.id + '" aria-label="موثوق">' + SQ.badge(t ? t.id : 'gray', 21) + '</span>';
+    return '<span class="tb t-' + (t || 'gray') + '" role="button" tabindex="0" data-tb="' + p.id + '" aria-label="موثوق">' + SQ.badge(t || 'gray', 21) + '</span>';
   }
   function trustModal(p) {
-    var j = p.jobs || 0, t = SQ.tierOf(j), nx = SQ.nextTier(j);
+    var j = p.jobs || 0, tid = SQ.tierId(p), t = tid ? { id: tid, name: ({ gray: 'رمادية', green: 'خضراء', blue: 'زرقاء', gold: 'ذهبية' })[tid] } : null, nx = SQ.nextTier(j);
     var yes = '<b class="okc">✓ نعم</b>', no = '<span class="muted">لا</span>';
     modal('<h3>لماذا ' + esc(p.name) + ' موثوق؟</h3><div class="tbl-wrap"><table class="tbl"><tbody>' +
       '<tr><th>الهوية</th><td>' + (p.verified ? yes + ' · تحقق منها فريق التطبيق' : no + ' · لم يتم التحقق بعد') + '</td></tr>' +
@@ -149,7 +149,8 @@
       '<tr><th>التقييم</th><td>' + (p.rating != null ? '★ ' + p.rating + ' (' + p.rating_n + ')' : 'جديد') + '</td></tr></tbody></table></div>' +
       '<h3 style="margin-top:14px">كيف تحصل على التوثيق؟</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>العلامة</th><th>الشرط</th></tr></thead><tbody>' +
       '<tr><td><span class="tier t-gray">' + SQ.badge('gray', 15) + ' موثّق</span></td><td>أرسل لفريق التطبيق على واتساب وثيقة سارية وصورة لك معها، وبعد التحقق تُفعَّل علامتك.</td></tr>' +
-      SQ.TIERS.slice().reverse().map(function (x) { return '<tr><td><span class="tier t-' + x.id + '">' + SQ.badge(x.id, 15) + ' ' + x.name + '</span></td><td>' + x.min + ' أعمال مؤكدة من عملاء مختلفين.</td></tr>'; }).join('') +
+      '<tr><td><span class="tier t-gray">' + SQ.badge('gray', 15) + ' رمادية</span></td><td>أكمل بيانات ملفك بالكامل، وتراجعها الإدارة وتمنحك الشارة إن كانت صحيحة.</td></tr>' +
+      SQ.TIERS.slice().reverse().map(function (x) { return '<tr><td><span class="tier t-' + x.id + '">' + SQ.badge(x.id, 15) + ' ' + x.name + '</span></td><td>' + x.min + ' معاملة ناجحة من عملاء مختلفين.</td></tr>'; }).join('') +
       '</tbody></table></div><p class="note">العمل يُحسب مؤكدا حين يقول العميل «تمت الخدمة» من «طلباتي» ولا يعترض الصنايعي.</p><button class="btn primary" id="tbClose" style="width:100%">حسنا</button>');
     on('tbClose', 'click', closeModal);
   }
@@ -161,7 +162,7 @@
     var tb = e.target.closest('.tb');
     if (!tb) { hideBubble(); return; }
     e.preventDefault(); e.stopPropagation(); hideBubble();
-    var id = tb.getAttribute('data-tb'), r = tb.getBoundingClientRect(), c = (tb.className.match(/t-(gray|blue|gold)/) || [0, 'gray'])[1];
+    var id = tb.getAttribute('data-tb'), r = tb.getBoundingClientRect(), c = (tb.className.match(/t-(gray|green|blue|gold)/) || [0, 'gray'])[1];
     var el = document.createElement('button'); el.id = 'tbBubble'; el.className = 'tbbub t-' + c; el.setAttribute('data-id', id); el.textContent = 'موثوق · اعرف لماذا';
     document.body.appendChild(el);
     var w = el.offsetWidth, x = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2));
@@ -172,7 +173,7 @@
   window.addEventListener('hashchange', hideBubble);
 
   function tierTag(p, long) {
-    var t = SQ.tierOf(p.jobs); if (!t) return '';
+    var tid = SQ.tierId(p), t = tid ? { id: tid, name: ({ gray: 'رمادية', green: 'خضراء', blue: 'زرقاء', gold: 'ذهبية' })[tid] } : null; if (!t) return '';
     return '<span class="tier t-' + t.id + '" title="' + p.jobs + ' عمل مؤكد">' + SQ.badge(t.id, 15) + (long ? ' صنايعي ' + t.name + ' · ' + p.jobs + ' عمل مؤكد' : ' ' + t.name) + '</span>';
   }
   function gridCard(p) {
@@ -693,7 +694,7 @@
   }
 
   function tierProgress(me) {
-    var j = me.jobs || 0, t = SQ.tierOf(j), n = SQ.nextTier(j), cfg = SQ.cfg || {};
+    var j = me.jobs || 0, t = SQ.tierId(me), n = SQ.nextTier(j), cfg = SQ.cfg || {};
     var com = (+cfg.commission_pct > 0 || +cfg.commission_fixed > 0)
       ? '<p class="note" style="margin:8px 0 0">عمولة التطبيق على كل خدمة مؤكدة: ' + [(+cfg.commission_fixed > 0 ? Number(cfg.commission_fixed).toLocaleString('en') + ' ' + SQ.COUNTRY.currency : ''), (+cfg.commission_pct > 0 ? cfg.commission_pct + '% من المبلغ' : '')].filter(Boolean).join(' + ') + '.</p>' : '';
     return '<div class="card tierbox"><div class="kv"><span>شارة الإنجاز</span><span>' + (t ? tierTag(me, true) : '<span class="muted">لم تبدأ بعد</span>') + '</span></div>' +

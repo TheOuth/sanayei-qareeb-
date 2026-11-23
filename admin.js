@@ -3,13 +3,13 @@
   'use strict';
   var SQ = window.SQ, C = SQ.CONFIG, db = SQ.db, U = SQ.ui, esc = U.esc, toast = U.toast, on = U.on, modal = U.modal, closeModal = U.closeModal;
   var $app = document.getElementById('app');
-  var code = '', tab = 'overview', ov = null;
+  var code = '', tab = 'overview', ov = null, cn = { badges: 0, custom: 0 }, bf = { filter: 'pending', q: '' };
   var pf = { q: '', status: '', service: '', city: '', limit: 30, offset: 0 }, rf = { status: '' };
   var rows = {}; // نسخة الصنايعية المعروضين حسب المعرّف
   try { code = sessionStorage.getItem('sq_admin') || ''; } catch (e) {}
   document.body.classList.add('admin');
 
-  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
+  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['badges', 'الشارات'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
   var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
@@ -93,7 +93,7 @@
   /* ---------- الهيكل ---------- */
   function shell(inner) {
     var nav = TABS.map(function (t) {
-      var n = t[0] === 'providers' && ov && ov.pending ? ov.pending : t[0] === 'reports' && ov && ov.reports_open ? ov.reports_open : 0;
+      var n = t[0] === 'providers' && ov && ov.pending ? ov.pending : t[0] === 'reports' && ov && ov.reports_open ? ov.reports_open : t[0] === 'badges' ? (cn.badges || 0) : t[0] === 'custom' ? (cn.custom || 0) : 0;
       return '<button class="' + (tab === t[0] ? 'on' : '') + '" data-tab="' + t[0] + '">' + t[1] + (n ? '<span class="cnt">' + n + '</span>' : '') + '</button>';
     }).join('');
     $app.innerHTML = '<header class="top"><a class="back" href="' + esc(appUrl()) + '" title="فتح التطبيق" aria-label="التطبيق">' + SQ.I('home', 22) + '</a><h1>إدارة صنايعي قريب</h1><button class="back" id="out" title="خروج" aria-label="خروج">' + SQ.I('out', 22) + '</button></header>' +
@@ -102,10 +102,23 @@
     U.each('.anav button', function (b) { b.addEventListener('click', function () { tab = b.getAttribute('data-tab'); render(); }); });
   }
 
+  /* تحديث تلقائي لعدّادات التبويبات كل دقيقة دون إزعاج ما تعمل عليه */
+  setInterval(async function () {
+    if (!code) return;
+    try {
+      var o = await db.adminOverview(code), c = await db.adminCounts(code); ov = o; cn = c;
+      U.each('.anav button', function (b) {
+        var t = b.getAttribute('data-tab'), n = t === 'providers' ? o.pending : t === 'reports' ? o.reports_open : t === 'badges' ? c.badges : t === 'custom' ? c.custom : 0;
+        var sp = b.querySelector('.cnt'); if (n) { if (!sp) { sp = document.createElement('span'); sp.className = 'cnt'; b.appendChild(sp); } sp.textContent = n; } else if (sp) sp.remove();
+      });
+    } catch (e) { /* تجاهل */ }
+  }, 60000);
+
   async function render() {
     if (!code) return login();
     try { ov = await db.adminOverview(code); } catch (e) { if (guard(e)) return; ov = null; }
-    ({ overview: viewOverview, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings })[tab]();
+    try { cn = await db.adminCounts(code); } catch (e) { cn = { badges: 0, custom: 0 }; }
+    ({ overview: viewOverview, custom: viewCustom, badges: viewBadges, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings })[tab]();
   }
 
   /* ---------- نظرة عامة ---------- */
@@ -450,6 +463,69 @@
         if (b.getAttribute('data-act') === 'resolve') await db.adminResolveReport(code, b.getAttribute('data-id'));
         else await db.adminSetStatus(code, b.getAttribute('data-id'), 'suspended');
         toast('تم'); render();
+      } catch (x) { b.disabled = false; fail(x); }
+    };
+  }
+
+  /* ---------- الشارات ---------- */
+  var TIER_NAMES = { '': 'بدون', gray: 'رمادية', green: 'خضراء', blue: 'زرقاء', gold: 'ذهبية' };
+  var GRAY = { none: 'لم يكتمل الملف', pending: 'بانتظار الموافقة', approved: 'معتمدة', rejected: 'مرفوضة' };
+  async function viewBadges() {
+    shell('<div class="card"><b>الشارات</b><p class="note">الرمادية: ملف مكتمل 100% وتحتاج موافقتك. الخضراء 5 معاملات ناجحة، الزرقاء 25، الذهبية 100 (تلقائية). ويمكنك منح أي شارة يدويًا، مثلًا مكافأة لمن أبلغ عن خطأ أو اقترح ميزة.</p>' +
+      '<div class="btnrow"><button class="btn ' + (bf.filter === 'pending' ? 'primary' : 'ghost') + '" data-f="pending">بانتظار الموافقة' + (cn.badges ? ' (' + cn.badges + ')' : '') + '</button><button class="btn ' + (bf.filter === 'manual' ? 'primary' : 'ghost') + '" data-f="manual">الممنوحة يدويًا</button></div>' +
+      '<div class="row2" style="margin-top:8px"><label class="field"><span>بحث بالاسم أو الهاتف</span><input id="bq" value="' + esc(bf.q) + '"></label><button class="btn ghost" id="bqgo" style="align-self:end">بحث</button></div></div>' +
+      '<div id="bl" class="agrid"><div class="spin">جاري التحميل...</div></div>');
+    U.each('[data-f]', function (b) { b.addEventListener('click', function () { bf.filter = b.getAttribute('data-f'); bf.q = ''; viewBadges(); }); });
+    on('bqgo', 'click', function () { bf.q = document.getElementById('bq').value.trim(); bf.filter = bf.q ? 'all' : bf.filter; viewBadges(); });
+    var rows;
+    try { rows = await db.adminBadges(code, bf.filter, bf.q); } catch (e) { return fail(e); }
+    var el = document.getElementById('bl'); if (!el) return;
+    el.innerHTML = rows.length ? rows.map(function (r) {
+      return '<div class="card"><div class="pname">' + esc(r.name) + ' ' + pill('الشارة: ' + TIER_NAMES[r.tier || ''], r.tier ? '' : 'bad') + ' ' + (r.gray_status === 'pending' ? pill('الرمادية بانتظارك', 'warn') : '') + '</div>' +
+        '<div class="psvc">' + esc(r.phone) + ' · ' + esc(SQ.cityName(r.city_id) || r.city_id || '') + ' · أعمال مؤكدة: ' + r.jobs + ' · اكتمال الملف ' + r.pct + '% · الرمادية: ' + GRAY[r.gray_status] + (r.manual ? ' · منح يدوي: ' + TIER_NAMES[r.manual] + (r.reason ? ' (' + esc(r.reason) + ')' : '') : '') + '</div>' +
+        (r.gray_status === 'pending' ? '<div class="btnrow"><button class="btn primary" data-act="ok" data-id="' + r.id + '">✔ اعتماد الشارة الرمادية</button><button class="btn danger" data-act="no" data-id="' + r.id + '">✖ رفض</button></div>' : '') +
+        '<div class="row2" style="margin-top:8px"><label class="field"><span>منح يدوي</span><select data-t="' + r.id + '">' + ['gray', 'green', 'blue', 'gold'].map(function (k) { return '<option value="' + k + '">' + TIER_NAMES[k] + '</option>'; }).join('') + '</select></label><label class="field"><span>السبب (يصل للصنايعي)</span><input data-r="' + r.id + '" maxlength="200" placeholder="مثال: أبلغ عن خطأ في التطبيق"></label></div>' +
+        '<div class="btnrow"><button class="btn primary" data-act="grant" data-id="' + r.id + '">🏅 منح</button>' + (r.manual ? '<button class="btn ghost" data-act="revoke" data-id="' + r.id + '">إزالة المنح اليدوي</button>' : '') + '</div></div>';
+    }).join('') : '<div class="empty"><div class="big">🏅</div>لا توجد نتائج</div>';
+    el.onclick = async function (e) {
+      var b = e.target.closest('[data-act]'); if (!b) return; var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
+      try {
+        if (act === 'ok') { b.disabled = true; await db.adminBadgeDecide(code, id, true, ''); toast('تم الاعتماد وأُرسل إشعار تهنئة'); }
+        else if (act === 'no') { var note = prompt('سبب الرفض (يصل للصنايعي):', ''); if (note === null) return; b.disabled = true; await db.adminBadgeDecide(code, id, false, note); toast('تم الرفض'); }
+        else if (act === 'grant') {
+          var t = document.querySelector('[data-t="' + id + '"]').value, why = document.querySelector('[data-r="' + id + '"]').value.trim();
+          if (!confirm('منح الشارة ' + TIER_NAMES[t] + ' لهذا الصنايعي؟')) return; b.disabled = true; await db.adminSetBadge(code, id, t, why); toast('تم المنح وأُرسل إشعار');
+        } else if (act === 'revoke') { if (!confirm('إزالة الشارة الممنوحة يدويًا؟')) return; b.disabled = true; await db.adminSetBadge(code, id, '', ''); toast('تمت الإزالة'); }
+        render();
+      } catch (x) { b.disabled = false; fail(x); }
+    };
+  }
+
+  /* ---------- الخدمات المقترحة من الصنايعية ---------- */
+  var cf = { status: 'pending' };
+  async function viewCustom() {
+    shell('<div class="card"><b>خدمات يقترحها الصنايعية</b><p class="note">وافق لتصبح خدمة دائمة تظهر للجميع (يمكنك تعديل الاسم والأيقونة)، أو اربطها بخدمة موجودة، أو ارفض مع اقتراح بديل يصل للصنايعي.</p><div class="btnrow"><button class="btn ' + (cf.status === 'pending' ? 'primary' : 'ghost') + '" data-s="pending">بانتظار القرار' + (cn.custom ? ' (' + cn.custom + ')' : '') + '</button><button class="btn ' + (cf.status === 'all' ? 'primary' : 'ghost') + '" data-s="all">الكل</button></div></div><div id="cl" class="agrid"><div class="spin">جاري التحميل...</div></div>');
+    U.each('[data-s]', function (b) { b.addEventListener('click', function () { cf.status = b.getAttribute('data-s'); viewCustom(); }); });
+    var rows, svcs = [];
+    try { rows = await db.adminCustomServices(code, cf.status); svcs = (await db.adminServices(code)) || []; } catch (e) { return fail(e); }
+    var el = document.getElementById('cl'); if (!el) return;
+    var opts = '<option value="">— خدمة جديدة —</option>' + svcs.map(function (s) { return '<option value="' + esc(s.id) + '">' + esc((s.icon || '') + ' ' + s.name) + '</option>'; }).join('');
+    var ST = { pending: ['بانتظار القرار', 'warn'], approved: ['تمت الموافقة', ''], rejected: ['مرفوضة', 'bad'] };
+    el.innerHTML = rows.length ? rows.map(function (r) {
+      var st = ST[r.status] || ['', ''];
+      return '<div class="card"><div class="pname">' + esc(r.name) + ' ' + pill(st[0], st[1]) + '</div><div class="psvc">من: ' + esc(r.provider) + ' · ' + esc(r.phone) + ' · ' + esc(SQ.cityName(r.city_id) || '') + (r.note ? '<br>وصفه: ' + esc(r.note) : '') + (r.admin_note ? '<br>ملاحظتك: ' + esc(r.admin_note) : '') + (r.suggest ? '<br>اقتراحك: ' + esc(r.suggest) : '') + '</div>' +
+        (r.status === 'pending' ? '<div class="row2"><label class="field"><span>اسم الخدمة النهائي</span><input data-n="' + r.id + '" value="' + esc(r.name) + '" maxlength="40"></label><label class="field"><span>أيقونة (إيموجي)</span><input data-i="' + r.id + '" value="🔧" maxlength="4"></label></div>' +
+          '<label class="field"><span>أو اربطها بخدمة موجودة</span><select data-e="' + r.id + '">' + opts + '</select></label>' +
+          '<div class="row2"><label class="field"><span>ملاحظة للصنايعي (اختياري)</span><input data-m="' + r.id + '" maxlength="200"></label><label class="field"><span>خدمة بديلة نقترحها (عند الرفض)</span><input data-g="' + r.id + '" maxlength="100"></label></div>' +
+          '<div class="btnrow"><button class="btn primary" data-act="ap" data-id="' + r.id + '">✔ موافقة</button><button class="btn danger" data-act="rj" data-id="' + r.id + '">✖ رفض</button></div>' : '') + '</div>';
+    }).join('') : '<div class="empty"><div class="big">🛠</div>لا توجد اقتراحات</div>';
+    el.onclick = async function (e) {
+      var b = e.target.closest('[data-act]'); if (!b) return; var id = b.getAttribute('data-id'), q = function (k) { var x = document.querySelector('[data-' + k + '="' + id + '"]'); return x ? x.value.trim() : ''; };
+      var act = b.getAttribute('data-act'); b.disabled = true;
+      try {
+        if (act === 'ap') await db.adminDecideCustom(code, id, { action: 'approve', name: q('n'), icon: q('i'), existing: q('e'), note: q('m') });
+        else await db.adminDecideCustom(code, id, { action: 'reject', note: q('m'), suggest: q('g') });
+        toast('تم، وأُرسل إشعار للصنايعي'); render();
       } catch (x) { b.disabled = false; fail(x); }
     };
   }

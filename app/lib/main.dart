@@ -4,7 +4,7 @@ import 'core.dart';
 import 'push.dart';
 import 'update_gate.dart';
 import 'theme.dart';
-import 'screens/home.dart';
+import 'screens/splash.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +31,8 @@ class SanayeiApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       builder: (context, child) => UpdateGate(child: child ?? const SizedBox.shrink()),
-      home: const HomeScreen(),
+      navigatorKey: navKey,
+      home: const SplashScreen(),
     );
   }
 }
