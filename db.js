@@ -568,7 +568,7 @@
     },
     adminGetSettings: async function (code) { this.admin(code); return this.appConfig(); },
     adminSaveSettings: async function (code, o) {
-      this.admin(code); this.d.settings.support_whatsapp = o.support_whatsapp || ''; this.d.settings.support_email = o.support_email || ''; this.d.settings.commission_pct = Math.max(0, Math.min(30, +o.commission_pct || 0)); this.d.settings.commission_fixed = Math.max(0, Math.min(100000, +o.commission_fixed || 0)); save(this.d); return true;
+      this.admin(code); this.d.settings.support_whatsapp = o.support_whatsapp || ''; this.d.settings.support_email = o.support_email || ''; this.d.settings.commission_pct = Math.max(0, Math.min(30, +o.commission_pct || 0)); this.d.settings.commission_fixed = Math.max(0, Math.min(100000, +o.commission_fixed || 0)); ['min_build','latest_build','update_url','update_msg'].forEach(function (k) { if (k in o) this.d.settings[k] = o[k]; }, this); save(this.d); return true;
     },
     adminSendNotification: async function (code) { this.admin(code); return true; },
     adminAudit: async function (code) { this.admin(code); return []; },

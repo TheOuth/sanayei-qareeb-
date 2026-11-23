@@ -1792,3 +1792,5 @@ create index if not exists reports_prov_status on reports (provider_id, status);
 -- جداول: rate_limits, audit_log + دوال rate_hit, client_ip, admin_audit + triggers
 -- v16: إشعارات فورية (FCM): device_tokens, push_cfg, register_device, unregister_device,
 -- trigger push_on_notification (pg_net -> Edge Function send-push). التعريف الكامل مطبّق على القاعدة الحية.
+-- v17: تحديث إجباري: app_config يعيد min_build/latest_build/update_url/update_msg، و admin_save_settings يحفظها.
+-- (التعريف الكامل مطبّق على القاعدة الحية: migration v17_force_update)

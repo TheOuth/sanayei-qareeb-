@@ -1,9 +1,40 @@
+import 'package:app_settings/app_settings.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/widgets.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core.dart';
 
 /// الإشعارات الفورية (FCM). أي خطأ هنا لا يجب أن يوقف التطبيق.
-class Push {
+class Push with WidgetsBindingObserver {
+  /// هل إشعارات التطبيق مسموحة؟ (true افتراضيًا حتى نعرف الحالة فلا يومض التنبيه)
+  static final ValueNotifier<bool> allowed = ValueNotifier(true);
+  static final Push _obs = Push._();
+  Push._();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.resumed) refreshStatus();
+  }
+
+  static Future<void> refreshStatus() async {
+    try {
+      final st = await FirebaseMessaging.instance.getNotificationSettings();
+      allowed.value = st.authorizationStatus == AuthorizationStatus.authorized || st.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (_) {}
+  }
+
+  /// يطلب الإذن؛ وإن كان مرفوضًا نهائيًا يفتح إعدادات الإشعارات للتطبيق
+  static Future<void> enable() async {
+    try {
+      final r = await FirebaseMessaging.instance.requestPermission();
+      await refreshStatus();
+      if (r.authorizationStatus != AuthorizationStatus.authorized && !allowed.value) {
+        await AppSettings.openAppSettings(type: AppSettingsType.notification);
+      }
+    } catch (_) {
+      await AppSettings.openAppSettings(type: AppSettingsType.notification);
+    }
+  }
+
   static bool _ready = false;
   static String? _fcm;
   static String _registered = '';
@@ -13,6 +44,8 @@ class Push {
       await Firebase.initializeApp();
       final m = FirebaseMessaging.instance;
       await m.requestPermission();
+      WidgetsBinding.instance.addObserver(_obs);
+      await refreshStatus();
       await m.subscribeToTopic('all');
       _fcm = await m.getToken();
       _ready = true;

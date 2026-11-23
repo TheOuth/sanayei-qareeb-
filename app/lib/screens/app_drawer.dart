@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core.dart';
+import '../push.dart';
 import '../theme.dart';
 import 'requests.dart';
 import 'login.dart';
@@ -43,6 +44,11 @@ class BellBtn extends StatelessWidget {
             onPressed: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
             icon: Stack(clipBehavior: Clip.none, children: [
               Icon(n > 0 ? Icons.notifications_active_rounded : Icons.notifications_none_rounded, size: 28, color: light ? Colors.white : null),
+              if (n == 0)
+                ValueListenableBuilder<bool>(
+                  valueListenable: Push.allowed,
+                  builder: (_, ok, __) => ok ? const SizedBox.shrink() : Positioned(top: -1, right: -1, child: Container(width: 11, height: 11, decoration: BoxDecoration(color: const Color(0xFFF59E0B), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)))),
+                ),
               if (n > 0)
                 Positioned(
                   top: -5, right: -5,

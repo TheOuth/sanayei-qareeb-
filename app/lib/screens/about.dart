@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'app_drawer.dart';
 import '../core.dart';
+import '../update_gate.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -20,7 +21,7 @@ class AboutScreen extends StatelessWidget {
         if (mail.isNotEmpty) Card(child: ListTile(leading: const Icon(Icons.email_outlined), title: Text(mail), onTap: () => openUrl('mailto:$mail'))),
         Card(child: ListTile(leading: const Icon(Icons.privacy_tip_outlined), title: const Text('سياسة الخصوصية'), onTap: () => openUrl('${Config.siteUrl}/privacy-policy.html'))),
         const SizedBox(height: 20),
-        const Center(child: Text('الإصدار 1.0.0', style: TextStyle(color: C.mute, fontSize: 12))),
+        Center(child: Text('الإصدار ${AppVersion.name} (${AppVersion.build})', style: const TextStyle(color: C.mute, fontSize: 12))),
       ]),
     );
   }

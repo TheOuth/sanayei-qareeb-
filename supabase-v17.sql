@@ -1,0 +1,2 @@
+-- v17: تحديث إجباري: app_config يعيد min_build/latest_build/update_url/update_msg، و admin_save_settings يحفظها.
+-- (التعريف الكامل مطبّق على القاعدة الحية: migration v17_force_update)

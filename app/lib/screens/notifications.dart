@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core.dart';
+import '../push.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'app_drawer.dart';
@@ -66,7 +67,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       drawer: const AppDrawer(current: 'home'),
       appBar: bar('الرسائل', bell: false),
-      body: _err != null
+      body: Column(children: [
+        ValueListenableBuilder<bool>(
+          valueListenable: Push.allowed,
+          builder: (_, ok, __) => ok
+              ? const SizedBox.shrink()
+              : Container(
+                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(color: const Color(0xFFFFF4DC), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF3D08A))),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Row(children: [Icon(Icons.notifications_off_rounded, color: Color(0xFFB45309)), SizedBox(width: 8), Expanded(child: Text('الإشعارات متوقفة', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF7A3E00))))]),
+                    const SizedBox(height: 6),
+                    const Text('فعّل الإشعارات لتصلك طلبات الزبائن ورسائل الإدارة فور وصولها، وإلا قد تفوتك أعمال.', style: TextStyle(height: 1.6, color: Color(0xFF7A3E00))),
+                    const SizedBox(height: 10),
+                    FilledButton.icon(style: FilledButton.styleFrom(backgroundColor: const Color(0xFFB45309)), onPressed: Push.enable, icon: const Icon(Icons.notifications_active_rounded, size: 18), label: const Text('تفعيل الإشعارات')),
+                  ]),
+                ),
+        ),
+        Expanded(child: _content()),
+      ]),
+    );
+  }
+
+  Widget _content() {
+    return Builder(builder: (context) {
+      return _err != null
           ? ErrorRetry(_err!, _load)
           : _items == null
               ? const Center(child: CircularProgressIndicator())
@@ -106,7 +132,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           );
                         },
                       ),
-                    ),
-    );
+                    );
+    });
   }
 }

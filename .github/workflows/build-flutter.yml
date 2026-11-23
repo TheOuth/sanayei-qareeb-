@@ -87,7 +87,7 @@ jobs:
           flutter analyze --no-fatal-infos --no-fatal-warnings
       - name: Build APK
         working-directory: app
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
       - uses: actions/upload-artifact@v4
         with: { name: sanayei-native-apk, path: app/build/app/outputs/flutter-apk/*.apk }
       - name: Publish release

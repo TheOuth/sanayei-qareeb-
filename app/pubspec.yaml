@@ -20,6 +20,8 @@ dependencies:
   share_plus: ^10.0.2
   google_fonts: ^6.2.1
   firebase_core: any
+  package_info_plus: any
+  app_settings: any
   firebase_messaging: any
 
 dev_dependencies:
