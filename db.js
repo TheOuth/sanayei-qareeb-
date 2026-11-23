@@ -599,7 +599,7 @@
     providerSelf: function (id, t) { return SB.rpc('provider_self', { p_id: id, p_token: t }); },
     setAvailable: function (id, t, v) { return SB.rpc('set_available', { p_id: id, p_token: t, p_value: !!v }); },
     setHours: function (id, t, f, to) { return SB.rpc('set_hours', { p_id: id, p_token: t, p_from: f, p_to: to }); },
-    deleteProvider: function (id, t) { return SB.rpc('delete_provider', { p_id: id, p_token: t }); },
+    deleteProvider: function (id, t, pw) { return SB.rpc('delete_account', { p_id: id, p_token: t, p_password: pw || '', p_code: null }); },
     createRequest: function (x) { return SB.rpc('create_request', { p: x }); },
     myRequests: function (anon) { return SB.rpc('my_requests', { p_anon: anon }); },
     addReview: function (reqId, anon, x) { return SB.rpc('add_review', { p_request: reqId, p_anon: anon, p_outcome: x.outcome, p_stars: x.stars || null, p_comment: x.comment || '' }); },

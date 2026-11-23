@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
@@ -104,7 +105,7 @@ class _ProfileFormState extends State<ProfileForm> {
     try {
       await Api.rpc('update_profile', {'p_id': Store.pid, 'p_token': Store.token, 'p': {'email': em}});
       if (mounted) {
-        setState(() { _savedEmail = em; _verified = false; });
+        setState(() { _savedEmail = em; _verified = false; _codeOpen = false; });
         toast(context, em.isEmpty ? 'تم حذف البريد' : 'تم حفظ البريد. اضغط "أرسل رمز التأكيد" لتوثيقه');
       }
     } catch (e) {
@@ -113,48 +114,96 @@ class _ProfileFormState extends State<ProfileForm> {
     if (mounted) setState(() => _savingEmail = false);
   }
 
+  final _code = TextEditingController();
+  bool _codeOpen = false, _checking = false;
+  int _cool = 0;
+  Timer? _coolT;
+
+  @override
+  void dispose() {
+    _coolT?.cancel();
+    super.dispose();
+  }
+
+  void _startCool([int s = 60]) {
+    _coolT?.cancel();
+    setState(() => _cool = s);
+    _coolT = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      setState(() => _cool = _cool - 1);
+      if (_cool <= 0) t.cancel();
+    });
+  }
+
   Future<void> _sendCode() async {
     setState(() => _sending = true);
     try {
       await callFunction('send-email-code', {'id': Store.pid, 'token': Store.token});
       if (!mounted) return;
+      _code.clear();
+      setState(() => _codeOpen = true);
+      _startCool();
       toast(context, 'أرسلنا رمزًا من 4 أرقام إلى بريدك (تفقد الرسائل غير المرغوبة أيضًا)');
-      await _enterCode();
     } catch (e) {
-      if (mounted) toast(context, errMsg(e));
+      if (mounted) {
+        // إن كان هناك رمز أُرسل قبل قليل نُبقي خانة الإدخال ظاهرة
+        if (e is ApiError && e.code == 'wait') setState(() => _codeOpen = true);
+        toast(context, errMsg(e));
+      }
     }
     if (mounted) setState(() => _sending = false);
   }
 
-  Future<void> _enterCode() async {
-    final c = TextEditingController();
-    await showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('أدخل رمز التأكيد'),
-        content: TextField(controller: c, keyboardType: TextInputType.number, maxLength: 4, textAlign: TextAlign.center, style: const TextStyle(fontSize: 28, letterSpacing: 10), decoration: const InputDecoration(counterText: '')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                final r = await Api.rpc('verify_email_code', {'p_id': Store.pid, 'p_token': Store.token, 'p_code': c.text.trim()});
-                if (r['ok'] == true) {
-                  if (mounted) { setState(() => _verified = true); toast(context, 'تم توثيق بريدك ✓'); }
-                } else {
-                  final e = r['error'];
-                  final m = e == 'wrong' ? 'الرمز غير صحيح (متبقي ${r['left']} محاولات)' : e == 'expired' ? 'انتهت صلاحية الرمز، اطلب رمزًا جديدًا' : e == 'too_many' ? 'محاولات كثيرة، اطلب رمزًا جديدًا' : 'اطلب رمزًا جديدًا';
-                  if (mounted) toast(context, m);
-                }
-              } catch (e) {
-                if (mounted) toast(context, errMsg(e));
-              }
-            },
-            child: const Text('تأكيد'),
-          ),
-        ],
-      ),
+  Future<void> _checkCode() async {
+    final c = _code.text.trim();
+    if (c.length != 4) return toast(context, 'اكتب الرمز المكوّن من 4 أرقام');
+    setState(() => _checking = true);
+    try {
+      final r = await Api.rpc('verify_email_code', {'p_id': Store.pid, 'p_token': Store.token, 'p_code': c});
+      if (!mounted) return;
+      if (r['ok'] == true) {
+        setState(() { _verified = true; _codeOpen = false; });
+        toast(context, 'تم توثيق بريدك ✓');
+      } else {
+        final e = r['error'];
+        _code.clear();
+        if (e == 'wrong') {
+          toast(context, 'الرمز غير صحيح (متبقي ${r['left']} محاولات). أعد الكتابة');
+        } else {
+          toast(context, e == 'expired' ? 'انتهت صلاحية الرمز. اطلب رمزًا جديدًا' : e == 'too_many' ? 'محاولات كثيرة. اطلب رمزًا جديدًا' : 'اطلب رمزًا جديدًا');
+        }
+      }
+    } catch (e) {
+      if (mounted) toast(context, errMsg(e));
+    }
+    if (mounted) setState(() => _checking = false);
+  }
+
+  Widget _codeBox() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: const Color(0xFFF3F8FF), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFDCE8F5))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('اكتب الرمز الذي وصل إلى بريدك', style: TextStyle(fontWeight: FontWeight.w600)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _code,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.ltr,
+          style: const TextStyle(fontSize: 28, letterSpacing: 12),
+          decoration: const InputDecoration(counterText: '', hintText: '••••'),
+          onChanged: (v) { if (v.trim().length == 4 && !_checking) _checkCode(); },
+        ),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: FilledButton(onPressed: _checking ? null : _checkCode, child: Text(_checking ? 'جارٍ التحقق…' : 'تأكيد الرمز'))),
+          const SizedBox(width: 8),
+          OutlinedButton(onPressed: (_sending || _cool > 0) ? null : _sendCode, child: Text(_cool > 0 ? 'إعادة الإرسال ($_cool)' : 'إرسال رمز جديد')),
+        ]),
+      ]),
     );
   }
 
@@ -177,12 +226,13 @@ class _ProfileFormState extends State<ProfileForm> {
       );
     }
     if (verified) return const Padding(padding: EdgeInsets.only(top: 6), child: Row(children: [Icon(Icons.verified_rounded, color: C.green, size: 18), SizedBox(width: 6), Text('بريد موثّق', style: TextStyle(color: C.green, fontWeight: FontWeight.w600))]));
+    if (_codeOpen) return _codeBox();
     return Padding(
       padding: const EdgeInsets.only(top: 6),
-      child: Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: OutlinedButton.icon(onPressed: _sending ? null : _sendCode, icon: const Icon(Icons.mark_email_read_outlined, size: 18), label: Text(_sending ? 'جارٍ الإرسال…' : 'أرسل رمز التأكيد')),
-      ),
+      child: Row(children: [
+        OutlinedButton.icon(onPressed: _sending ? null : _sendCode, icon: const Icon(Icons.mark_email_read_outlined, size: 18), label: Text(_sending ? 'جارٍ الإرسال…' : 'أرسل رمز التأكيد')),
+        TextButton(onPressed: () => setState(() => _codeOpen = true), child: const Text('لدي رمز')),
+      ]),
     );
   }
 

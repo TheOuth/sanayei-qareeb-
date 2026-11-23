@@ -6,6 +6,7 @@ import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'profile_form.dart';
+import 'delete_account.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -95,26 +96,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('حذف الحساب نهائيًا؟'),
-        content: const Text('سيُحذف ملفك وكل بياناتك ولا يمكن التراجع.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
-          FilledButton(style: FilledButton.styleFrom(backgroundColor: C.red), onPressed: () => Navigator.pop(context, true), child: const Text('حذف')),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await Api.rpc('delete_provider', {'p_id': _id, 'p_token': _tk});
-      await Store.signOut();
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      if (mounted) toast(context, errMsg(e));
-    }
+  void _delete() {
+    final me = _me ?? {};
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeleteAccountScreen(emailVerified: me['email_verified'] == true && (me['email'] ?? '').toString().isNotEmpty, email: (me['email'] ?? '').toString())));
   }
 
   @override

@@ -795,10 +795,14 @@
     on('pw', 'click', function () { openPwModal(me); });
     on('out', 'click', confirmLogout);
     on('del', 'click', function () {
-      modal('<h3>حذف الحساب</h3><p>سيتم حذف حسابك وتقييماتك وطلباتك نهائيا ولا يمكن التراجع. هل أنت متأكد؟</p><div class="row2 mt"><button class="btn ghost" id="dn">إلغاء</button><button class="btn danger" id="dy">نعم، احذف</button></div>');
+      modal('<h3>حذف الحساب</h3><p>سيتم حذف حسابك نهائيا ولا يمكن التراجع. اكتب كلمة السر للتأكيد. (إن كان بريدك موثّقا فالحذف يتم من تطبيق الجوال برمز يصل لبريدك).</p><input class="inp" id="dpw" type="password" placeholder="كلمة السر"><div class="row2 mt"><button class="btn ghost" id="dn">إلغاء</button><button class="btn danger" id="dy">نعم، احذف</button></div>');
       on('dn', 'click', closeModal);
       on('dy', 'click', async function () {
-        try { await db.deleteProvider(pid, tk); closeModal(); signOut(); toast('تم حذف حسابك'); go('#/p/start'); } catch (e) { toast(errMsg(e)); }
+        try {
+          var r = await db.deleteProvider(pid, tk, document.getElementById('dpw').value);
+          if (r && r.ok) { closeModal(); signOut(); toast('تم حذف حسابك'); go('#/p/start'); }
+          else toast(r && r.error === 'wrong_password' ? 'كلمة السر غير صحيحة' : r && r.error === 'locked' ? 'محاولات كثيرة، حاول بعد 15 دقيقة' : 'لحذف الحساب استخدم تطبيق الجوال (يتطلب رمز البريد)');
+        } catch (e) { toast(errMsg(e)); }
       });
     });
   }
