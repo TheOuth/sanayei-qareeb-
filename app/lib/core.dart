@@ -142,7 +142,13 @@ class Store {
     refreshUnread();
   }
 
+  /// يُضبط من خدمة الإشعارات لإلغاء ربط الجهاز عند الخروج
+  static Future<void> Function()? onSignOut;
+
   static Future<void> signOut() async {
+    try {
+      await onSignOut?.call();
+    } catch (_) {}
     await p.remove('pid');
     await p.remove('token');
     await p.remove('me_photo');

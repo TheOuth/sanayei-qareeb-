@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "837221896105",
+    "project_id": "sanayei-qareeb",
+    "storage_bucket": "sanayei-qareeb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:837221896105:android:ee8d414738518193cefeb8",
+        "android_client_info": {
+          "package_name": "sd.sanayei.qareeb"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3Ti4PNYix5c715DpmYl6LHXVVNmVRylM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

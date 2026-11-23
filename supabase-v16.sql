@@ -1,0 +1,2 @@
+-- v16: إشعارات فورية (FCM): device_tokens, push_cfg, register_device, unregister_device,
+-- trigger push_on_notification (pg_net -> Edge Function send-push). التعريف الكامل مطبّق على القاعدة الحية.
