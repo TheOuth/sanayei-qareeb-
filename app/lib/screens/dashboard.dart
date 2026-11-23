@@ -95,11 +95,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    await Store.signOut();
-    if (mounted) Navigator.pop(context);
-  }
-
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -127,7 +122,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final me = _me;
     return Scaffold(
       drawer: const AppDrawer(current: 'dash'),
-      appBar: bar('لوحتي', actions: [IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout)]),
+      appBar: bar('لوحتي'),
       body: _err != null
           ? ErrorRetry(_err!, _load)
           : me == null

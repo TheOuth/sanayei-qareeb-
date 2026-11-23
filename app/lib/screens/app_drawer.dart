@@ -103,7 +103,8 @@ class AppDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Drawer(
       child: SafeArea(
-        child: ListView(padding: EdgeInsets.zero, children: [
+        child: Column(children: [
+          Expanded(child: ListView(padding: EdgeInsets.zero, children: [
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(children: [
@@ -134,6 +135,31 @@ class AppDrawer extends StatelessWidget {
           ],
           const Divider(),
           _item(context, 'about', Icons.info_outline_rounded, 'عن التطبيق والدعم', build: () => const AboutScreen()),
+        ])),
+          if (Store.loggedIn) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.logout_rounded, color: C.red),
+              title: const Text('تسجيل الخروج', style: TextStyle(color: C.red, fontWeight: FontWeight.w600)),
+              onTap: () async {
+                Navigator.pop(context);
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('تسجيل الخروج'),
+                    content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
+                      FilledButton(style: FilledButton.styleFrom(backgroundColor: C.red), onPressed: () => Navigator.pop(context, true), child: const Text('خروج')),
+                    ],
+                  ),
+                );
+                if (ok != true) return;
+                await Store.signOut();
+                if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+              },
+            ),
+          ],
         ]),
       ),
     );

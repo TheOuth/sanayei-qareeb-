@@ -247,11 +247,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (Store.loggedIn)
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen())).then((_) { if (mounted) setState(() {}); }),
-              child: Container(
-                padding: const EdgeInsets.all(2.5),
-                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                child: Avatar(photo: Store.mePhoto, name: Store.meName, size: 46),
-              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: [Colors.white, Color(0xFFBFE0FF)], begin: Alignment.topRight, end: Alignment.bottomLeft),
+                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3))],
+                  ),
+                  child: Avatar(photo: Store.mePhoto, name: Store.meName, size: 50),
+                ),
+                const SizedBox(height: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white70, width: 1)),
+                  child: const Text('الملف الشخصي', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                ),
+              ]),
             ),
         ]),
         const SizedBox(height: 14),

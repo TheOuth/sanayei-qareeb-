@@ -38,4 +38,5 @@ flutter:
   assets:
     - assets/geo.json
     - assets/meta.json
+    - assets/icon.png
     - assets/badges/
