@@ -464,10 +464,19 @@
       '<div class="card"><b>عمولة الطلب</b><p class="note">تُحسب على الخدمات المؤكدة من الطرفين فقط، وتظهر للصنايعية في ملفهم. اتركها 0 لتعطيلها. أبلغ الصنايعية بها قبل تفعيلها.</p>' +
       '<div class="row2"><label class="field"><span>مبلغ ثابت لكل خدمة (جنيه)</span><input id="c_fx" class="ltr" inputmode="numeric" value="' + esc(String(cfg.commission_fixed || 0)) + '"></label><label class="field"><span>نسبة من المبلغ (%)</span><input id="c_pc" class="ltr" inputmode="decimal" value="' + esc(String(cfg.commission_pct || 0)) + '"></label></div></div>' +
       '<div class="card"><b>إشعار لجميع الصنايعية</b><p class="note">يصل إلى جرس الرسائل في تطبيق كل صنايعي (تحديث جديد، تنبيه، إعلان).</p><label class="field"><span>العنوان</span><input id="bc_t" maxlength="100"></label><label class="field"><span>النص</span><textarea id="bc_b" rows="3" maxlength="500"></textarea></label><button class="btn primary" id="bc_send" style="width:100%">🔔 إرسال للجميع</button></div>' +
+      '<div class="card"><b>سجل النشاط</b><p class="note">آخر تغييرات الحالة والتوثيق وحذف الحسابات.</p><button class="btn ghost" id="au_show" style="width:100%">عرض السجل</button><div id="au_list"></div></div>' +
       '<div class="card"><b>تغيير رمز المدير</b>' + U.pwHtml('k_new', 'الرمز الجديد', '8 أحرف على الأقل، لا تشاركه') + U.pwHtml('k_new2', 'أعد كتابته') + '<button class="btn primary" id="k_save" style="width:100%">تغيير الرمز</button></div>' +
       '<div class="card"><b>نسخة احتياطية</b><p class="note">نزّل بيانات كل الصنايعية في ملف يفتح في Excel. أنصح بفعل ذلك أسبوعيا.</p><button class="btn ghost" id="c_csv" style="width:100%">⬇ تنزيل كل الصنايعية (CSV)</button></div>' +
       '<div class="card"><b>روابط</b><div class="kv"><span>التطبيق</span><a href="' + esc(appUrl()) + '" target="_blank" rel="noopener">فتح</a></div><div class="kv"><span>سياسة الخصوصية</span><a href="' + esc(appUrl()) + 'privacy-policy.html" target="_blank" rel="noopener">فتح</a></div></div></div>');
     on('c_csv', 'click', function () { exportCsv({}); });
+    on('au_show', 'click', async function () {
+      var box = document.getElementById('au_list');
+      try {
+        var rows = await db.adminAudit(code, 100);
+        var lbl = { status: 'تغيير حالة', verified: 'توثيق', delete_provider: 'حذف حساب' };
+        box.innerHTML = rows.length ? rows.map(function (r) { return '<div class="kv"><span>' + esc(lbl[r.action] || r.action) + ' — ' + esc(r.detail || '') + '</span><span class="note">' + esc(new Date(r.at).toLocaleString('ar-EG')) + '</span></div>'; }).join('') : '<p class="note">لا توجد أحداث بعد.</p>';
+      } catch (e) { toast('تعذر تحميل السجل'); }
+    });
     on('bc_send', 'click', async function () {
       var t = document.getElementById('bc_t').value.trim(), b = document.getElementById('bc_b').value.trim();
       if (!t) return toast('اكتب عنوانا للإشعار');

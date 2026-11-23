@@ -571,6 +571,7 @@
       this.admin(code); this.d.settings.support_whatsapp = o.support_whatsapp || ''; this.d.settings.support_email = o.support_email || ''; this.d.settings.commission_pct = Math.max(0, Math.min(30, +o.commission_pct || 0)); this.d.settings.commission_fixed = Math.max(0, Math.min(100000, +o.commission_fixed || 0)); save(this.d); return true;
     },
     adminSendNotification: async function (code) { this.admin(code); return true; },
+    adminAudit: async function (code) { this.admin(code); return []; },
     adminChangeCode: async function (code, nw) {
       this.admin(code); if (String(nw || '').length < 8) throw new Error('weak'); this.d.adminCode = nw; save(this.d); return true;
     },
@@ -648,6 +649,7 @@
     adminGetSettings: function (code) { return SB.rpc('admin_get_settings', { p_code: code }); },
     adminSaveSettings: function (code, o) { return SB.rpc('admin_save_settings', { p_code: code, p: o }); },
     adminChangeCode: function (code, nw) { return SB.rpc('admin_change_code', { p_code: code, p_new: nw }); },
+    adminAudit: function (code, n) { return SB.rpc('admin_audit', { p_code: code, p_limit: n || 100 }); },
     adminSendNotification: function (code, id, title, body) { return SB.rpc('admin_send_notification', { p_code: code, p_id: id, p_title: title, p_body: body }); }
   };
 

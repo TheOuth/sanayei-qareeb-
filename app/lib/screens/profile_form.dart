@@ -72,10 +72,24 @@ class _ProfileFormState extends State<ProfileForm> {
 
   Future<void> _pickPhoto() async {
     try {
-      final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 800, imageQuality: 85);
+      final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1000, imageQuality: 90);
       if (x == null) return;
       final dec = img.decodeImage(await x.readAsBytes());
       if (dec == null) return;
+      if (!widget.isRegister) {
+        // حساب موجود: نرفع الصورة إلى التخزين ونحفظ الرابط فقط
+        setState(() => _busy = true);
+        try {
+          final jpg = img.encodeJpg(img.copyResizeCropSquare(dec, size: 320), quality: 80);
+          final r = await callFunction('upload-photo', {'id': Store.pid, 'token': Store.token, 'image': base64Encode(jpg)});
+          if (mounted) setState(() => _photo = (r['url'] ?? '').toString());
+        } catch (e) {
+          if (mounted) toast(context, errMsg(e));
+        }
+        if (mounted) setState(() => _busy = false);
+        return;
+      }
+      // تسجيل جديد (لا يوجد حساب بعد): صورة مصغّرة صغيرة الحجم
       var size = 128;
       String out = '';
       while (size >= 64) {

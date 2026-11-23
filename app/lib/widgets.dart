@@ -98,10 +98,14 @@ class Avatar extends StatelessWidget {
         alignment: Alignment.center,
         child: b != null
             ? Image.memory(b, width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true)
-            : Text(name.isEmpty ? '?' : name.characters.first, style: TextStyle(fontSize: size * .42, color: C.blue, fontWeight: FontWeight.w700)),
+            : (photo != null && photo!.startsWith('http'))
+                ? Image.network(photo!, width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, cacheWidth: (size * 3).round(), errorBuilder: (_, __, ___) => _initial(), loadingBuilder: (c, w, p) => p == null ? w : _initial())
+                : _initial(),
       ),
     );
   }
+
+  Widget _initial() => Text(name.isEmpty ? '?' : name.characters.first, style: TextStyle(fontSize: size * .42, color: C.blue, fontWeight: FontWeight.w700));
 }
 
 class TierBadge extends StatelessWidget {
