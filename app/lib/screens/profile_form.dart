@@ -374,6 +374,7 @@ class _ProfileFormState extends State<ProfileForm> {
     setState(() => _busy = true);
     try {
       await widget.onSubmit(body);
+      if (widget.isRegister && ph.isNotEmpty) await Store.setLastPhone(localPhone(ph));
     } catch (e) {
       if (mounted) toast(context, errMsg(e));
     }
@@ -385,7 +386,7 @@ class _ProfileFormState extends State<ProfileForm> {
     final reg = widget.isRegister;
     final nowY = DateTime.now().year;
     Widget sec(String t) => Padding(padding: const EdgeInsets.only(top: 18, bottom: 8), child: Text(t, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: C.navy)));
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return AutofillGroup(child: ListView(padding: const EdgeInsets.all(16), children: [
       if (widget.header != null) widget.header!,
       Center(
         child: GestureDetector(
@@ -402,7 +403,7 @@ class _ProfileFormState extends State<ProfileForm> {
       TextField(controller: _name, decoration: const InputDecoration(labelText: 'الاسم الكامل')),
       if (reg) ...[
         const SizedBox(height: 10),
-        TextField(controller: _phone, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'رقم الهاتف', hintText: '09xxxxxxxx')),
+        TextField(controller: _phone, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, autofillHints: const [AutofillHints.username], decoration: const InputDecoration(labelText: 'رقم الهاتف', hintText: '09xxxxxxxx')),
       ],
       const SizedBox(height: 10),
       TextField(controller: _wa, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, decoration: InputDecoration(labelText: 'رقم الواتساب', helperText: reg ? 'اتركه فارغًا لو هو نفس رقم الهاتف' : null)),
@@ -413,7 +414,7 @@ class _ProfileFormState extends State<ProfileForm> {
       ],
       if (reg) ...[
         const SizedBox(height: 10),
-        TextField(controller: _pw, obscureText: true, decoration: const InputDecoration(labelText: 'كلمة السر (6 أحرف على الأقل)')),
+        TextField(controller: _pw, obscureText: true, autofillHints: const [AutofillHints.newPassword], decoration: const InputDecoration(labelText: 'كلمة السر (6 أحرف على الأقل)')),
       ],
       sec('تاريخ الميلاد (18 سنة فأكثر) — اكتب عمرك الحقيقي'),
       Row(children: [
@@ -482,7 +483,7 @@ class _ProfileFormState extends State<ProfileForm> {
       const SizedBox(height: 10),
       FilledButton(onPressed: _busy ? null : _submit, child: Text(_busy ? 'جارٍ الحفظ…' : (reg ? 'إنشاء الحساب' : 'حفظ التعديلات'))),
       const SizedBox(height: 30),
-    ]);
+    ]));
   }
 
   Widget _dd<T>(String label, T? v, List<T> items, String Function(T) text, void Function(T?) on) {

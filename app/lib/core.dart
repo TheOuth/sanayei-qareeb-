@@ -144,6 +144,10 @@ class Store {
   static String? get pid => p.getString('pid');
   static String? get token => p.getString('token');
   static bool get loggedIn => pid != null && token != null;
+  /// آخر رقم دخل به الصنايعي (يبقى بعد تسجيل الخروج لتسهيل الدخول القادم)
+  static String get lastPhone => p.getString('last_phone') ?? '';
+  static Future<void> setLastPhone(String v) => p.setString('last_phone', v);
+
   static Future<void> signIn(String id, String t) async {
     await p.setString('pid', id);
     await p.setString('token', t);
