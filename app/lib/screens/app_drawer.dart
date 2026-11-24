@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../widgets.dart' show openUrl;
 import '../core.dart';
 import '../push.dart';
@@ -185,7 +184,7 @@ class _Socials extends StatelessWidget {
   const _Socials();
   static const user = 'SanayeiSD';
 
-  Widget _btn(String label, IconData icon, String url, {Color? color, Gradient? gradient}) => InkWell(
+  Widget _btn(String label, Widget icon, String url, {Color? color, Gradient? gradient}) => InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => openUrl(url),
         child: Padding(
@@ -195,7 +194,7 @@ class _Socials extends StatelessWidget {
               width: 46,
               height: 46,
               decoration: BoxDecoration(color: color, gradient: gradient, shape: BoxShape.circle, boxShadow: [BoxShadow(color: (color ?? const Color(0xFFE4405F)).withOpacity(.30), blurRadius: 8, offset: const Offset(0, 3))]),
-              child: Center(child: FaIcon(icon, color: Colors.white, size: 21)),
+              child: Center(child: icon),
             ),
             const SizedBox(height: 5),
             Text(label, style: const TextStyle(fontSize: 11, color: C.mute, fontWeight: FontWeight.w600)),
@@ -211,15 +210,39 @@ class _Socials extends StatelessWidget {
         const Text('تابعنا على مواقع التواصل الاجتماعي', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
         const SizedBox(height: 10),
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-          _btn('فيسبوك', FontAwesomeIcons.facebookF, 'https://www.facebook.com/$user', color: const Color(0xFF1877F2)),
-          _btn('إنستغرام', FontAwesomeIcons.instagram, 'https://www.instagram.com/$user',
+          _btn('فيسبوك', const Text('f', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, height: 1.05)), 'https://www.facebook.com/$user', color: const Color(0xFF1877F2)),
+          _btn('إنستغرام', const CustomPaint(size: Size(24, 24), painter: _GlyphPainter('ig')), 'https://www.instagram.com/$user',
               gradient: const LinearGradient(begin: Alignment.bottomLeft, end: Alignment.topRight, colors: [Color(0xFFFEDA75), Color(0xFFFA7E1E), Color(0xFFD62976), Color(0xFF962FBF), Color(0xFF4F5BD5)])),
-          _btn('تيك توك', FontAwesomeIcons.tiktok, 'https://www.tiktok.com/@$user', color: const Color(0xFF111111)),
-          _btn('X', FontAwesomeIcons.xTwitter, 'https://x.com/$user', color: const Color(0xFF111111)),
+          _btn('تيك توك', const Icon(Icons.music_note_rounded, color: Colors.white, size: 25), 'https://www.tiktok.com/@$user', color: const Color(0xFF111111)),
+          _btn('X', const CustomPaint(size: Size(22, 22), painter: _GlyphPainter('x')), 'https://x.com/$user', color: const Color(0xFF111111)),
         ]),
         const SizedBox(height: 6),
         const Text('@$user', textDirection: TextDirection.ltr, style: TextStyle(color: C.blue, fontWeight: FontWeight.w700, fontSize: 13)),
       ]),
     );
   }
+}
+
+/// رسم بسيط لشعاري إنستغرام و X (لا توجد أيقونات ماركات في Material)
+class _GlyphPainter extends CustomPainter {
+  final String kind;
+  const _GlyphPainter(this.kind);
+  @override
+  void paint(Canvas c, Size s) {
+    final w = Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeCap = StrokeCap.round;
+    if (kind == 'ig') {
+      w.strokeWidth = 2.2;
+      c.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(1.2, 1.2, s.width - 2.4, s.height - 2.4), const Radius.circular(7)), w);
+      c.drawCircle(Offset(s.width / 2, s.height / 2), s.width * .22, w);
+      c.drawCircle(Offset(s.width * .76, s.height * .24), 1.3, Paint()..color = Colors.white);
+    } else {
+      w.strokeWidth = 3.0;
+      c.drawLine(Offset(s.width * .1, s.height * .06), Offset(s.width * .9, s.height * .94), w);
+      w.strokeWidth = 2.0;
+      c.drawLine(Offset(s.width * .9, s.height * .06), Offset(s.width * .1, s.height * .94), w);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter old) => false;
 }
