@@ -139,7 +139,7 @@
     pub: function (p, d) {
       return {
         id: p.id, name: p.name, services: p.services, state_id: p.state_id, city_id: p.city_id, hood: p.hood,
-        experience: p.experience, price: p.price, bio: p.bio, from: p.from, to: p.to, available: isAvail(p),
+        experience: p.experience, price: p.price, price_max: p.price_max || p.price, bio: p.bio, from: p.from, to: p.to, available: isAvail(p),
         distance_km: d == null ? null : Math.round(d * 10) / 10,
         rating: p.stats.n >= C.minReviewsForStars ? p.stats.avg : null, rating_n: p.stats.n,
         ok: p.stats.ok, fail: p.stats.fail, phone: p.phone, whatsapp: p.whatsapp, demo: !!p.demo, photo: p.photo || '', verified: !!p.verified, jobs: this.jobs(p.id), age: ageOf(p.birth_date), username: p.username || ''
@@ -232,7 +232,7 @@
         password: x.password, fails: 0, locked_until: 0, admin_note: '',
         id: uid(), token: uid(), name: x.name, phone: x.phone, whatsapp: x.whatsapp, state_id: x.state_id, city_id: x.city_id,
         hood: x.hood, lat: x.lat, lng: x.lng, radius: String(x.radius), services: x.services, experience: Number(x.experience) || 0,
-        price: Number(x.price) || 0, bio: x.bio, from: x.from, to: x.to, status: 'pending', available: false,
+        price: Number(x.price) || 0, price_max: Number(x.price_max) || Number(x.price) || 0, bio: x.bio, from: x.from, to: x.to, status: 'pending', available: false,
         last_seen: Date.now(), created: Date.now(), stats: { ok: 0, fail: 0, n: 0, avg: 0 }
       };
       this.d.providers.push(p); save(this.d);
@@ -396,6 +396,7 @@
       if (o.services) p.services = o.services.slice();
       if (o.experience != null) p.experience = Number(o.experience);
       if (o.price != null) p.price = Number(o.price);
+      if (o.price_max != null) p.price_max = Number(o.price_max);
       if (o.bio != null) p.bio = String(o.bio).slice(0, 200);
       if (o.from) p.from = o.from;
       if (o.to) p.to = o.to;

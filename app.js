@@ -300,6 +300,12 @@
       c.addEventListener('click', function () { go('#/c/p/' + c.getAttribute('data-id') + '/' + sid); });
     });
   }
+  function priceTxt(p) {
+    var lo = Number(p.price) || 0, hi = Number(p.price_max) || 0, cu = ' ' + SQ.COUNTRY.currency;
+    if (lo <= 0 && hi <= 0) return '';
+    if (hi <= lo) return lo.toLocaleString('en') + cu;
+    return 'من ' + lo.toLocaleString('en') + ' إلى ' + hi.toLocaleString('en') + cu;
+  }
   function ring(p, big) {
     if (p.reply_pct == null) return '';
     var v = p.reply_pct, col = v >= 80 ? '#1a7f4b' : v >= 50 ? '#b45309' : '#b42318';
@@ -315,7 +321,7 @@
       '<div class="meta">' +
       (dist ? '<span class="mi">' + SQ.I('pin', 15) + ' ' + dist + '</span>' : '') + (eta ? '<span class="mi">' + SQ.I('clock', 15) + ' ' + eta + '</span>' : '') + (p.age ? '<span class="mi">' + SQ.I('user', 15) + ' ' + p.age + ' سنة</span>' : '') +
       '<span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : '<span class="new">جديد</span>') + '</span>' +
-      '<span>كشف ' + Number(p.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span>' +
+      (priceTxt(p) ? '<span>' + esc(priceTxt(p)) + '</span>' : '') +
       '<span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span>' + ring(p) +
       '</div></div></div></div>';
   }
@@ -345,7 +351,7 @@
         '<div class="card">' +
         '<div class="kv"><span>الحالة</span><span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span></div>' +
         '<div class="kv"><span>المسافة</span><span>' + dist + '</span></div>' +
-        '<div class="kv"><span>سعر الكشف</span><span>' + Number(p.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span></div>' +
+        (priceTxt(p) ? '<div class="kv"><span>السعر</span><span>' + esc(priceTxt(p)) + '</span></div><div class="note" style="margin:2px 0 6px">السعر النهائي يُتفق عليه مع الصنايعي بعد معرفة حجم الخدمة، ويكون ضمن هذا النطاق.</div>' : '') +
         '<div class="kv"><span>المنطقة</span><span>' + esc((p.hood ? p.hood + '، ' : '') + SQ.cityName(p.city_id)) + '</span></div>' +
         '<div class="kv"><span>أوقات العمل</span><span>من ' + esc(p.from || '--') + ' إلى ' + esc(p.to || '--') + '</span></div></div>' +
         '<div class="card">' + (p.reply_pct != null ? ring(p, true) + ' <b>سرعة الرد</b><div class="note" style="margin:4px 0 0">ردّ خلال 15 دقيقة على ' + p.reply_pct + '% من الطلبات</div>' : '<span class="muted">سرعة الرد تظهر بعد 3 طلبات على الأقل</span>') + '</div>' +
@@ -607,7 +613,7 @@
       title: 'تسجيل مقدم خدمة', back: regBack(3), menu: true,
       body: stepsBar(3) + '<div class="h2">الخبرة والسعر</div>' +
         '<label class="field"><span>سنوات الخبرة</span><input id="ex" type="number" inputmode="numeric" min="0" max="60" value="' + esc(reg.experience == null ? '' : reg.experience) + '"></label>' +
-        '<label class="field"><span>سعر الكشف (' + esc(SQ.COUNTRY.currency) + ')</span><input id="pr" type="number" inputmode="numeric" min="0" value="' + esc(reg.price == null ? '' : reg.price) + '"><small>اكتب 0 لو الكشف مجاني</small></label>' +
+        '<div class="row2"><label class="field"><span>أدنى سعر (' + esc(SQ.COUNTRY.currency) + ')</span><input id="pr" type="number" inputmode="numeric" min="0" value="' + esc(reg.price == null ? '' : reg.price) + '"></label><label class="field"><span>أعلى سعر</span><input id="pm" type="number" inputmode="numeric" min="0" value="' + esc(reg.price_max == null ? '' : reg.price_max) + '"></label></div><div class="note">السعر النهائي يُحدَّد بالاتفاق مع الزبون بعد معرفة حجم الخدمة، ويقع بين الأدنى والأعلى.</div>' +
         '<label class="field"><span>وصف قصير لمهارتك</span><textarea id="bio" maxlength="200" placeholder="مثال: تركيب ألواح شمسية وبطاريات وصيانة (20 حرفا فأكثر ترفع ترتيبك)">' + esc(reg.bio || '') + '</textarea></label>' + U.photoHtml('pp') +
         '<div class="row2"><label class="field"><span>من الساعة</span><input id="fr" type="time" class="ltr" value="' + esc(reg.from) + '"></label><label class="field"><span>إلى الساعة</span><input id="to" type="time" class="ltr" value="' + esc(reg.to) + '"></label></div>',
       foot: '<button class="btn primary" id="next">التالي</button>'
@@ -618,9 +624,11 @@
     on('next', 'click', function () {
       var ex = document.getElementById('ex').value, pr = document.getElementById('pr').value, bio = document.getElementById('bio').value.trim();
       if (ex === '' || +ex < 0) return toast('اكتب سنوات الخبرة');
-      if (pr === '' || +pr < 0) return toast('اكتب سعر الكشف');
+      var pm = document.getElementById('pm').value;
+      if (pr === '' || +pr <= 0) return toast('اكتب أدنى سعر');
+      if (pm === '' || +pm < +pr) return toast('أعلى سعر يجب ألا يقل عن أدنى سعر');
       if (bio.length < 5) return toast('اكتب وصفا قصيرا لمهارتك');
-      reg.experience = +ex; reg.price = +pr; reg.bio = bio; reg.from = document.getElementById('fr').value || '08:00'; reg.to = document.getElementById('to').value || '20:00';
+      reg.experience = +ex; reg.price = +pr; reg.price_max = +pm; reg.bio = bio; reg.from = document.getElementById('fr').value || '08:00'; reg.to = document.getElementById('to').value || '20:00';
       regSave(); go('#/p/4');
     });
   }
@@ -632,7 +640,7 @@
       title: 'تسجيل مقدم خدمة', back: regBack(4), menu: true,
       body: stepsBar(4) + '<div class="h2">راجع بياناتك</div><div class="card">' +
         [['الاسم', reg.name], ['الهاتف', reg.phone], ['الواتساب', reg.whatsapp], ['الخدمات', svcNames(reg.services)], ['المنطقة', (reg.hood ? reg.hood + '، ' : '') + SQ.cityName(reg.city_id) + ' - ' + SQ.stateName(reg.state_id)],
-          ['النطاق', reg.radius === 'all' ? 'كل المدينة' : reg.radius + ' كم'], ['الخبرة', reg.experience + ' سنة'], ['سعر الكشف', Number(reg.price).toLocaleString('en') + ' ' + SQ.COUNTRY.currency], ['أوقات العمل', 'من ' + reg.from + ' إلى ' + reg.to], ['الوصف', reg.bio]]
+          ['النطاق', reg.radius === 'all' ? 'كل المدينة' : reg.radius + ' كم'], ['الخبرة', reg.experience + ' سنة'], ['السعر', priceTxt(reg)], ['أوقات العمل', 'من ' + reg.from + ' إلى ' + reg.to], ['الوصف', reg.bio]]
           .map(function (r) { return '<div class="kv"><span>' + r[0] + '</span><span style="text-align:left">' + esc(r[1]) + '</span></div>'; }).join('') + '</div>' +
         '<p class="note">بعد الإرسال يراجع فريق صنايعي قريب طلبك ويتواصل معك على واتساب لتأكيد بياناتك خلال 24 ساعة. تدخل بعدها بالهاتف وكلمة السر.</p>',
       foot: '<button class="btn primary" id="send">أرسل للمراجعة</button>'
@@ -644,7 +652,7 @@
       try {
         var r = await db.registerProvider({
           name: reg.name, phone: reg.phone, whatsapp: reg.whatsapp, password: regPw, state_id: reg.state_id, city_id: reg.city_id, hood: reg.hood,
-          lat: reg.lat || city.lat, lng: reg.lng || city.lng, radius: reg.radius, services: reg.services, experience: reg.experience, price: reg.price,
+          lat: reg.lat || city.lat, lng: reg.lng || city.lng, radius: reg.radius, services: reg.services, experience: reg.experience, price: reg.price, price_max: reg.price_max,
           bio: reg.bio, from: reg.from, to: reg.to, photo: reg.photo || '', birth_date: reg.birth_date
         });
         signIn(r.id, r.token); store.del('reg'); reg = { services: [], radius: '10', from: '08:00', to: '20:00', waSame: true }; regPw = '';
@@ -772,7 +780,7 @@
     if (!me.photo) todo.push('أضف صورة شخصية (+30%)');
     if (!me.bio || me.bio.trim().length < 20) todo.push('اكتب وصفا لمهارتك بـ 20 حرفا فأكثر (+25%)');
     if (!me.hood) todo.push('اكتب اسم حيك (+15%)');
-    if (!me.price) todo.push('حدد سعر الكشف (+10%)');
+    if (!me.price || (me.price_max || 0) < me.price) todo.push('حدد أدنى وأعلى سعر (+10%)');
     if (!me.experience) todo.push('اكتب سنوات خبرتك (+10%)');
     if (!me.has_password) todo.push('أضف كلمة سر (+10%)');
     var pct = me.pct != null ? me.pct : 100 - 0;
@@ -802,7 +810,7 @@
         '<div class="kv"><span>الواتساب</span><span class="ltr">' + esc(me.whatsapp) + '</span></div>' +
         '<div class="kv"><span>المنطقة</span><span>' + esc((me.hood ? me.hood + '، ' : '') + SQ.cityName(me.city_id) + ' - ' + SQ.stateName(me.state_id)) + '</span></div>' +
         '<div class="kv"><span>نطاق التغطية</span><span>' + (me.radius === 'all' ? 'كل المدينة' : esc(me.radius) + ' كم') + '</span></div>' +
-        '<div class="kv"><span>سعر الكشف</span><span>' + Number(me.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span></div>' +
+        '<div class="kv"><span>السعر</span><span>' + esc(priceTxt(me)) + '</span></div>' +
         '<div class="kv"><span>أوقات العمل</span><span>من ' + esc(me.from) + ' إلى ' + esc(me.to) + '</span></div>' +
         (me.bio ? '<div class="kv"><span>الوصف</span><span style="text-align:left">' + esc(me.bio) + '</span></div>' : '') +
         '<p class="note">لتغيير رقم الهاتف تواصل مع الدعم. رابط ملفك: <span class="ltr">' + esc(shareUrl(me)) + '</span>' + (me.username_changed ? '<br>اسم المستخدم لا يُغيَّر إلا مرة واحدة، وللتعديل تواصل مع الدعم.' : '<br>يمكنك تغيير اسم المستخدم مرة واحدة فقط.') + '</p></div>' +
@@ -885,7 +893,8 @@
           return '<button class="chip' + (ed.radius === r[0] ? ' on' : '') + '" data-r="' + r[0] + '">' + r[1] + '</button>';
         }).join('') + '</div></div>' +
         '<div class="row2"><label class="field"><span>سنوات الخبرة</span><input id="ex" type="number" inputmode="numeric" min="0" value="' + esc(me.experience) + '"></label>' +
-        '<label class="field"><span>سعر الكشف</span><input id="pr" type="number" inputmode="numeric" min="0" value="' + esc(me.price) + '"></label></div>' +
+        '<label class="field"><span>أدنى سعر</span><input id="pr" type="number" inputmode="numeric" min="0" value="' + esc(me.price) + '"></label></div>' +
+        '<label class="field"><span>أعلى سعر</span><input id="pm" type="number" inputmode="numeric" min="0" value="' + esc(me.price_max || me.price) + '"><small>السعر النهائي يُتفق عليه مع الزبون بعد معرفة حجم الخدمة، ويقع بين الأدنى والأعلى.</small></label>' +
         '<label class="field"><span>وصف قصير لمهارتك</span><textarea id="bio" maxlength="200">' + esc(me.bio || '') + '</textarea></label>' +
         '<div class="row2"><label class="field"><span>من الساعة</span><input id="fr" type="time" class="ltr" value="' + esc(me.from) + '"></label><label class="field"><span>إلى الساعة</span><input id="to" type="time" class="ltr" value="' + esc(me.to) + '"></label></div>',
       foot: '<button class="btn primary" id="save">حفظ التعديلات</button>'
@@ -907,10 +916,12 @@
       if (!wa) return toast('رقم الواتساب غير صحيح');
       if (!ed.services.length) return toast('اختر خدمة واحدة على الأقل');
       if (!st || !ct) return toast('اختر الولاية والمدينة');
-      if (ex === '' || pr === '') return toast('اكتب الخبرة وسعر الكشف');
+      var pm = document.getElementById('pm').value;
+      if (ex === '' || pr === '' || +pr <= 0) return toast('اكتب الخبرة وأدنى سعر');
+      if (pm === '' || +pm < +pr) return toast('أعلى سعر يجب ألا يقل عن أدنى سعر');
       if (bio.length < 5) return toast('اكتب وصفا قصيرا لمهارتك');
       var o = { name: nm, birth_date: U.birthVal('bd'), whatsapp: wa, services: ed.services, state_id: st, city_id: ct, hood: document.getElementById('hd').value.trim(), radius: ed.radius,
-        experience: +ex, price: +pr, bio: bio, photo: ed.photo, from: document.getElementById('fr').value || '08:00', to: document.getElementById('to').value || '20:00' };
+        experience: +ex, price: +pr, price_max: +pm, bio: bio, photo: ed.photo, from: document.getElementById('fr').value || '08:00', to: document.getElementById('to').value || '20:00' };
       if (ed.lat != null) { o.lat = ed.lat; o.lng = ed.lng; }
       else if (ct !== me.city_id) { var cc = SQ.findCity(ct).city; o.lat = cc.lat; o.lng = cc.lng; }
       var b = document.getElementById('save'); b.disabled = true;

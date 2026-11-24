@@ -13,6 +13,7 @@ class RegisterScreen extends StatelessWidget {
       appBar: bar('سجّل كصنايعي'),
       body: ProfileForm(
         isRegister: true,
+        header: const RegistrationNote(),
         onSubmit: (body) async {
           final r = await Api.rpc('register_provider', {'p': body});
           await Store.signIn(r['id'], r['token']);

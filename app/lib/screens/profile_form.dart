@@ -11,8 +11,9 @@ class ProfileForm extends StatefulWidget {
   final bool isRegister;
   final Map? initial;
   final Widget? header;
+  final Widget? footer;
   final Future<void> Function(Map<String, dynamic>) onSubmit;
-  const ProfileForm({super.key, required this.isRegister, this.initial, this.header, required this.onSubmit});
+  const ProfileForm({super.key, required this.isRegister, this.initial, this.header, this.footer, required this.onSubmit});
   @override
   State<ProfileForm> createState() => _ProfileFormState();
 }
@@ -26,6 +27,7 @@ class _ProfileFormState extends State<ProfileForm> {
   final _hood = TextEditingController();
   final _exp = TextEditingController();
   final _price = TextEditingController();
+  final _pmax = TextEditingController();
   final _bio = TextEditingController();
   int? _d, _m, _y;
   StateG? _st;
@@ -53,6 +55,7 @@ class _ProfileFormState extends State<ProfileForm> {
       _email.text = (i['email'] ?? '').toString();
       _exp.text = (i['experience'] ?? '').toString();
       _price.text = (i['price'] ?? '').toString();
+      _pmax.text = ((i['price_max'] ?? 0) == 0 ? (i['price'] ?? '') : i['price_max']).toString();
       _bio.text = (i['bio'] ?? '').toString();
       _services.addAll((i['services'] as List).map((e) => e.toString()));
       _radius = (i['radius'] ?? '10').toString();
@@ -299,7 +302,7 @@ class _ProfileFormState extends State<ProfileForm> {
         ),
       );
     }
-    if (verified) return const Padding(padding: EdgeInsets.only(top: 6), child: Row(children: [Icon(Icons.verified_rounded, color: C.green, size: 18), SizedBox(width: 6), Text('بريد موثّق', style: TextStyle(color: C.green, fontWeight: FontWeight.w600))]));
+    if (verified) return const Padding(padding: EdgeInsets.only(top: 6), child: Row(children: [Text('✅', style: TextStyle(fontSize: 15)), SizedBox(width: 6), Text('تم التحقق من البريد', style: TextStyle(color: C.green, fontWeight: FontWeight.w600))]));
     if (_codeOpen) return _codeBox();
     return Padding(
       padding: const EdgeInsets.only(top: 6),
@@ -318,9 +321,18 @@ class _ProfileFormState extends State<ProfileForm> {
     }
   }
 
+  /// سبب نقص الملف يظهر أسفل الحقل الناقص (في وضع التعديل فقط)
+  Widget _need(bool cond, String msg) => (widget.isRegister || !cond)
+      ? const SizedBox.shrink()
+      : Padding(padding: const EdgeInsets.only(top: 4), child: Row(children: [const Icon(Icons.error_outline_rounded, size: 15, color: Color(0xFFB45309)), const SizedBox(width: 4), Expanded(child: Text(msg, style: const TextStyle(color: Color(0xFFB45309), fontSize: 12)))]));
+
   Future<void> _time(bool from) async {
     final cur = (from ? _from : _to).split(':');
-    final t = await showTimePicker(context: context, initialTime: TimeOfDay(hour: int.tryParse(cur[0]) ?? 8, minute: int.tryParse(cur[1]) ?? 0));
+    final t = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: int.tryParse(cur[0]) ?? 8, minute: int.tryParse(cur[1]) ?? 0),
+      builder: (c, w) => MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: false), child: w!),
+    );
     if (t == null) return;
     final s = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
     setState(() => from ? _from = s : _to = s);
@@ -355,6 +367,7 @@ class _ProfileFormState extends State<ProfileForm> {
       'services': _services.toList(),
       'experience': exp,
       'price': int.tryParse(_price.text.trim()) ?? 0,
+      'price_max': int.tryParse(_pmax.text.trim()) ?? 0,
       'bio': _bio.text.trim(),
       'from': _from,
       'to': _to,
@@ -371,6 +384,8 @@ class _ProfileFormState extends State<ProfileForm> {
       body['email'] = em;
       if (_lat == null) { body.remove('lat'); body.remove('lng'); }
     }
+    final pmn = int.tryParse(_price.text.trim()) ?? 0, pmx = int.tryParse(_pmax.text.trim()) ?? 0;
+    if (pmn > 0 && pmx > 0 && pmx < pmn) return toast(context, 'أعلى سعر يجب ألا يقل عن أدنى سعر');
     setState(() => _busy = true);
     try {
       await widget.onSubmit(body);
@@ -399,6 +414,7 @@ class _ProfileFormState extends State<ProfileForm> {
       ),
       const SizedBox(height: 4),
       const Center(child: Text('صورة شخصية واضحة (تزيد ثقة الزبائن)', style: TextStyle(color: C.mute, fontSize: 12))),
+      Center(child: _need(_photo.isEmpty, 'ناقص: أضف صورة شخصية (30% من اكتمال الملف)')),
       sec('بياناتك'),
       TextField(controller: _name, decoration: const InputDecoration(labelText: 'الاسم الكامل')),
       if (reg) ...[
@@ -439,7 +455,8 @@ class _ProfileFormState extends State<ProfileForm> {
         ]),
       ),
       const SizedBox(height: 10),
-      TextField(controller: _hood, decoration: const InputDecoration(labelText: 'الحي (اختياري)')),
+      TextField(controller: _hood, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'الحي')),
+      _need(_hood.text.trim().isEmpty, 'ناقص: اكتب اسم حيّك (15% من اكتمال الملف)'),
       const SizedBox(height: 8),
       OutlinedButton.icon(onPressed: _gpsPoint, icon: Icon(_lat == null ? Icons.my_location_rounded : Icons.check_circle_rounded), label: Text(_lat == null ? 'حدّد موقعي الدقيق بالـ GPS (موصى به)' : 'تم حفظ موقعك الدقيق')),
       sec('خدماتك'),
@@ -458,19 +475,26 @@ class _ProfileFormState extends State<ProfileForm> {
           ChoiceChip(label: Text(r[1]), selected: _radius == r[0], onSelected: (_) => setState(() => _radius = r[0])),
       ]),
       sec('العمل'),
-      Row(children: [
-        Expanded(child: TextField(controller: _exp, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سنوات الخبرة'))),
-        const SizedBox(width: 8),
-        Expanded(child: TextField(controller: _price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سعر الكشف (جنيه)'))),
-      ]),
+      TextField(controller: _exp, onChanged: (_) => setState(() {}), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'سنوات الخبرة')),
+      _need((int.tryParse(_exp.text.trim()) ?? 0) <= 0, 'ناقص: اكتب سنوات خبرتك (سنة على الأقل) (10%)'),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: OutlinedButton(onPressed: () => _time(true), child: Text('من $_from'))),
+        Expanded(child: TextField(controller: _price, onChanged: (_) => setState(() {}), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'أدنى سعر (جنيه)'))),
         const SizedBox(width: 8),
-        Expanded(child: OutlinedButton(onPressed: () => _time(false), child: Text('إلى $_to'))),
+        Expanded(child: TextField(controller: _pmax, onChanged: (_) => setState(() {}), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'أعلى سعر (جنيه)'))),
+      ]),
+      const Padding(padding: EdgeInsets.only(top: 6), child: Text('السعر النهائي يُحدَّد بالاتفاق مع الزبون بعد أن تعرف حجم الخدمة، ويقع بين الأدنى والأعلى. يظهر هذا للزبون في ملفك.', style: TextStyle(color: C.mute, fontSize: 12, height: 1.5))),
+      _need((int.tryParse(_price.text.trim()) ?? 0) <= 0, 'ناقص: اكتب أدنى سعر لخدمتك (10%)'),
+      _need((int.tryParse(_price.text.trim()) ?? 0) > 0 && (int.tryParse(_pmax.text.trim()) ?? 0) < (int.tryParse(_price.text.trim()) ?? 0), 'اكتب أعلى سعر (لا يقل عن الأدنى)'),
+      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(child: OutlinedButton(onPressed: () => _time(true), child: Text('من ${t12(_from)}'))),
+        const SizedBox(width: 8),
+        Expanded(child: OutlinedButton(onPressed: () => _time(false), child: Text('إلى ${t12(_to)}'))),
       ]),
       const SizedBox(height: 10),
-      TextField(controller: _bio, maxLength: 200, maxLines: 3, decoration: const InputDecoration(labelText: 'نبذة عنك وعن شغلك')),
+      TextField(controller: _bio, onChanged: (_) => setState(() {}), maxLength: 200, maxLines: 3, decoration: const InputDecoration(labelText: 'نبذة عنك وعن شغلك')),
+      _need(_bio.text.trim().length < 20, 'ناقص: اكتب وصفًا لا يقل عن 20 حرفًا (25% من اكتمال الملف)، متبقي ${20 - _bio.text.trim().length} حرفًا'),
       if (reg) ...[
         CheckboxListTile(
           value: _ok18,
@@ -480,6 +504,7 @@ class _ProfileFormState extends State<ProfileForm> {
           title: const Text('أقرّ أن عمري 18 سنة فأكثر وأن بياناتي صحيحة، وأوافق على التواصل معي للتحقق من هويتي.', style: TextStyle(fontSize: 13)),
         ),
       ],
+      if (widget.footer != null) ...[const SizedBox(height: 16), widget.footer!],
       const SizedBox(height: 10),
       FilledButton(onPressed: _busy ? null : _submit, child: Text(_busy ? 'جارٍ الحفظ…' : (reg ? 'إنشاء الحساب' : 'حفظ التعديلات'))),
       const SizedBox(height: 30),

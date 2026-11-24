@@ -85,7 +85,7 @@ class Push with WidgetsBindingObserver {
     if (nav == null) return;
     if (kind != 'client_accept' && !Store.loggedIn) return;
     Store.refreshUnread();
-    final goDash = kind == 'request' || kind == 'confirm';
+    final goDash = kind == 'request' || kind == 'confirm' || kind.startsWith('badge');
     nav.push(MaterialPageRoute(builder: (_) => kind == 'client_accept' ? const RequestsScreen() : goDash ? const DashboardScreen() : const NotificationsScreen()));
   }
 

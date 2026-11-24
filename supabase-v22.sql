@@ -1,0 +1,2 @@
+-- v22: نطاق السعر (providers.price_max؛ price = الأدنى)، profile_pct/profile_missing (مفاتيح)، apply_profile/register_provider/provider_public بـ price_max،
+-- إشعارات الشارات بنوع badge:<tier> وbadge_down:<tier> (admin_set_badge, admin_badge_decide, trg_notif_done). التعريفات الكاملة مطبّقة على القاعدة الحية (v22_*).

@@ -52,6 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
       drawer: const AppDrawer(current: 'login'),
       appBar: bar('تسجيل دخول الصنايعي'),
       body: AutofillGroup(child: ListView(padding: const EdgeInsets.all(20), children: [
+        const RegistrationNote(),
         const SizedBox(height: 10),
         TextField(controller: _ph, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, autofillHints: const [AutofillHints.username, AutofillHints.telephoneNumber], textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'رقم الهاتف', hintText: '09xxxxxxxx')),
         const SizedBox(height: 12),

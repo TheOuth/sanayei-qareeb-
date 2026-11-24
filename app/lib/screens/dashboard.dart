@@ -135,7 +135,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Row(children: [Flexible(child: Text(me['name'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))), const SizedBox(width: 6), TierBadge(p: me, size: 22)]),
                 Text('اكتمال الملف ${me['pct']}%', style: const TextStyle(color: C.mute, fontSize: 12)),
                 if ((me['pct'] ?? 0) < 100 && (me['missing'] as List?)?.isNotEmpty == true)
-                  Padding(padding: const EdgeInsets.only(top: 3), child: Text('ينقصك: ${(me['missing'] as List).join('، ')}', style: const TextStyle(color: Color(0xFFB45309), fontSize: 12, height: 1.4))),
+                  Padding(padding: const EdgeInsets.only(top: 3), child: Text('ينقصك: ${(me['missing'] as List).map((k) => const {'photo': 'الصورة', 'bio': 'الوصف (20 حرفًا)', 'hood': 'الحي', 'price': 'أدنى سعر', 'price_max': 'أعلى سعر', 'experience': 'سنوات الخبرة', 'password': 'كلمة السر'}[k] ?? k).join('، ')}', style: const TextStyle(color: Color(0xFFB45309), fontSize: 12, height: 1.4))),
               ]),
             ),
             if (me['reply_pct'] != null) Padding(padding: const EdgeInsetsDirectional.only(end: 6), child: ReplyRing(p: me, size: 42)),
@@ -162,7 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             value: me['flag'] == true,
             onChanged: _toggle,
             title: const Text('أنا متاح الآن', style: TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text(me['available'] == true ? 'ملفك ظاهر للزبائن' : (me['flag'] == true ? 'خارج ساعات العمل (${me['from']} - ${me['to']})' : 'غير ظاهر في القوائم')),
+            subtitle: Text(me['available'] == true ? 'ملفك ظاهر للزبائن' : (me['flag'] == true ? 'خارج ساعات العمل (${t12(me['from'])} - ${t12(me['to'])})' : 'غير ظاهر في القوائم')),
           ),
         ),
         const SizedBox(height: 10),
@@ -268,6 +268,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
+/// يفتح شاشة تعديل الملف مباشرة (تُستخدم من الإشعارات)
+Future<void> openEditProfile(BuildContext context) async {
+  try {
+    final me = await Api.rpc('provider_self', {'p_id': Store.pid, 'p_token': Store.token});
+    if (context.mounted) await Navigator.push(context, MaterialPageRoute(builder: (_) => _EditScreen(me: Map<String, dynamic>.from(me as Map))));
+  } catch (e) {
+    if (context.mounted) toast(context, errMsg(e));
+  }
+}
+
 class _EditScreen extends StatefulWidget {
   final Map me;
   const _EditScreen({required this.me});
@@ -368,7 +378,7 @@ class _EditScreenState extends State<_EditScreen> {
       body: ProfileForm(
         isRegister: false,
         initial: widget.me,
-        header: _box(),
+        footer: _box(),
         onSubmit: (body) async {
           await Api.rpc('update_profile', {'p_id': Store.pid, 'p_token': Store.token, 'p': body});
           if (context.mounted) Navigator.pop(context);

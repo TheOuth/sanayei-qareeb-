@@ -92,6 +92,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  /// أيقونة الرسالة: صورة الشارة نفسها لإشعارات الشارات
+  Widget _leading(String k) {
+    final parts = k.split(':');
+    final base = parts[0];
+    final tier = parts.length > 1 ? parts[1] : '';
+    if ((base == 'badge' || base == 'badge_down') && ['gray', 'green', 'blue', 'gold'].contains(tier)) {
+      final img = Image.asset('assets/badges/badge-$tier.png', width: 40, height: 40);
+      if (base == 'badge') return img;
+      return Stack(clipBehavior: Clip.none, children: [
+        ColorFiltered(colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.saturation), child: img),
+        const Positioned(bottom: -2, right: -2, child: CircleAvatar(radius: 9, backgroundColor: C.red, child: Icon(Icons.arrow_downward_rounded, size: 12, color: Colors.white))),
+      ]);
+    }
+    if (base == 'badge_down') return CircleAvatar(backgroundColor: C.red.withOpacity(.12), child: const Icon(Icons.trending_down_rounded, color: C.red));
+    return CircleAvatar(backgroundColor: _color(base).withOpacity(.12), child: Icon(_icon(base), color: _color(base)));
+  }
+
+  /// الضغط على رسالة مرتبطة بقسم ينقلك إليه؛ التنبيهات العامة لا تنقل إلى مكان
+  VoidCallback? _target(String k) {
+    final base = k.split(':')[0];
+    switch (base) {
+      case 'request':
+      case 'confirm':
+      case 'review':
+      case 'badge':
+      case 'badge_down':
+      case 'account':
+        return () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen()));
+      case 'service':
+      case 'verify':
+        return () => openEditProfile(context);
+      default:
+        return null;
+    }
+  }
+
   IconData _icon(String k) => switch (k) {
         'request' => Icons.call_received_rounded,
         'confirm' => Icons.task_alt_rounded,
@@ -181,7 +217,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             child: ListTile(
                               leading: _selecting
                                   ? Checkbox(value: picked, onChanged: (_) => toggle())
-                                  : CircleAvatar(backgroundColor: _color(k).withOpacity(.12), child: Icon(_icon(k), color: _color(k))),
+                                  : _leading(k),
                               onLongPress: toggle,
                               title: Text((n['title'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w700)),
                               subtitle: Padding(
@@ -192,11 +228,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   Text(_ago(n['ts'] as int), style: const TextStyle(fontSize: 11, color: C.mute)),
                                 ]),
                               ),
-                              onTap: _selecting
-                                  ? toggle
-                                  : (k == 'request' || k == 'confirm' || k == 'account')
-                                  ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen()))
-                                  : null,
+                              onTap: _selecting ? toggle : _target(k),
+                              trailing: (!_selecting && _target(k) != null) ? const Icon(Icons.chevron_left_rounded, color: C.mute) : null,
                             ),
                           );
                         },

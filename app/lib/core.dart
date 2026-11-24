@@ -47,6 +47,7 @@ String errMsg(Object e) {
     'daily_limit': 'وصلت للحد اليومي للطلبات، حاول غدًا',
     'already_today': 'اعتذر هذا الصنايعي عن طلبك اليوم',
     'not_accepted': 'لم يقبل الصنايعي هذا الطلب',
+    'invalid_price': 'أعلى سعر يجب ألا يقل عن أدنى سعر',
     'no_verified_email': 'وثّق بريدك أولًا من تعديل الملف',
     'invalid_email': 'البريد الإلكتروني غير صحيح',
     'invalid_username': 'اسم المستخدم: حروف إنجليزية وأرقام (3 إلى 20) ويبدأ بحرف',
@@ -336,4 +337,21 @@ String normalizePhone(String raw) {
 String localPhone(String p) {
   final n = normalizePhone(p);
   return n.isEmpty ? p : '0${n.substring(4)}';
+}
+
+/// يحوّل "HH:mm" (24 ساعة) إلى نظام 12 ساعة بصباحًا/مساءً
+String t12(dynamic v) {
+  final m = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch((v ?? '').toString());
+  if (m == null) return (v ?? '').toString();
+  final h = int.parse(m.group(1)!);
+  final h12 = h % 12 == 0 ? 12 : h % 12;
+  return '$h12:${m.group(2)} ${h < 12 ? 'ص' : 'م'}';
+}
+
+/// "من X إلى Y جنيه" أو "X جنيه" عند تساوي السعرين
+String priceText(Map p) {
+  final a = (p['price'] ?? 0) as int, b = (p['price_max'] ?? 0) as int;
+  if (a <= 0 && b <= 0) return '';
+  if (b <= a) return '$a جنيه';
+  return 'من $a إلى $b جنيه';
 }

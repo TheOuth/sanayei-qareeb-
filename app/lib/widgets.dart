@@ -350,3 +350,19 @@ class ReplyRing extends StatelessWidget {
     ]);
   }
 }
+
+/// تنبيه أعلى شاشتي الدخول والتسجيل: هذا القسم لمقدمي الخدمات فقط
+class RegistrationNote extends StatelessWidget {
+  const RegistrationNote({super.key});
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: const Color(0xFFFFF4D6), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFF0C95A))),
+        child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.info_outline_rounded, size: 20, color: Color(0xFF9A6B00)),
+          SizedBox(width: 8),
+          Expanded(child: Text('التسجيل خاص بمقدمي الخدمات. إذا كنت تبحث عن خدمة فلا تحتاج إلى تسجيل.', style: TextStyle(color: Color(0xFF6B4A00), height: 1.5, fontWeight: FontWeight.w600))),
+        ]),
+      );
+}
