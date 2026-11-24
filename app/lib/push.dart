@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core.dart';
 import 'screens/dashboard.dart';
 import 'screens/notifications.dart';
+import 'screens/requests.dart';
 
 /// الإشعارات الفورية (FCM). أي خطأ هنا لا يجب أن يوقف التطبيق.
 class Push with WidgetsBindingObserver {
@@ -65,6 +66,7 @@ class Push with WidgetsBindingObserver {
       Store.tick.addListener(sync);
       Store.onSignOut = _unregister;
       await sync();
+      await syncClient();
     } catch (_) {
       _ready = false;
     }
@@ -80,10 +82,11 @@ class Push with WidgetsBindingObserver {
   /// طلب/تأكيد => لوحتي (الطلبات)، وغيرها => الرسائل
   static void _open(String kind) {
     final nav = navKey.currentState;
-    if (nav == null || !Store.loggedIn) return;
+    if (nav == null) return;
+    if (kind != 'client_accept' && !Store.loggedIn) return;
     Store.refreshUnread();
     final goDash = kind == 'request' || kind == 'confirm';
-    nav.push(MaterialPageRoute(builder: (_) => goDash ? const DashboardScreen() : const NotificationsScreen()));
+    nav.push(MaterialPageRoute(builder: (_) => kind == 'client_accept' ? const RequestsScreen() : goDash ? const DashboardScreen() : const NotificationsScreen()));
   }
 
   /// يربط هذا الجهاز بحساب الصنايعي الحالي
@@ -94,6 +97,18 @@ class Push with WidgetsBindingObserver {
     try {
       await Api.rpc('register_device', {'p_id': Store.pid, 'p_token': Store.token, 'p_fcm': _fcm});
       _registered = key;
+    } catch (_) {}
+  }
+
+  /// يربط هذا الجهاز بمعرّف الزبون المجهول ليصله إشعار «قبل طلبك»
+  static String _regClient = '';
+  static Future<void> syncClient() async {
+    if (!_ready || _fcm == null) return;
+    final key = '${Store.anon}|$_fcm';
+    if (key == _regClient) return;
+    try {
+      await Api.rpc('register_client_device', {'p_anon': Store.anon, 'p_fcm': _fcm});
+      _regClient = key;
     } catch (_) {}
   }
 

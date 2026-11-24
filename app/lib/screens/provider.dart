@@ -4,6 +4,8 @@ import 'app_drawer.dart';
 import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../push.dart';
+import 'requests.dart';
 
 class ProviderScreen extends StatefulWidget {
   final String id;
@@ -34,21 +36,56 @@ class _ProviderScreenState extends State<ProviderScreen> {
     }
   }
 
-  Future<void> _contact(String channel) async {
+  bool _sending = false;
+
+  Future<String?> _pickService(Map p) async {
+    final list = (p['services'] as List).map((e) => e.toString()).toList();
+    if (widget.service != null && list.contains(widget.service)) return widget.service;
+    if (list.length == 1) return list[0];
+    return showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(padding: EdgeInsets.all(16), child: Text('ما الخدمة التي تحتاجها؟', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+          for (final s in list) ListTile(title: Text(Meta.serviceName(s)), onTap: () => Navigator.pop(ctx, s)),
+          const SizedBox(height: 8),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _request() async {
     final p = _p!;
-    final sid = widget.service ?? ((p['services'] as List).isNotEmpty ? p['services'][0].toString() : '');
+    final sid = await _pickService(p);
+    if (sid == null || !mounted) return;
+    setState(() => _sending = true);
     try {
       final l = Store.loc;
-      await Api.rpc('create_request', {'p': {'provider_id': p['id'], 'anon_id': Store.anon, 'service': sid, 'city_id': l?['city_id'] ?? p['city_id'], 'channel': channel}});
-    } catch (_) {}
-    if (channel == 'call') {
-      await openUrl('tel:${p['phone']}');
-    } else {
-      final d = (p['whatsapp'] ?? p['phone']).toString().replaceAll(RegExp(r'\D'), '');
-      final msg = Uri.encodeComponent('السلام عليكم، وجدتك في تطبيق صنايعي قريب وأريد خدمة ${Meta.serviceName(sid)}');
-      await openUrl('https://wa.me/$d?text=$msg');
+      await Api.rpc('create_request', {'p': {'provider_id': p['id'], 'anon_id': Store.anon, 'service': sid, 'city_id': l?['city_id'] ?? p['city_id']}});
+      Push.syncClient();
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('تم إرسال طلبك'),
+          content: const Text('سيظهر لك رقم الصنايعي وواتساب في "طلباتي" بمجرد أن يضغط "قبول". يمكنك طلب الخدمة من أكثر من صنايعي، ومن يرد أولًا تبدأ معه.', style: TextStyle(height: 1.6)),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('البقاء هنا')),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const RequestsScreen()));
+              },
+              child: const Text('طلباتي'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (mounted) toast(context, errMsg(e));
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
-    if (mounted) toast(context, 'بعد انتهاء الخدمة ادخل "طلباتي" وقيّم الصنايعي');
   }
 
   void _report() {
@@ -105,18 +142,12 @@ class _ProviderScreenState extends State<ProviderScreen> {
           : SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Row(children: [
-                  Expanded(child: FilledButton.icon(onPressed: () => _contact('call'), icon: const Icon(Icons.call_rounded), label: const Text('اتصال'))),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1FA463)),
-                      onPressed: () => _contact('whatsapp'),
-                      icon: const Icon(Icons.chat_rounded),
-                      label: const Text('واتساب'),
-                    ),
-                  ),
-                ]),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                  onPressed: (p['available'] == true && !_sending) ? _request : null,
+                  icon: _sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.handyman_rounded),
+                  label: Text(p['available'] == true ? 'طلب الخدمة' : 'غير متاح الآن'),
+                ),
               ),
             ),
     );
@@ -173,6 +204,15 @@ class _ProviderScreenState extends State<ProviderScreen> {
         const SizedBox(height: 12),
         Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(p['bio']))),
       ],
+      const SizedBox(height: 12),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: p['reply_pct'] != null
+              ? ReplyRing(p: p, size: 46, label: true)
+              : const Row(children: [Icon(Icons.timer_outlined, color: C.mute), SizedBox(width: 8), Expanded(child: Text('سرعة الرد تظهر بعد 3 طلبات على الأقل', style: TextStyle(color: C.mute, fontSize: 13)))]),
+        ),
+      ),
       const SizedBox(height: 16),
       const Text('آخر أعمال الصنايعي', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
       const SizedBox(height: 8),

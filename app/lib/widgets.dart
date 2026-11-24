@@ -229,6 +229,7 @@ class ProviderCard extends StatelessWidget {
                   Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int),
                   if (d != null) Text('$d كم', style: const TextStyle(fontSize: 12, color: C.mute)),
                   if (p['age'] != null) Text('${p['age']} سنة', style: const TextStyle(fontSize: 12, color: C.mute)),
+                  ReplyRing(p: p, size: 30),
                 ]),
               ]),
             ),
@@ -278,6 +279,7 @@ class ProviderGridCard extends StatelessWidget {
             Text(services, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: C.mute, fontSize: 12)),
             const SizedBox(height: 6),
             Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int),
+            if (p['reply_pct'] != null) Padding(padding: const EdgeInsets.only(top: 4), child: ReplyRing(p: p, size: 30)),
             const SizedBox(height: 2),
             Text(avail ? (d != null ? 'متاح · $d كم' : 'متاح') : 'غير متاح', style: TextStyle(fontSize: 11, color: avail ? C.green : C.mute)),
           ]),
@@ -321,4 +323,37 @@ class ErrorRetry extends StatelessWidget {
           ]),
         ),
       );
+}
+
+
+/// سرعة الرد: نسبة الطلبات التي ردّ عليها الصنايعي خلال 15 دقيقة، داخل دائرة
+class ReplyRing extends StatelessWidget {
+  final Map p;
+  final double size;
+  final bool label;
+  const ReplyRing({super.key, required this.p, this.size = 36, this.label = false});
+  @override
+  Widget build(BuildContext context) {
+    final v = p['reply_pct'];
+    if (v == null) return const SizedBox.shrink();
+    final pct = (v as num).toInt().clamp(0, 100);
+    final col = pct >= 80 ? const Color(0xFF1A7F4B) : (pct >= 50 ? const Color(0xFFB45309) : const Color(0xFFB42318));
+    final ring = SizedBox(
+      width: size,
+      height: size,
+      child: Stack(alignment: Alignment.center, children: [
+        SizedBox(width: size, height: size, child: CircularProgressIndicator(value: pct / 100, strokeWidth: size / 9, backgroundColor: col.withOpacity(.15), valueColor: AlwaysStoppedAnimation(col))),
+        Text('$pct%', style: TextStyle(fontSize: size * .30, fontWeight: FontWeight.w800, color: col)),
+      ]),
+    );
+    if (!label) return Tooltip(message: 'سرعة الرد', child: ring);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      ring,
+      const SizedBox(width: 8),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('سرعة الرد', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+        Text('ردّ خلال 15 دقيقة على $pct% من الطلبات', style: const TextStyle(fontSize: 11.5, color: C.mute)),
+      ]),
+    ]);
+  }
 }

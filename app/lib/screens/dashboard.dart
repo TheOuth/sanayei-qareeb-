@@ -122,6 +122,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final next = jobs >= 100 ? null : (jobs >= 25 ? 100 : (jobs >= 5 ? 25 : 5));
     final gs = (me['gray_status'] ?? '').toString();
     final pending = _reqs.where((r) => r['confirm'] == null && r['client'] == 'done').toList();
+    final waiting = _reqs.where((r) => r['accept'] == 'pending').length;
     return ListView(padding: const EdgeInsets.all(16), children: [
       Card(
         child: Padding(
@@ -135,6 +136,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('اكتمال الملف ${me['pct']}%', style: const TextStyle(color: C.mute, fontSize: 12)),
               ]),
             ),
+            if (me['reply_pct'] != null) Padding(padding: const EdgeInsetsDirectional.only(end: 6), child: ReplyRing(p: me, size: 42)),
             IconButton(
               icon: const Icon(Icons.edit_rounded),
               onPressed: () async {
@@ -194,25 +196,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 16),
         Text('الطلبات (آخر 60 يومًا) — ${me['requests_week']} هذا الأسبوع', style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
+        if (waiting > 0) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('$waiting طلب جديد بانتظار ردك (تنتهي مهلة الطلب بعد ساعتين)', style: const TextStyle(color: Color(0xFFB45309), fontWeight: FontWeight.w700))),
         if (pending.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${pending.length} طلب أكّد العميل إتمامه وينتظر تأكيدك', style: const TextStyle(color: C.blue, fontWeight: FontWeight.w600))),
         if (_reqs.isEmpty) const Text('لا توجد طلبات بعد', style: TextStyle(color: C.mute)),
-        for (final r in _reqs)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Card(
-              child: ListTile(
-                title: Text(Meta.serviceName((r['service'] ?? '').toString())),
-                subtitle: Text('${r['channel'] == 'call' ? 'اتصال' : 'واتساب'} · ${_ago(r['ts'] as int)}\nالعميل: ${_cs(r['client'])}${r['confirm'] == null ? '' : ' · أنت: ${r['confirm'] == 'done' ? 'تمت' : 'لم تتم'}'}'),
-                isThreeLine: true,
-                trailing: r['confirm'] == null ? FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 36)), onPressed: () => _confirm(r), child: const Text('أكّد')) : null,
-              ),
-            ),
-          ),
+        for (final r in _reqs) _reqCard(r),
       ],
       const SizedBox(height: 20),
       OutlinedButton(style: OutlinedButton.styleFrom(foregroundColor: C.red), onPressed: _delete, child: const Text('حذف حسابي')),
       const SizedBox(height: 30),
     ]);
+  }
+
+  Future<void> _respond(Map r, bool accept) async {
+    try {
+      final res = await Api.rpc('provider_respond_request', {'p_id': _id, 'p_token': _tk, 'p_request': r['id'], 'p_accept': accept});
+      if (mounted && res is Map) {
+        if (res['ok'] == true) {
+          toast(context, accept ? 'تم القبول. ظهر رقمك للزبون وسيتصل بك' : 'تم الاعتذار');
+        } else {
+          toast(context, res['state'] == 'expired' ? 'انتهت مهلة هذا الطلب' : 'لم يعد الطلب متاحًا');
+        }
+      }
+    } catch (e) {
+      if (mounted) toast(context, errMsg(e));
+    }
+    _load();
+  }
+
+  Widget _reqCard(Map r) {
+    final acc = (r['accept'] ?? 'accepted').toString();
+    final title = Text(Meta.serviceName((r['service'] ?? '').toString()), style: const TextStyle(fontWeight: FontWeight.w700));
+    Widget body;
+    if (acc == 'pending') {
+      body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Expanded(child: title), Text(_ago(r['ts'] as int), style: const TextStyle(color: C.mute, fontSize: 12))]),
+        const SizedBox(height: 4),
+        const Text('عميل يطلب هذه الخدمة. اقبل ليظهر له رقمك.', style: TextStyle(color: C.mute, fontSize: 12.5)),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: FilledButton(style: FilledButton.styleFrom(backgroundColor: C.green), onPressed: () => _respond(r, true), child: const Text('قبول'))),
+          const SizedBox(width: 10),
+          Expanded(child: OutlinedButton(onPressed: () => _respond(r, false), child: const Text('اعتذار'))),
+        ]),
+      ]);
+    } else if (acc == 'accepted') {
+      body = Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            title,
+            const SizedBox(height: 2),
+            Text('${_ago(r['ts'] as int)}\nالعميل: ${_cs(r['client'])}${r['confirm'] == null ? '' : ' · أنت: ${r['confirm'] == 'done' ? 'تمت' : 'لم تتم'}'}', style: const TextStyle(color: C.mute, fontSize: 12.5, height: 1.4)),
+          ]),
+        ),
+        if (r['confirm'] == null) FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 36)), onPressed: () => _confirm(r), child: const Text('أكّد')),
+      ]);
+    } else {
+      final t = const {'declined': 'اعتذرت', 'expired': 'انتهت المهلة دون رد', 'taken': 'بدأ العميل مع صنايعي آخر'}[acc] ?? acc;
+      body = Row(children: [Expanded(child: title), Text('$t · ${_ago(r['ts'] as int)}', style: const TextStyle(color: C.mute, fontSize: 12))]);
+    }
+    return Padding(padding: const EdgeInsets.only(bottom: 8), child: Card(color: acc == 'pending' ? const Color(0xFFFFF8E1) : null, child: Padding(padding: const EdgeInsets.all(12), child: body)));
   }
 
   String _cs(dynamic s) => const {'new': 'لم يؤكد', 'done': 'تمت الخدمة', 'failed': 'لم تنجح', 'not_agreed': 'لم نتفق'}[s] ?? '$s';
