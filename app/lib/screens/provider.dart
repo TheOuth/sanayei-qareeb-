@@ -170,10 +170,10 @@ class _ProviderScreenState extends State<ProviderScreen> {
               const SizedBox(width: 6),
               TierBadge(p: p, size: 26),
             ]),
-            if (tier.isNotEmpty || p['verified'] == true)
+            if (tier.isNotEmpty)
               GestureDetector(
                 onTap: () => trustSheet(context, p),
-                child: Padding(padding: const EdgeInsets.only(top: 4), child: Text('موثّق${tier.isNotEmpty ? ' · شارة ${Meta.tierName(tier)}' : ''} · $jobs معاملة ناجحة  ›', style: const TextStyle(color: C.blue, fontSize: 12, fontWeight: FontWeight.w600))),
+                child: Padding(padding: const EdgeInsets.only(top: 4), child: Text('شارة ${Meta.tierName(tier)} · $jobs معاملة ناجحة  ›', style: const TextStyle(color: C.blue, fontSize: 12, fontWeight: FontWeight.w600))),
               ),
             const SizedBox(height: 8),
             Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int),

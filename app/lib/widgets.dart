@@ -115,12 +115,10 @@ class TierBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Meta.tierOfProvider(p);
-    if (t.isEmpty && p['verified'] != true) return const SizedBox.shrink();
+    if (t.isEmpty) return const SizedBox.shrink();
     return GestureDetector(
       onTap: () => trustSheet(context, p),
-      child: t.isNotEmpty
-          ? Image.asset('assets/badges/badge-$t.png', width: size, height: size)
-          : Icon(Icons.verified_rounded, color: C.blue, size: size),
+      child: Image.asset('assets/badges/badge-$t.png', width: size, height: size),
     );
   }
 }
@@ -129,12 +127,11 @@ class TierBadge extends StatelessWidget {
 void trustSheet(BuildContext context, Map p, {bool own = false}) {
   final jobs = (p['jobs'] ?? 0) as int;
   final t = Meta.tierOfProvider(p);
-  final verified = p['verified'] == true;
   final gs = (p['gray_status'] ?? '').toString();
   final next = jobs >= 100 ? null : (jobs >= 25 ? 100 : (jobs >= 5 ? 25 : 5));
   TableRow tr(Widget a, Widget b) => TableRow(children: [Padding(padding: const EdgeInsets.all(10), child: a), Padding(padding: const EdgeInsets.all(10), child: b)]);
   Widget chip(String badge, String label) => Row(mainAxisSize: MainAxisSize.min, children: [
-        badge == 'id' ? const Icon(Icons.verified_rounded, color: C.blue, size: 20) : Image.asset('assets/badges/badge-$badge.png', width: 20, height: 20),
+        Image.asset('assets/badges/badge-$badge.png', width: 22, height: 22),
         const SizedBox(width: 6),
         Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
       ]);
@@ -149,13 +146,12 @@ void trustSheet(BuildContext context, Map p, {bool own = false}) {
       maxChildSize: .95,
       builder: (_, sc) => ListView(controller: sc, padding: const EdgeInsets.fromLTRB(20, 18, 20, 28), children: [
         Row(children: [
-          if (t.isNotEmpty) Image.asset('assets/badges/badge-$t.png', width: 46, height: 46) else const Icon(Icons.verified_rounded, color: C.blue, size: 40),
+          if (t.isNotEmpty) Image.asset('assets/badges/badge-$t.png', width: 46, height: 46),
           const SizedBox(width: 12),
-          Expanded(child: Text(own ? 'شاراتك وكيف تحصل عليها' : 'موثّق · لماذا ${shortName((p['name'] ?? '').toString())}؟', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+          Expanded(child: Text(own ? 'شاراتك وكيف تحصل عليها' : 'لماذا ${shortName((p['name'] ?? '').toString())} موثوق؟', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 14),
         Table(border: TableBorder.all(color: C.hair, borderRadius: BorderRadius.circular(10)), columnWidths: const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(2)}, children: [
-          tr(const Text('الهوية'), Text(verified ? '✓ تحقق منها فريق التطبيق' : 'لم يتم التحقق بعد', style: TextStyle(color: verified ? C.green : C.mute, fontWeight: FontWeight.w600))),
           tr(const Text('الأعمال المؤكدة'), Text('$jobs${next == null ? '' : '  (باقي ${next - jobs} للشارة التالية)'}')),
           tr(const Text('الشارة الحالية'), t.isEmpty ? const Text('لا توجد بعد', style: TextStyle(color: C.mute)) : chip(t, 'شارة ${Meta.tierName(t)}')),
           if (own && gs == 'pending') tr(const Text('ملفك'), const Text('مكتمل وبانتظار موافقة الإدارة على الشارة الرمادية', style: TextStyle(color: C.blue))),
@@ -163,10 +159,9 @@ void trustSheet(BuildContext context, Map p, {bool own = false}) {
           if (own && (p['badge_reason'] ?? '').toString().isNotEmpty) tr(const Text('سبب المنح'), Text(p['badge_reason'].toString())),
         ]),
         const SizedBox(height: 18),
-        const Text('كيف تحصل على التوثيق والشارات؟', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        const Text('كيف تحصل على الشارات؟', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         Table(border: TableBorder.all(color: C.hair, borderRadius: BorderRadius.circular(10)), columnWidths: const {0: FlexColumnWidth(1.1), 1: FlexColumnWidth(2)}, children: [
-          tr(chip('id', 'هوية موثّقة'), const Text('أرسل لفريق الدعم على واتساب وثيقة سارية وصورة لك معها، وبعد التحقق تُفعَّل علامتك.', style: TextStyle(height: 1.5))),
           tr(chip('gray', 'رمادية'), const Text('أكمل بيانات ملفك بالكامل (الصورة، الوصف، الحي، السعر، الخبرة). تراجعها الإدارة وتمنحك الشارة إن كانت البيانات صحيحة.', style: TextStyle(height: 1.5))),
           tr(chip('green', 'خضراء'), const Text('أكمل 5 معاملات ناجحة', style: TextStyle(height: 1.5))),
           tr(chip('blue', 'زرقاء'), const Text('أكمل 25 معاملة ناجحة', style: TextStyle(height: 1.5))),
