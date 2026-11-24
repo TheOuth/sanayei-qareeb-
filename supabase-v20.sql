@@ -1,0 +1,2 @@
+-- v20: حذف الرسائل (تحديد/الكل). notif_hidden لإخفاء رسائل البث العامة عن صنايعي واحد، delete_notifications(p_id,p_token,p_ids) (p_ids=null => الكل)،
+-- وتحديث provider_notifications و provider_notif_count لاستثناء المخفية. التعريف الكامل مطبّق على القاعدة الحية (v20_delete_notifications).

@@ -15,6 +15,8 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List? _items;
   Object? _err;
+  final Set<String> _sel = {};
+  bool _selecting = false;
 
   @override
   void initState() {
@@ -31,6 +33,63 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } catch (e) {
       if (mounted) setState(() => _err = e);
     }
+  }
+
+  void _exitSel() => setState(() { _selecting = false; _sel.clear(); });
+
+  Future<void> _delete() async {
+    if (_sel.isEmpty) return;
+    final all = _items != null && _sel.length == _items!.length;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => AlertDialog(
+        title: const Text('حذف الرسائل'),
+        content: Text(all ? 'سيتم حذف كل الرسائل المعروضة (${_sel.length}). لا يمكن التراجع.' : 'سيتم حذف ${_sel.length} رسالة. لا يمكن التراجع.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('إلغاء')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: C.red), onPressed: () => Navigator.pop(dctx, true), child: const Text('حذف')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await Api.rpc('delete_notifications', {'p_id': Store.pid, 'p_token': Store.token, 'p_ids': _sel.toList()});
+      _exitSel();
+      await _load();
+      Store.refreshUnread();
+      if (mounted) toast(context, 'تم الحذف');
+    } catch (e) {
+      if (mounted) toast(context, errMsg(e));
+    }
+  }
+
+  PreferredSizeWidget _appBar() {
+    if (!_selecting) {
+      return bar('الرسائل', bell: false, actions: [
+        if (_items != null && _items!.isNotEmpty) IconButton(tooltip: 'تحديد', icon: const Icon(Icons.checklist_rounded), onPressed: () => setState(() => _selecting = true)),
+      ]);
+    }
+    final total = _items?.length ?? 0;
+    final allOn = total > 0 && _sel.length == total;
+    return AppBar(
+      automaticallyImplyLeading: false,
+      leading: IconButton(icon: const Icon(Icons.close_rounded), tooltip: 'إلغاء التحديد', onPressed: _exitSel),
+      title: Text(_sel.isEmpty ? 'حدد الرسائل' : 'تم تحديد ${_sel.length}'),
+      actions: [
+        IconButton(
+          tooltip: allOn ? 'إلغاء تحديد الكل' : 'تحديد الكل',
+          icon: Icon(allOn ? Icons.deselect_rounded : Icons.select_all_rounded),
+          onPressed: () => setState(() {
+            if (allOn) {
+              _sel.clear();
+            } else {
+              _sel..clear()..addAll(_items!.map((e) => (e as Map)['id'].toString()));
+            }
+          }),
+        ),
+        IconButton(tooltip: 'حذف', icon: const Icon(Icons.delete_outline_rounded), onPressed: _sel.isEmpty ? null : _delete),
+      ],
+    );
   }
 
   IconData _icon(String k) => switch (k) {
@@ -68,7 +127,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const AppDrawer(current: 'home'),
-      appBar: bar('الرسائل', bell: false),
+      appBar: _appBar(),
       body: Column(children: [
         ValueListenableBuilder<bool>(
           valueListenable: Push.allowed,
@@ -110,14 +169,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           final n = _items![i] as Map;
                           final k = (n['kind'] ?? '').toString();
                           final unread = n['unread'] == true;
+                          final id = n['id'].toString();
+                          final picked = _sel.contains(id);
+                          void toggle() => setState(() { _selecting = true; picked ? _sel.remove(id) : _sel.add(id); });
                           return Container(
                             decoration: BoxDecoration(
-                              color: unread ? const Color(0xFFE3F0FD) : Colors.white,
+                              color: picked ? const Color(0xFFFDE8E8) : (unread ? const Color(0xFFE3F0FD) : Colors.white),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: unread ? C.blue.withOpacity(.4) : C.hair),
+                              border: Border.all(color: picked ? C.red.withOpacity(.5) : (unread ? C.blue.withOpacity(.4) : C.hair)),
                             ),
                             child: ListTile(
-                              leading: CircleAvatar(backgroundColor: _color(k).withOpacity(.12), child: Icon(_icon(k), color: _color(k))),
+                              leading: _selecting
+                                  ? Checkbox(value: picked, onChanged: (_) => toggle())
+                                  : CircleAvatar(backgroundColor: _color(k).withOpacity(.12), child: Icon(_icon(k), color: _color(k))),
+                              onLongPress: toggle,
                               title: Text((n['title'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w700)),
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 4),
@@ -127,7 +192,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   Text(_ago(n['ts'] as int), style: const TextStyle(fontSize: 11, color: C.mute)),
                                 ]),
                               ),
-                              onTap: (k == 'request' || k == 'confirm' || k == 'account')
+                              onTap: _selecting
+                                  ? toggle
+                                  : (k == 'request' || k == 'confirm' || k == 'account')
                                   ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen()))
                                   : null,
                             ),

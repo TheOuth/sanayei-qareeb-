@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../widgets.dart' show openUrl;
 import '../core.dart';
 import '../push.dart';
 import '../theme.dart';
@@ -141,6 +143,9 @@ class AppDrawer extends StatelessWidget {
           ],
           const Divider(),
           _item(context, 'about', Icons.info_outline_rounded, 'عن التطبيق والدعم', build: () => const AboutScreen()),
+          const Divider(),
+          const _Socials(),
+          const SizedBox(height: 8),
         ])),
           if (Store.loggedIn) ...[
             const Divider(height: 1),
@@ -170,6 +175,51 @@ class AppDrawer extends StatelessWidget {
           ],
         ]),
       ),
+    );
+  }
+}
+
+
+/// حسابات التطبيق على مواقع التواصل (اسم المستخدم موحّد)
+class _Socials extends StatelessWidget {
+  const _Socials();
+  static const user = 'SanayeiSD';
+
+  Widget _btn(String label, IconData icon, String url, {Color? color, Gradient? gradient}) => InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => openUrl(url),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(color: color, gradient: gradient, shape: BoxShape.circle, boxShadow: [BoxShadow(color: (color ?? const Color(0xFFE4405F)).withOpacity(.30), blurRadius: 8, offset: const Offset(0, 3))]),
+              child: Center(child: FaIcon(icon, color: Colors.white, size: 21)),
+            ),
+            const SizedBox(height: 5),
+            Text(label, style: const TextStyle(fontSize: 11, color: C.mute, fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: Column(children: [
+        const Text('تابعنا على مواقع التواصل الاجتماعي', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        const SizedBox(height: 10),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+          _btn('فيسبوك', FontAwesomeIcons.facebookF, 'https://www.facebook.com/$user', color: const Color(0xFF1877F2)),
+          _btn('إنستغرام', FontAwesomeIcons.instagram, 'https://www.instagram.com/$user',
+              gradient: const LinearGradient(begin: Alignment.bottomLeft, end: Alignment.topRight, colors: [Color(0xFFFEDA75), Color(0xFFFA7E1E), Color(0xFFD62976), Color(0xFF962FBF), Color(0xFF4F5BD5)])),
+          _btn('تيك توك', FontAwesomeIcons.tiktok, 'https://www.tiktok.com/@$user', color: const Color(0xFF111111)),
+          _btn('X', FontAwesomeIcons.xTwitter, 'https://x.com/$user', color: const Color(0xFF111111)),
+        ]),
+        const SizedBox(height: 6),
+        const Text('@$user', textDirection: TextDirection.ltr, style: TextStyle(color: C.blue, fontWeight: FontWeight.w700, fontSize: 13)),
+      ]),
     );
   }
 }
