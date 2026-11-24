@@ -134,6 +134,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [Flexible(child: Text(me['name'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))), const SizedBox(width: 6), TierBadge(p: me, size: 22)]),
                 Text('اكتمال الملف ${me['pct']}%', style: const TextStyle(color: C.mute, fontSize: 12)),
+                if ((me['pct'] ?? 0) < 100 && (me['missing'] as List?)?.isNotEmpty == true)
+                  Padding(padding: const EdgeInsets.only(top: 3), child: Text('ينقصك: ${(me['missing'] as List).join('، ')}', style: const TextStyle(color: Color(0xFFB45309), fontSize: 12, height: 1.4))),
               ]),
             ),
             if (me['reply_pct'] != null) Padding(padding: const EdgeInsetsDirectional.only(end: 6), child: ReplyRing(p: me, size: 42)),

@@ -30,9 +30,24 @@ class SanayeiApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      builder: (context, child) => UpdateGate(child: child ?? const SizedBox.shrink()),
+      navigatorObservers: [_UnfocusObserver()],
+      // لمس أي مكان خارج حقل الكتابة يخفي الكيبورد ويُنهي التركيز
+      builder: (context, child) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: UpdateGate(child: child ?? const SizedBox.shrink()),
+      ),
       navigatorKey: navKey,
       home: const SplashScreen(),
     );
   }
+}
+
+/// عند الانتقال بين الشاشات نُنهي التركيز حتى لا يعود الكيبورد وحده عند الرجوع
+class _UnfocusObserver extends NavigatorObserver {
+  void _clear() => FocusManager.instance.primaryFocus?.unfocus();
+  @override
+  void didPush(Route route, Route? previousRoute) => _clear();
+  @override
+  void didPop(Route route, Route? previousRoute) => _clear();
 }

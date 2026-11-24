@@ -1,0 +1,1 @@
+-- v21: provider_self يرجع 'missing' (ما ينقص اكتمال الملف) عبر profile_missing(p)، وget_provider يستثني 'لم نتفق' من سجل الأعمال. مطبّق على القاعدة الحية (v21_profile_missing_history).

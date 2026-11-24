@@ -2000,3 +2000,4 @@ begin
 end $$;
 -- v20: حذف الرسائل (تحديد/الكل). notif_hidden لإخفاء رسائل البث العامة عن صنايعي واحد، delete_notifications(p_id,p_token,p_ids) (p_ids=null => الكل)،
 -- وتحديث provider_notifications و provider_notif_count لاستثناء المخفية. التعريف الكامل مطبّق على القاعدة الحية (v20_delete_notifications).
+-- v21: provider_self يرجع 'missing' (ما ينقص اكتمال الملف) عبر profile_missing(p)، وget_provider يستثني 'لم نتفق' من سجل الأعمال. مطبّق على القاعدة الحية (v21_profile_missing_history).

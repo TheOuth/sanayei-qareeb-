@@ -264,12 +264,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: const Text('الملف الشخصي', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
                 ),
               ]),
+            )
+          else
+            GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())).then((_) { if (mounted) setState(() {}); }),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: [Colors.white, Color(0xFFBFE0FF)], begin: Alignment.topRight, end: Alignment.bottomLeft),
+                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3))],
+                  ),
+                  child: const Icon(Icons.person_rounded, color: C.blue, size: 32),
+                ),
+                const SizedBox(height: 5),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white70, width: 1)),
+                  child: const Text('دخول', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+              ]),
             ),
         ]),
         const SizedBox(height: 14),
         const Text('خدمتك لحدّ بيتك', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        const Text('أقرب صنايعي ليك، اتصل بيه مباشرة', style: TextStyle(color: Color(0xFFD6E9FF))),
+        const Text('أقرب صنايعي ليك، اطلب الخدمة منه مباشرة', style: TextStyle(color: Color(0xFFD6E9FF))),
         const SizedBox(height: 14),
         InkWell(
           onTap: _pickLoc,

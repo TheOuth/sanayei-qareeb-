@@ -159,10 +159,10 @@ class AppDrawer extends StatelessWidget {
                   context: root,
                   builder: (dctx) => AlertDialog(
                     title: const Text('تسجيل الخروج'),
-                    content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
+                    content: const Text('إذا سجّلت الخروج فلن تصلك إشعارات الطلبات، ولن تعرف أن عميلًا طلب خدمتك، وسيضيع عليك العمل ويتأخر ردّك (وتنخفض نسبة سرعة الرد).\n\nالأفضل لك البقاء مسجّلًا. هل تريد الخروج فعلًا؟', style: TextStyle(height: 1.6)),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('إلغاء')),
-                      FilledButton(style: FilledButton.styleFrom(backgroundColor: C.red), onPressed: () => Navigator.pop(dctx, true), child: const Text('خروج')),
+                      FilledButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('البقاء مسجّلًا')),
+                      TextButton(style: TextButton.styleFrom(foregroundColor: C.red), onPressed: () => Navigator.pop(dctx, true), child: const Text('خروج')),
                     ],
                   ),
                 );
