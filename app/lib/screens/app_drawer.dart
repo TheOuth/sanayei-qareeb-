@@ -148,21 +148,23 @@ class AppDrawer extends StatelessWidget {
               leading: const Icon(Icons.logout_rounded, color: C.red),
               title: const Text('تسجيل الخروج', style: TextStyle(color: C.red, fontWeight: FontWeight.w600)),
               onTap: () async {
-                Navigator.pop(context);
+                final nav = Navigator.of(context);
+                final root = navKey.currentContext ?? context;
+                nav.pop();
                 final ok = await showDialog<bool>(
-                  context: context,
-                  builder: (_) => AlertDialog(
+                  context: root,
+                  builder: (dctx) => AlertDialog(
                     title: const Text('تسجيل الخروج'),
                     content: const Text('هل تريد تسجيل الخروج من حسابك؟'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('إلغاء')),
-                      FilledButton(style: FilledButton.styleFrom(backgroundColor: C.red), onPressed: () => Navigator.pop(context, true), child: const Text('خروج')),
+                      TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('إلغاء')),
+                      FilledButton(style: FilledButton.styleFrom(backgroundColor: C.red), onPressed: () => Navigator.pop(dctx, true), child: const Text('خروج')),
                     ],
                   ),
                 );
                 if (ok != true) return;
                 await Store.signOut();
-                if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+                nav.popUntil((r) => r.isFirst);
               },
             ),
           ],
