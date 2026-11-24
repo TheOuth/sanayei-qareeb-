@@ -169,7 +169,6 @@ class _ProviderScreenState extends State<ProviderScreen> {
               Flexible(child: Text(p['name'] ?? '', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700))),
               const SizedBox(width: 6),
               TierBadge(p: p, size: 26),
-              if (p['verified'] == true && tier.isNotEmpty) Padding(padding: const EdgeInsetsDirectional.only(start: 4), child: GestureDetector(onTap: () => trustSheet(context, p), child: const Icon(Icons.verified_rounded, color: C.blue, size: 22))),
             ]),
             if (tier.isNotEmpty || p['verified'] == true)
               GestureDetector(
