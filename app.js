@@ -123,7 +123,7 @@
     on('hqx', 'click', function () { document.getElementById('hq').value = ''; applyFilter(); });
     // طلب بانتظار التقييم
     db.myRequests(anon).then(function (l) {
-      var due = l.filter(function (r) { return r.status === 'new' && Date.now() - r.ts > C.reviewDelayHours * 3600e3; })[0], box = document.getElementById('dueBox');
+      var due = l.filter(function (r) { return r.status === 'new' && (r.accept || 'accepted') === 'accepted' && Date.now() - r.ts > C.reviewDelayHours * 3600e3; })[0], box = document.getElementById('dueBox');
       if (!due || !box) return;
       box.innerHTML = '<div class="banner">تمت الشغلانة مع ' + esc(due.provider_name) + '؟ تأكيدك يرفع ترتيب الصنايعي ويمنحه شارة إنجاز.<br><button class="btn primary" id="dueBtn">قيّم الآن</button></div>';
       on('dueBtn', 'click', function () { go('#/c/rate/' + due.id); });
@@ -300,6 +300,11 @@
       c.addEventListener('click', function () { go('#/c/p/' + c.getAttribute('data-id') + '/' + sid); });
     });
   }
+  function ring(p, big) {
+    if (p.reply_pct == null) return '';
+    var v = p.reply_pct, col = v >= 80 ? '#1a7f4b' : v >= 50 ? '#b45309' : '#b42318';
+    return '<span class="ring' + (big ? ' big' : '') + '" title="سرعة الرد" style="--v:' + v + ';--c:' + col + '"><b>' + v + '%</b></span>';
+  }
   function pCard(p) {
     var dist = p.distance_km != null ? 'حوالي ' + (p.distance_km < 1 ? 'أقل من 1' : p.distance_km) + ' كم' : '';
     var em = p.distance_km != null ? SQ.geo.eta(p.distance_km) : null;
@@ -311,7 +316,7 @@
       (dist ? '<span class="mi">' + SQ.I('pin', 15) + ' ' + dist + '</span>' : '') + (eta ? '<span class="mi">' + SQ.I('clock', 15) + ' ' + eta + '</span>' : '') + (p.age ? '<span class="mi">' + SQ.I('user', 15) + ' ' + p.age + ' سنة</span>' : '') +
       '<span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : '<span class="new">جديد</span>') + '</span>' +
       '<span>كشف ' + Number(p.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span>' +
-      '<span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span>' +
+      '<span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span>' + ring(p) +
       '</div></div></div></div>';
   }
 
@@ -343,22 +348,28 @@
         '<div class="kv"><span>سعر الكشف</span><span>' + Number(p.price).toLocaleString('en') + ' ' + esc(SQ.COUNTRY.currency) + '</span></div>' +
         '<div class="kv"><span>المنطقة</span><span>' + esc((p.hood ? p.hood + '، ' : '') + SQ.cityName(p.city_id)) + '</span></div>' +
         '<div class="kv"><span>أوقات العمل</span><span>من ' + esc(p.from || '--') + ' إلى ' + esc(p.to || '--') + '</span></div></div>' +
+        '<div class="card">' + (p.reply_pct != null ? ring(p, true) + ' <b>سرعة الرد</b><div class="note" style="margin:4px 0 0">ردّ خلال 15 دقيقة على ' + p.reply_pct + '% من الطلبات</div>' : '<span class="muted">سرعة الرد تظهر بعد 3 طلبات على الأقل</span>') + '</div>' +
         (p.bio ? '<div class="card"><b>عن الصنايعي</b><p style="margin-top:6px">' + esc(p.bio) + '</p></div>' : '') +
         '<div class="card"><b>آخر التقييمات</b>' + (p.reviews && p.reviews.length ? p.reviews.map(function (r) {
-          return '<div class="rev"><span class="star">' + '★'.repeat(r.stars) + '</span> <small class="muted">' + (r.success ? 'شغلانة ناجحة' : 'شغلانة فاشلة') + ' · ' + timeAgo(r.ts) + '</small>' + (r.comment ? '<div>' + esc(r.comment) + '</div>' : '') + '</div>';
+          return '<div class="rev"><span class="star">' + '★'.repeat(r.stars || 0) + '</span> <small class="muted">' + (r.success ? 'شغلانة ناجحة' : 'شغلانة فاشلة') + ' · ' + timeAgo(r.ts) + '</small>' + (r.comment ? '<div>' + esc(r.comment) + '</div>' : '') + '</div>';
         }).join('') : '<p class="muted">لا توجد تقييمات بعد</p>') + '</div>' +
         '<div class="center"><button class="linkbtn" id="rep">🚩 إبلاغ عن هذا الصنايعي</button></div>',
-      foot: '<button class="btn primary" id="call">' + SQ.I('phone', 21) + ' اتصال</button><button class="btn wa" id="wa">' + SQ.I('chat', 21) + ' واتساب</button>'
+      foot: '<button class="btn primary" id="reqsvc"' + (p.available ? '' : ' disabled') + '>' + (p.available ? 'طلب الخدمة' : 'غير متاح الآن') + '</button>'
     });
-    async function contact(channel) {
-      try { await db.createRequest({ provider_id: p.id, anon_id: anon, service: sid, city_id: loc ? loc.city_id : p.city_id, channel: channel }); }
+    async function sendReq(service) {
+      try { await db.createRequest({ provider_id: p.id, anon_id: anon, service: service, city_id: loc ? loc.city_id : p.city_id }); }
       catch (e) { return toast(errMsg(e)); }
-      if (channel === 'call') { location.href = 'tel:' + p.phone; return; }
-      var msg = 'السلام عليكم، شفتك في ' + C.appName + ' وأحتاج ' + svc(sid).name + (loc && (loc.hood || loc.city_id) ? ' في ' + (loc.hood ? loc.hood + '، ' : '') + SQ.cityName(loc.city_id) : '');
-      window.open('https://wa.me/' + SQ.util.digits(p.whatsapp || p.phone) + '?text=' + encodeURIComponent(msg), '_blank');
+      modal('<h3>تم إرسال طلبك</h3><p class="note">سيظهر لك رقم الصنايعي وواتساب في «طلباتي» بمجرد أن يضغط «قبول». يمكنك طلب الخدمة من أكثر من صنايعي، ومن يرد أولا تبدأ معه.</p><div class="row2 mt"><button class="btn ghost" id="mx">البقاء هنا</button><button class="btn primary" id="mgo">طلباتي</button></div>');
+      on('mx', 'click', closeModal);
+      on('mgo', 'click', function () { closeModal(); go('#/c/requests'); });
     }
-    on('call', 'click', function () { contact('call'); });
-    on('wa', 'click', function () { contact('whatsapp'); });
+    on('reqsvc', 'click', function () {
+      var list = (p.services || []).map(String);
+      if (sid && list.indexOf(String(sid)) >= 0) return sendReq(sid);
+      if (list.length === 1) return sendReq(list[0]);
+      modal('<h3>ما الخدمة التي تحتاجها؟</h3><div class="chips" id="sv">' + list.map(function (s) { return '<button class="chip" data-s="' + esc(s) + '">' + esc(svc(s).name) + '</button>'; }).join('') + '</div>');
+      Array.prototype.forEach.call(document.querySelectorAll('#sv .chip'), function (b) { b.addEventListener('click', function () { closeModal(); sendReq(b.getAttribute('data-s')); }); });
+    });
     on('rep', 'click', function () {
       modal('<h3>إبلاغ عن ' + esc(p.name) + '</h3><div class="chips" id="rs">' +
         ['رقم غلط', 'سلوك سيئ', 'احتيال', 'أخرى'].map(function (r, i) { return '<button class="chip' + (i === 0 ? ' on' : '') + '" data-r="' + r + '">' + r + '</button>'; }).join('') +
@@ -383,14 +394,22 @@
     var list;
     try { list = await db.myRequests(anon); } catch (e) { toast(errMsg(e)); return go('#/'); }
     var st = { 'new': 'بانتظار رأيك', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
+    var ac = { pending: '⏳ بانتظار رد الصنايعي', declined: 'اعتذر الصنايعي', expired: 'انتهت المهلة دون رد', taken: 'بدأت مع صنايعي آخر', cancelled: 'ألغيت الطلب' };
     page({
       title: 'طلباتي', back: '#/',
       body: list.length ? list.map(function (r) {
-        var can = r.status === 'new' && Date.now() - r.ts > 5 * 60e3; // يسمح بالتقييم بعد 5 دقائق (والتطبيق يذكّره بعد يوم)
-        return '<div class="card"><div class="pname">' + esc(r.provider_name) + '</div><div class="psvc">' + esc(svc(r.service).name) + ' · ' + (r.channel === 'call' ? 'اتصال' : 'واتساب') + ' · ' + timeAgo(r.ts) + '</div>' +
-          '<div class="meta"><span>' + st[r.status] + '</span></div>' +
-          (can ? '<button class="btn primary small mt rate" data-id="' + r.id + '" style="width:100%">تمت الشغلانة؟ قيّم الآن</button>' : '') + '</div>';
-      }).join('') : '<div class="empty"><div class="big">📋</div>لا توجد طلبات بعد</div>'
+        var a = r.accept || 'accepted', acc = a === 'accepted';
+        var line = acc ? (r.status === 'new' ? '<span class="vtag">✓ قبل طلبك</span>' : '<span>' + st[r.status] + '</span>') : '<span>' + ac[a] + '</span>';
+        var d = acc && r.status === 'new' && r.phone ? SQ.util.digits(r.whatsapp || r.phone) : '';
+        return '<div class="card"><div class="pname">' + esc(r.provider_name) + '</div><div class="psvc">' + esc(svc(r.service).name) + ' · ' + timeAgo(r.ts) + '</div>' +
+          '<div class="meta">' + line + '</div>' +
+          (d ? '<div class="row2 mt"><a class="btn primary" href="tel:' + esc(r.phone) + '">اتصال</a><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/' + d + '?text=' + encodeURIComponent('السلام عليكم، قبلت طلبي في ' + C.appName + ' لخدمة ' + svc(r.service).name) + '">واتساب</a></div>' : '') +
+          (acc && r.status === 'new' ? '<button class="btn ghost small mt rate" data-id="' + r.id + '" style="width:100%">أنهيت الخدمة؟ قيّم (اختياري)</button>' : '') +
+          (a === 'pending' ? '<button class="btn ghost small mt cancelq" data-id="' + r.id + '" style="width:100%">إلغاء الطلب</button>' : '') + '</div>';
+      }).join('') : '<div class="empty"><div class="big">📋</div>لا توجد طلبات بعد. افتح صنايعي واضغط «طلب الخدمة»</div>'
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.cancelq'), function (b) {
+      b.addEventListener('click', function () { db.cancelRequest(b.getAttribute('data-id'), anon).then(viewMyRequests).catch(function (e) { toast(errMsg(e)); }); });
     });
     Array.prototype.forEach.call(document.querySelectorAll('.rate'), function (b) {
       b.addEventListener('click', function () { go('#/c/rate/' + b.getAttribute('data-id')); });
@@ -404,12 +423,12 @@
           return '<button class="chip' + (out === x[0] ? ' on' : '') + '" data-o="' + x[0] + '">' + x[1] + '</button>';
         }).join('') + '</div>';
       if (out === 'done' || out === 'failed') {
-        body += '<div class="center"><b>كم نجمة؟</b></div><div class="stars" id="st">' + [1, 2, 3, 4, 5].map(function (n) { return '<button data-n="' + n + '" class="' + (n <= stars ? 'on' : '') + '">★</button>'; }).join('') + '</div>' +
+        body += '<div class="center"><b>كم نجمة؟</b> <small class="muted">(اختياري)</small></div><div class="stars" id="st">' + [1, 2, 3, 4, 5].map(function (n) { return '<button data-n="' + n + '" class="' + (n <= stars ? 'on' : '') + '">★</button>'; }).join('') + '</div>' +
           '<label class="field"><span>تعليق (اختياري)</span><textarea id="cm" maxlength="300" placeholder="اكتب رأيك بإيجاز"></textarea></label>';
       }
-      page({ title: 'التقييم', back: '#/c/requests', body: body, foot: '<button class="btn primary" id="send"' + (!out || ((out === 'done' || out === 'failed') && !stars) ? ' disabled' : '') + '>إرسال</button>' });
+      page({ title: 'التقييم', back: '#/c/requests', body: body, foot: '<button class="btn primary" id="send"' + (!out ? ' disabled' : '') + '>إرسال</button>' });
       Array.prototype.forEach.call(document.querySelectorAll('#oc .chip'), function (c) { c.addEventListener('click', function () { out = c.getAttribute('data-o'); render(); }); });
-      Array.prototype.forEach.call(document.querySelectorAll('#st button'), function (b) { b.addEventListener('click', function () { stars = +b.getAttribute('data-n'); var t = (document.getElementById('cm') || {}).value; render(); if (t) document.getElementById('cm').value = t; }); });
+      Array.prototype.forEach.call(document.querySelectorAll('#st button'), function (b) { b.addEventListener('click', function () { var n = +b.getAttribute('data-n'); stars = stars === n ? 0 : n; var t = (document.getElementById('cm') || {}).value; render(); if (t) document.getElementById('cm').value = t; }); });
       on('send', 'click', async function () {
         try { await db.addReview(id, anon, { outcome: out, stars: stars, comment: (document.getElementById('cm') || {}).value || '' }); toast('شكرا على تقييمك'); go('#/c/requests'); }
         catch (e) { toast(e.message === 'already' ? 'تم تقييم هذا الطلب من قبل' : errMsg(e)); }
@@ -707,17 +726,32 @@
     var list;
     try { list = await db.providerRequests(pid, tk); } catch (e) { el.innerHTML = '<p class="note">تعذر تحميل الطلبات.</p>'; return; }
     el = document.getElementById('preqs'); if (!el) return;
-    if (!list.length) { el.innerHTML = '<div class="card"><p class="note" style="margin:0">لا توجد طلبات بعد. تظهر هنا كل مرة يتصل بك عميل أو يراسلك.</p></div>'; return; }
+    if (!list.length) { el.innerHTML = '<div class="card"><p class="note" style="margin:0">لا توجد طلبات بعد. تظهر هنا كل مرة يطلب عميل خدمتك.</p></div>'; return; }
     var cl = { new: 'العميل لم يرد بعد', done: 'العميل قال: تمت الخدمة', failed: 'العميل قال: لم تنجح', not_agreed: 'العميل قال: لم نتفق' };
     el.innerHTML = list.map(function (r) {
-      var s = svc(r.service);
+      var s = svc(r.service), ac = r.accept || 'accepted';
+      if (ac === 'pending') {
+        return '<div class="card preq" style="background:#fff8e1"><div class="pname">' + esc(s.icon + ' ' + s.name) + '</div><div class="meta"><span class="muted">' + timeAgo(r.ts) + '</span></div>' +
+          '<div class="note" style="margin:6px 0">عميل يطلب هذه الخدمة. اقبل ليظهر له رقمك (تنتهي المهلة بعد ساعتين).</div>' +
+          '<div class="row2 mt"><button class="btn primary" data-rs="1" data-id="' + r.id + '">قبول</button><button class="btn ghost" data-rs="0" data-id="' + r.id + '">اعتذار</button></div></div>';
+      }
+      if (ac !== 'accepted') {
+        var t = { declined: 'اعتذرت', expired: 'انتهت المهلة دون رد', taken: 'بدأ العميل مع صنايعي آخر' }[ac] || ac;
+        return '<div class="card preq"><div class="pname">' + esc(s.icon + ' ' + s.name) + '</div><div class="meta"><span class="muted">' + t + ' · ' + timeAgo(r.ts) + '</span></div></div>';
+      }
       var mine = r.confirm === 'done' ? '<span class="vtag">✓ أكدت التنفيذ' + (r.amount ? ' · ' + Number(r.amount).toLocaleString('en') + ' جنيه' : '') + '</span>' : r.confirm === 'not_done' ? '<span class="muted">أكدت: لم تتم</span>' : '';
       var both = r.confirm === 'done' && r.client === 'done' ? '<span class="vtag">✓ مؤكدة من الطرفين</span>' : '';
-      return '<div class="card preq"><div class="pname">' + esc(s.icon + ' ' + s.name) + '</div><div class="meta"><span>' + (r.channel === 'call' ? '📞 اتصال' : '💬 واتساب') + '</span><span class="muted">' + timeAgo(r.ts) + '</span></div>' +
+      return '<div class="card preq"><div class="pname">' + esc(s.icon + ' ' + s.name) + '</div><div class="meta"><span class="muted">' + timeAgo(r.ts) + '</span></div>' +
         '<div class="note" style="margin:6px 0">' + cl[r.client] + '</div>' + both + mine +
         '<div class="row2 mt"><button class="btn primary" data-pc="done" data-id="' + r.id + '">تمت الخدمة</button><button class="btn ghost" data-pc="not_done" data-id="' + r.id + '">لم تتم</button></div></div>';
     }).join('');
     el.onclick = function (e) {
+      var rb = e.target.closest('[data-rs]');
+      if (rb) {
+        var ok = rb.getAttribute('data-rs') === '1';
+        db.respondRequest(pid, tk, rb.getAttribute('data-id'), ok).then(function (res) { toast(res && res.ok === false ? 'لم يعد الطلب متاحا' : (ok ? 'تم القبول. ظهر رقمك للزبون' : 'تم الاعتذار')); loadProvReqs(pid, tk); }).catch(function (x) { toast(errMsg(x)); });
+        return;
+      }
       var b = e.target.closest('[data-pc]'); if (!b) return;
       var id = b.getAttribute('data-id'), done = b.getAttribute('data-pc') === 'done';
       if (!done) { db.providerConfirm(pid, tk, id, false, null).then(function () { toast('تم التسجيل'); loadProvReqs(pid, tk); }).catch(function (x) { toast(errMsg(x)); }); return; }
@@ -773,7 +807,7 @@
         (me.bio ? '<div class="kv"><span>الوصف</span><span style="text-align:left">' + esc(me.bio) + '</span></div>' : '') +
         '<p class="note">لتغيير رقم الهاتف تواصل مع الدعم. رابط ملفك: <span class="ltr">' + esc(shareUrl(me)) + '</span>' + (me.username_changed ? '<br>اسم المستخدم لا يُغيَّر إلا مرة واحدة، وللتعديل تواصل مع الدعم.' : '<br>يمكنك تغيير اسم المستخدم مرة واحدة فقط.') + '</p></div>' +
         (me.status === 'approved' ? '<div class="card"><b>آخر التقييمات</b>' + (revs.length ? revs.map(function (r) {
-          return '<div class="rev"><span class="star">' + '★'.repeat(r.stars) + '</span> <small class="muted">' + (r.success ? 'شغلانة ناجحة' : 'شغلانة فاشلة') + ' · ' + timeAgo(r.ts) + '</small>' + (r.comment ? '<div>' + esc(r.comment) + '</div>' : '') + '</div>';
+          return '<div class="rev"><span class="star">' + '★'.repeat(r.stars || 0) + '</span> <small class="muted">' + (r.success ? 'شغلانة ناجحة' : 'شغلانة فاشلة') + ' · ' + timeAgo(r.ts) + '</small>' + (r.comment ? '<div>' + esc(r.comment) + '</div>' : '') + '</div>';
         }).join('') : '<p class="muted">لا توجد تقييمات بعد</p>') + '</div>' : '') +
         '<div class="card"><b>الحساب</b><div class="acts">' +
         '<button class="btn ghost small" id="pw">🔐 ' + (me.has_password ? 'تغيير كلمة السر' : 'إضافة كلمة سر') + '</button>' +

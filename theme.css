@@ -306,3 +306,9 @@ body.admin .anav button{flex:0 0 auto;white-space:nowrap}
 body.admin .card{overflow-x:auto;max-width:100%}
 body.admin .tbl{min-width:100%}
 body.admin .tbl th,body.admin .tbl td{white-space:nowrap}
+
+/* سرعة الرد: نسبة مئوية داخل دائرة */
+.ring{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--v)*1%),#e5e9f0 0);position:relative;vertical-align:middle}
+.ring::before{content:"";position:absolute;inset:3px;border-radius:50%;background:#fff}
+.ring b{position:relative;font-size:9px;color:var(--c);font-weight:800}
+.ring.big{width:46px;height:46px}.ring.big::before{inset:4px}.ring.big b{font-size:12px}

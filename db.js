@@ -271,7 +271,7 @@
         return q.anon_id === x.anon_id && q.provider_id === x.provider_id && new Date(q.ts).toDateString() === day;
       })[0];
       if (ex) return { id: ex.id, existing: true };
-      var r = { id: uid(), provider_id: x.provider_id, anon_id: x.anon_id, service: x.service, city_id: x.city_id, channel: x.channel, status: 'new', ts: Date.now() };
+      var r = { id: uid(), provider_id: x.provider_id, anon_id: x.anon_id, service: x.service, city_id: x.city_id, channel: 'app', status: 'new', accept: 'accepted', ts: Date.now() };
       this.d.requests.push(r); save(this.d);
       return { id: r.id };
     },
@@ -281,7 +281,7 @@
         .sort(function (a, b) { return b.ts - a.ts; })
         .map(function (q) {
           var p = self.find(q.provider_id);
-          return { id: q.id, provider_id: q.provider_id, provider_name: p ? p.name : '—', service: q.service, channel: q.channel, status: q.status, ts: q.ts };
+          return { id: q.id, provider_id: q.provider_id, provider_name: p ? p.name : '—', service: q.service, channel: q.channel, status: q.status, accept: q.accept || 'accepted', phone: p ? p.phone : null, whatsapp: p ? p.whatsapp : null, ts: q.ts };
         });
     },
     // outcome: done | failed | not_agreed
@@ -291,11 +291,11 @@
       if (q.status !== 'new') throw new Error('already');
       if (x.outcome === 'not_agreed') { q.status = 'not_agreed'; save(this.d); return true; }
       var p = this.find(q.provider_id);
-      var stars = Math.max(1, Math.min(5, Number(x.stars) || 5));
+      var stars = x.stars ? Math.max(1, Math.min(5, Number(x.stars))) : null;
       q.status = x.outcome;
       if (p) {
-        var s = p.stats, total = s.avg * s.n + stars;
-        s.n += 1; s.avg = Math.round((total / s.n) * 10) / 10;
+        var s = p.stats;
+        if (stars) { var total = s.avg * s.n + stars; s.n += 1; s.avg = Math.round((total / s.n) * 10) / 10; }
         if (x.outcome === 'done') s.ok += 1; else s.fail += 1;
       }
       this.d.reviews.push({ id: uid(), request_id: reqId, provider_id: q.provider_id, stars: stars, comment: String(x.comment || '').slice(0, 300), success: x.outcome === 'done', ts: Date.now() });
@@ -501,8 +501,10 @@
     providerRequests: async function (id, token) {
       this.auth(id, token); var lim = Date.now() - 60 * 86400000;
       return this.d.requests.filter(function (q) { return q.provider_id === id && q.ts > lim; }).sort(function (a, b) { return b.ts - a.ts; }).slice(0, 40)
-        .map(function (q) { return { id: q.id, service: q.service, channel: q.channel, client: q.status, confirm: q.pconfirm || null, amount: q.pamount == null ? null : q.pamount, ts: q.ts }; });
+        .map(function (q) { return { id: q.id, service: q.service, channel: q.channel, client: q.status, accept: q.accept || 'accepted', confirm: q.pconfirm || null, amount: q.pamount == null ? null : q.pamount, ts: q.ts }; });
     },
+    cancelRequest: async function () { return true; },
+    respondRequest: async function () { return { ok: true, state: 'accepted' }; },
     providerConfirm: async function (id, token, reqId, done, amount) {
       this.auth(id, token);
       var q = this.d.requests.filter(function (x) { return x.id === reqId && x.provider_id === id; })[0];
@@ -609,6 +611,8 @@
     deleteProvider: function (id, t, pw) { return SB.rpc('delete_account', { p_id: id, p_token: t, p_password: pw || '', p_code: null }); },
     createRequest: function (x) { return SB.rpc('create_request', { p: x }); },
     myRequests: function (anon) { return SB.rpc('my_requests', { p_anon: anon }); },
+    cancelRequest: function (id, anon) { return SB.rpc('cancel_request', { p_request: id, p_anon: anon }); },
+    respondRequest: function (id, t, rid, ok) { return SB.rpc('provider_respond_request', { p_id: id, p_token: t, p_request: rid, p_accept: !!ok }); },
     addReview: function (reqId, anon, x) { return SB.rpc('add_review', { p_request: reqId, p_anon: anon, p_outcome: x.outcome, p_stars: x.stars || null, p_comment: x.comment || '' }); },
     reportProvider: function (id, anon, reason) { return SB.rpc('report_provider', { p_id: id, p_anon: anon, p_reason: reason }); },
     adminCheck: function (code) { return SB.rpc('admin_check', { p_code: code }); },
