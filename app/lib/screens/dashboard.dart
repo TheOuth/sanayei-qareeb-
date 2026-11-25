@@ -9,6 +9,7 @@ import 'profile_form.dart';
 import 'delete_account.dart';
 import 'commission.dart';
 import 'banned.dart';
+import 'my_profile.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -46,15 +47,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return;
       }
       if (mounted) setState(() => _err = e);
-    }
-  }
-
-  Future<void> _toggle(bool v) async {
-    try {
-      await Api.rpc('set_available', {'p_id': _id, 'p_token': _tk, 'p_value': v});
-      _load();
-    } catch (e) {
-      toast(context, errMsg(e));
     }
   }
 
