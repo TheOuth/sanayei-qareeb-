@@ -293,31 +293,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         const SizedBox(height: 4),
         const Text('أقرب صنايعي ليك، اطلب الخدمة منه مباشرة', style: TextStyle(color: Color(0xFFD6E9FF))),
         const SizedBox(height: 14),
-        InkWell(
-          onTap: _pickLoc,
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.place_rounded, color: Colors.white, size: 18),
-              const SizedBox(width: 6),
-              Text(_loc == null ? 'حدّد موقعك' : '${_loc!['label']}${_loc!['gps'] == true ? ' (GPS)' : ''}', style: const TextStyle(color: Colors.white)),
-              const SizedBox(width: 4),
-              const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 18),
-            ]),
-          ),
+        Container(
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))]),
+          child: Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _q,
+                onChanged: (v) => setState(() => _query = v),
+                decoration: InputDecoration(
+                  hintText: _tab == 0 ? 'ابحث: سباك، كهربائي، تكييف…' : 'ابحث باسم الصنايعي أو خدمته',
+                  filled: false,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _query.isEmpty ? null : IconButton(icon: const Icon(Icons.close_rounded), onPressed: () { _q.clear(); setState(() => _query = ''); }),
+                ),
+              ),
+            ),
+            Container(width: 1, height: 34, color: C.hair),
+            InkWell(
+              onTap: _pickLoc,
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(_loc?['gps'] == true ? Icons.my_location_rounded : Icons.place_rounded, color: C.blue, size: 24),
+                  const SizedBox(height: 1),
+                  const Text('منطقة أخرى', style: TextStyle(fontSize: 9.5, color: C.mute, height: 1.2)),
+                ]),
+              ),
+            ),
+          ]),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _q,
-          onChanged: (v) => setState(() => _query = v),
-          decoration: InputDecoration(
-            hintText: _tab == 0 ? 'ابحث: سباك، كهربائي، تكييف…' : 'ابحث باسم الصنايعي أو خدمته',
-            prefixIcon: const Icon(Icons.search_rounded),
-            suffixIcon: _query.isEmpty ? null : IconButton(icon: const Icon(Icons.close_rounded), onPressed: () { _q.clear(); setState(() => _query = ''); }),
-          ),
-        ),
+        if (_loc != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('موقعك: ${_loc!['label']}${_loc!['gps'] == true ? ' (GPS)' : ''}', style: const TextStyle(color: Color(0xFFD6E9FF), fontSize: 11.5))),
       ]),
     );
   }

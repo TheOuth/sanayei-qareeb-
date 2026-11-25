@@ -8,6 +8,7 @@ import '../widgets.dart';
 import 'profile_form.dart';
 import 'delete_account.dart';
 import 'commission.dart';
+import 'banned.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -129,6 +130,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _body(Map me) {
     final status = (me['status'] ?? '').toString();
+    if (status == 'banned') return const BannedView();
     final jobs = (me['jobs'] ?? 0) as int;
     final tier = Meta.tierOfProvider(me);
     final next = jobs >= 100 ? null : (jobs >= 25 ? 100 : (jobs >= 5 ? 25 : 5));

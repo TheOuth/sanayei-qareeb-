@@ -528,6 +528,8 @@
       this.d.payments = this.d.payments || []; var x = { id: uid(), provider_id: id, amount: amount, note: String(note || '').slice(0, 200), ts: Date.now() }; this.d.payments.push(x); save(this.d); return x.id;
     },
     adminDeletePayment: async function (code, pid) { this.admin(code); this.d.payments = (this.d.payments || []).filter(function (x) { return x.id !== pid; }); save(this.d); return true; },
+    adminBan: async function () { return true; }, adminUnban: async function () { return true; }, adminDismissMatch: async function () { return true; }, adminAppealDecide: async function () { return true; },
+    adminBans: async function () { return { banned: [], matches: [], appeals: [] }; },
     adminCommissions: async function () { return []; },
     adminCommissionPaid: async function () { return 0; },
     adminCommissionLedger: async function (code) {
@@ -650,6 +652,11 @@
     adminAddPayment: function (code, id, amount, note) { return SB.rpc('admin_add_payment', { p_code: code, p_id: id, p_amount: amount, p_note: note || '' }); },
     adminDeletePayment: function (code, pid) { return SB.rpc('admin_delete_payment', { p_code: code, p_pid: pid }); },
     adminCommissionLedger: function (code) { return SB.rpc('admin_commission_ledger', { p_code: code }); },
+    adminBan: function (code, id, reason) { return SB.rpc('admin_ban_provider', { p_code: code, p_id: id, p_reason: reason || '' }); },
+    adminUnban: function (code, id, note) { return SB.rpc('admin_unban', { p_code: code, p_id: id, p_note: note || '' }); },
+    adminBans: function (code) { return SB.rpc('admin_bans', { p_code: code }); },
+    adminAppealDecide: function (code, id, accept, note) { return SB.rpc('admin_appeal_decide', { p_code: code, p_appeal: id, p_accept: !!accept, p_note: note || '' }); },
+    adminDismissMatch: function (code, id) { return SB.rpc('admin_dismiss_match', { p_code: code, p_id: id }); },
     adminCommissions: function (code, status) { return SB.rpc('admin_commissions', { p_code: code, p_status: status || '' }); },
     adminCommissionPaid: function (code, id, all) { return SB.rpc('admin_commission_paid', { p_code: code, p_id: id, p_all: !!all }); },
     setUsername: function (id, t, u) { return SB.rpc('set_username', { p_id: id, p_token: t, p_username: u }); },

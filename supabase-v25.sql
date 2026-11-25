@@ -1,0 +1,1 @@
+-- v25 (applied via migration v25_bans_appeals_redecline): bans/ban_appeals tables, trg_ban_check, admin_ban_provider/unban/bans/appeal_decide/dismiss_match, provider_ban_info, submit_appeal; create_request no longer blocks re-request after decline.

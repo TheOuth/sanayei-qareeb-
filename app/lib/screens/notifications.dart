@@ -101,10 +101,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if ((base == 'badge' || base == 'badge_down') && ['gray', 'green', 'blue', 'gold'].contains(tier)) {
       final img = Image.asset('assets/badges/badge-$tier.png', width: 40, height: 40);
       if (base == 'badge') return img;
-      return Stack(clipBehavior: Clip.none, children: [
-        ColorFiltered(colorFilter: const ColorFilter.mode(Colors.grey, BlendMode.saturation), child: img),
-        const Positioned(bottom: -2, right: -2, child: CircleAvatar(radius: 9, backgroundColor: C.red, child: Icon(Icons.arrow_downward_rounded, size: 12, color: Colors.white))),
-      ]);
+      return SizedBox(width: 44, height: 44, child: Stack(clipBehavior: Clip.none, alignment: Alignment.center, children: [
+        img,
+        const Positioned(bottom: -3, left: -3, child: CircleAvatar(radius: 10, backgroundColor: C.red, child: Icon(Icons.arrow_downward_rounded, size: 13, color: Colors.white))),
+      ]));
     }
     if (base == 'badge_down') return CircleAvatar(backgroundColor: C.red.withOpacity(.12), child: const Icon(Icons.trending_down_rounded, color: C.red));
     return CircleAvatar(backgroundColor: _color(base).withOpacity(.12), child: Icon(_icon(base), color: _color(base)));
@@ -213,14 +213,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           final n = _items![i] as Map;
                           final k = (n['kind'] ?? '').toString();
                           final unread = n['unread'] == true;
+                          final down = k.startsWith('badge_down');
                           final id = n['id'].toString();
                           final picked = _sel.contains(id);
                           void toggle() => setState(() { _selecting = true; picked ? _sel.remove(id) : _sel.add(id); });
                           return Container(
                             decoration: BoxDecoration(
-                              color: picked ? const Color(0xFFFDE8E8) : (unread ? const Color(0xFFE3F0FD) : Colors.white),
+                              color: picked ? const Color(0xFFFDE8E8) : (unread ? (down ? const Color(0xFFFFEDED) : const Color(0xFFE3F0FD)) : Colors.white),
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: picked ? C.red.withOpacity(.5) : (unread ? C.blue.withOpacity(.4) : C.hair)),
+                              border: Border.all(color: picked ? C.red.withOpacity(.5) : (unread ? (down ? C.red.withOpacity(.35) : C.blue.withOpacity(.4)) : C.hair)),
                             ),
                             child: ListTile(
                               leading: _selecting

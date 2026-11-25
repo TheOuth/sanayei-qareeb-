@@ -3,6 +3,7 @@ import 'app_drawer.dart';
 import '../core.dart';
 import '../widgets.dart';
 import 'register.dart';
+import 'dashboard.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -42,7 +43,17 @@ class _LoginScreenState extends State<LoginScreen> {
         Store.refreshMe();
         if (!mounted) return;
         Navigator.of(context).popUntil((r) => r.isFirst);
-        toast(context, 'تم تسجيل الدخول. لوحتك من القائمة الجانبية');
+        var banned = false;
+        try {
+          final me = await Api.rpc('provider_self', {'p_id': Store.pid, 'p_token': Store.token});
+          banned = me is Map && me['status'] == 'banned';
+        } catch (_) {}
+        if (banned) {
+          navKey.currentState?.push(MaterialPageRoute(builder: (_) => const DashboardScreen()));
+        } else {
+          final c = navKey.currentContext;
+          if (c != null) toast(c, 'تم تسجيل الدخول. لوحتك من القائمة الجانبية');
+        }
       } else {
         final e = (r['error'] ?? 'invalid').toString();
         toast(context, e == 'invalid' ? (_byPhone ? 'الرقم أو كلمة السر غير صحيحة' : 'البيانات أو كلمة السر غير صحيحة') : errMsg(e));

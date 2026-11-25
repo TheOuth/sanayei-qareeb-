@@ -9,8 +9,8 @@
   try { code = sessionStorage.getItem('sq_admin') || ''; } catch (e) {}
   document.body.classList.add('admin');
 
-  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['badges', 'الشارات'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
-  var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'] };
+  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['badges', 'الشارات'], ['bans', 'الحظر'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
+  var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'], banned: ['محظور', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
   function refOf(p) { return String(p.id).replace(/-/g, '').slice(0, 4).toUpperCase(); }
@@ -118,7 +118,7 @@
     if (!code) return login();
     try { ov = await db.adminOverview(code); } catch (e) { if (guard(e)) return; ov = null; }
     try { cn = await db.adminCounts(code); } catch (e) { cn = { badges: 0, custom: 0 }; }
-    ({ overview: viewOverview, custom: viewCustom, badges: viewBadges, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings })[tab]();
+    ({ overview: viewOverview, custom: viewCustom, badges: viewBadges, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings, bans: viewBans })[tab]();
   }
 
   /* ---------- نظرة عامة ---------- */
@@ -193,7 +193,10 @@
     if (p.status === 'pending') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ موافقة</button><button class="btn danger" data-act="rejected" data-id="' + p.id + '">✖ رفض</button>');
     if (p.status === 'approved') act.push('<button class="btn danger" data-act="suspended" data-id="' + p.id + '">⛔ إيقاف</button>');
     if (p.status === 'suspended' || p.status === 'rejected') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ اعتماد</button>');
-    return '<div class="card acard"><div class="top2">' + U.avatar(p) + '<div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + ' ' + (p.verified ? '<span class="vtag">✔ موثّق</span>' : pill('غير موثّق', 'warn')) + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + '</div></div>' +
+    if (p.status !== 'banned') act.push('<button class="btn danger" data-act="banned" data-id="' + p.id + '">🚫 حظر</button>');
+    else act.push('<button class="btn primary" data-act="unban" data-id="' + p.id + '">♻ رفع الحظر</button>');
+    if (p.ban_match && p.status !== 'banned') act.push('<button class="btn ghost" data-act="dismiss" data-id="' + p.id + '">تجاهل تطابق الحظر</button>');
+    return '<div class="card acard"><div class="top2">' + U.avatar(p) + '<div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + (p.ban_match && p.status !== 'banned' ? ' ' + pill('⚠ يتطابق مع محظور', 'bad') : '') + ' ' + (p.verified ? '<span class="vtag">✔ موثّق</span>' : pill('غير موثّق', 'warn')) + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + '</div></div>' +
       '<div class="psvc">' + esc(U.svcNames(p.services)) + '</div>' +
       '<div class="meta"><span class="ltr">@' + esc(p.username || '') + '</span><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + (p.age ? '🎂 ' + p.age + ' سنة' : '<span class="dangertxt">بلا تاريخ ميلاد</span>') + '</span><span>' + p.experience + ' سنة خبرة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
       '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span>🔖 رقم الطلب <b class="ltr">' + refOf(p) + '</b></span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
@@ -236,6 +239,23 @@
       modal('<h3>حذف الصنايعي</h3><p>سيُحذف <b>' + esc(p.name) + '</b> وكل طلباته وتقييماته نهائيا. هذا لا يمكن التراجع عنه. يمكنك بدل ذلك <b>إيقافه</b>.</p><div class="row2 mt"><button class="btn ghost" id="dn">إلغاء</button><button class="btn danger" id="dy">نعم، احذف</button></div>');
       on('dn', 'click', closeModal);
       on('dy', 'click', async function () { try { await db.adminDeleteProvider(code, p.id); closeModal(); toast('تم الحذف'); refreshAll(); } catch (e) { fail(e); } });
+      return;
+    }
+    if (a === 'banned') {
+      var why = prompt('سبب الحظر (يظهر للصنايعي في صفحة الحظر):', 'مخالفة قوانين التطبيق'); if (why === null) return;
+      btn.disabled = true;
+      try { await db.adminBan(code, p.id, why.trim()); toast('تم الحظر'); refreshAll(); } catch (e) { btn.disabled = false; fail(e); }
+      return;
+    }
+    if (a === 'unban') {
+      var nt = prompt('رسالة تصل للصنايعي عند رفع الحظر (اختياري):', ''); if (nt === null) return;
+      btn.disabled = true;
+      try { await db.adminUnban(code, p.id, nt.trim()); toast('تم رفع الحظر'); refreshAll(); } catch (e) { btn.disabled = false; fail(e); }
+      return;
+    }
+    if (a === 'dismiss') {
+      btn.disabled = true;
+      try { await db.adminDismissMatch(code, p.id); toast('تم التجاهل'); refreshAll(); } catch (e) { btn.disabled = false; fail(e); }
       return;
     }
     var names = { approved: 'اعتماد', rejected: 'رفض', suspended: 'إيقاف' };
@@ -534,6 +554,50 @@
         else await db.adminDecideCustom(code, id, { action: 'reject', note: q('m'), suggest: q('g') });
         toast('تم، وأُرسل إشعار للصنايعي'); render();
       } catch (x) { b.disabled = false; fail(x); }
+    };
+  }
+
+  /* ---------- الحظر والطعون ---------- */
+  async function viewBans() {
+    shell('<div id="banbox"><div class="spin">جاري التحميل...</div></div>');
+    var d;
+    try { d = await db.adminBans(code); } catch (e) { return fail(e); }
+    var box = document.getElementById('banbox'); if (!box) return;
+    var kinds = { mistake: 'حظر بالخطأ', regret: 'يقرّ ويلتزم', pay: 'سيسدّد العمولة', other: 'سبب آخر' };
+    var pend = d.appeals.filter(function (a) { return a.status === 'pending'; });
+    box.innerHTML =
+      '<div class="card"><b>طعون بانتظار القرار (' + pend.length + ')</b>' + (d.appeals.length ? d.appeals.map(function (a, i) {
+        return '<div class="kv" style="display:block;border-top:1px solid #eee;padding:10px 0"><b>' + esc(a.name) + '</b> <small class="ltr muted">' + esc(a.phone) + '</small> ' + pill(a.status === 'pending' ? 'بانتظار القرار' : (a.status === 'accepted' ? 'قُبل' : 'رُفض'), a.status === 'pending' ? 'warn' : (a.status === 'accepted' ? '' : 'bad')) +
+          '<br><small class="muted">' + esc(kinds[a.kind] || a.kind || '') + ' · ' + U.timeAgo(a.ts) + (a.reason ? ' · سبب الحظر: ' + esc(a.reason) : '') + (+a.due > 0 ? ' · <span class="dangertxt">عمولة غير مسددة ' + Number(a.due).toLocaleString('en') + '</span>' : '') + '</small>' +
+          '<p class="note">' + esc(a.body) + '</p>' + (a.note ? '<p class="note">ردّنا: ' + esc(a.note) + '</p>' : '') +
+          (a.status === 'pending' ? '<div class="btnrow"><button class="btn primary" data-ap="1" data-i="' + i + '">♻ قبول واستعادة الحساب</button><button class="btn danger" data-ap="0" data-i="' + i + '">✖ رفض الطعن</button></div>' : '') + '</div>';
+      }).join('') : '<p class="note">لا توجد طعون.</p>') + '</div>' +
+      '<div class="card"><b>تطابقات مع محظورين (' + d.matches.length + ')</b><p class="note">متقدمون جدد يتطابق اسمهم وتاريخ ميلادهم مع شخص محظور. تحقق ثم احظر أو تجاهل.</p>' + (d.matches.length ? d.matches.map(function (m, i) {
+        return '<div class="kv" style="display:block;border-top:1px solid #eee;padding:10px 0"><b>' + esc(m.name) + '</b> <small class="ltr muted">' + esc(m.phone) + '</small> ' + pill((STATUS[m.status] || ['—'])[0], m.status === 'approved' ? '' : 'warn') +
+          '<br><small class="muted">يتطابق مع المحظور: <b>' + esc(m.ban_name) + '</b> (<span class="ltr">' + esc(m.ban_phone) + '</span>) · ميلاد ' + esc(String(m.birth_date || '')) + (m.ban_reason ? ' · ' + esc(m.ban_reason) : '') + '</small>' +
+          '<div class="btnrow"><button class="btn danger" data-mt="ban" data-i="' + i + '">🚫 حظر</button><button class="btn ghost" data-mt="ok" data-i="' + i + '">تجاهل (ليس نفس الشخص)</button></div></div>';
+      }).join('') : '<p class="note">لا توجد تطابقات ✓</p>') + '</div>' +
+      '<div class="card"><b>المحظورون (' + d.banned.length + ')</b><p class="note">أرقامهم وبريدهم مرفوضة عند التسجيل أو التعديل، حتى لو حذفوا حسابهم.</p>' + (d.banned.length ? d.banned.map(function (b, i) {
+        return '<div class="kv" style="display:block;border-top:1px solid #eee;padding:10px 0"><b>' + esc(b.name) + '</b> <small class="ltr muted">' + esc(b.phone) + (b.email ? ' · ' + esc(b.email) : '') + '</small><br><small class="muted">ميلاد ' + esc(String(b.birth_date || '—')) + ' · ' + U.timeAgo(b.ts) + (b.reason ? ' · ' + esc(b.reason) : '') + (+b.due > 0 ? ' · <span class="dangertxt">عمولة غير مسددة ' + Number(b.due).toLocaleString('en') + '</span>' : '') + (b.exists ? '' : ' · الحساب محذوف') + '</small>' +
+          (b.exists ? '<div class="btnrow"><button class="btn primary" data-bn="' + i + '">♻ رفع الحظر</button></div>' : '') + '</div>';
+      }).join('') : '<p class="note">لا يوجد محظورون.</p>') + '</div>';
+    box.onclick = async function (e) {
+      var t = e.target.closest('button'); if (!t) return;
+      try {
+        if (t.hasAttribute('data-ap')) {
+          var a = pend[+t.getAttribute('data-i')] || d.appeals[+t.getAttribute('data-i')], acc = t.getAttribute('data-ap') === '1';
+          var nt = prompt(acc ? 'رسالة للصنايعي عند الاستعادة (اختياري):' : 'سبب الرفض (يظهر للصنايعي):', ''); if (nt === null) return;
+          await db.adminAppealDecide(code, a.id, acc, nt.trim()); toast(acc ? 'تمت استعادة الحساب' : 'تم رفض الطعن');
+        } else if (t.hasAttribute('data-mt')) {
+          var m = d.matches[+t.getAttribute('data-i')];
+          if (t.getAttribute('data-mt') === 'ban') { var why = prompt('سبب الحظر:', 'تحايل بعد الحظر'); if (why === null) return; await db.adminBan(code, m.id, why.trim()); toast('تم الحظر'); }
+          else { await db.adminDismissMatch(code, m.id); toast('تم التجاهل'); }
+        } else if (t.hasAttribute('data-bn')) {
+          var b = d.banned[+t.getAttribute('data-bn')]; var n2 = prompt('رسالة للصنايعي عند رفع الحظر (اختياري):', ''); if (n2 === null) return;
+          await db.adminUnban(code, b.provider_id, n2.trim()); toast('تم رفع الحظر');
+        } else return;
+        viewBans();
+      } catch (err) { fail(err); }
     };
   }
 
