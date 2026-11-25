@@ -18,7 +18,11 @@ class _LocationScreenState extends State<LocationScreen> {
     final l = await detectLocation(context);
     if (!mounted) return;
     setState(() => _busy = false);
-    if (l != null) Navigator.pop(context, true);
+    if (l != null) {
+      final st = Meta.stateOf((l['city_id'] ?? '').toString());
+      if (st != null && Meta.stateClosed(st.id)) toast(context, 'الخدمة غير متاحة حاليًا في ولاية ${st.name}');
+      Navigator.pop(context, true);
+    }
   }
 
   @override
@@ -35,7 +39,17 @@ class _LocationScreenState extends State<LocationScreen> {
           const SizedBox(height: 6),
           const Text('الـ GPS يعطيك الأقرب بدقة. أو اختر ولايتك ثم مدينتك:', style: TextStyle(color: C.mute, fontSize: 13)),
           const SizedBox(height: 10),
-          for (final s in Meta.states) Card(child: ListTile(title: Text(s.name), trailing: const Icon(Icons.chevron_left_rounded), onTap: () => setState(() => _st = s))),
+          for (final s in Meta.states)
+            Card(
+              color: Meta.stateClosed(s.id) ? const Color(0xFFF1F3F6) : null,
+              child: ListTile(
+                enabled: !Meta.stateClosed(s.id),
+                title: Text(s.name),
+                subtitle: Meta.stateClosed(s.id) ? const Text('غير متاحة حاليًا', style: TextStyle(color: C.red, fontSize: 12.5)) : null,
+                trailing: Icon(Meta.stateClosed(s.id) ? Icons.lock_outline_rounded : Icons.chevron_left_rounded),
+                onTap: Meta.stateClosed(s.id) ? null : () => setState(() => _st = s),
+              ),
+            ),
         ] else
           for (final c in _st!.cities)
             Card(

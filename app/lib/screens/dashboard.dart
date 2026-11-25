@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'profile_form.dart';
 import 'delete_account.dart';
+import 'commission.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -96,6 +97,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _remind(Map r) async {
+    try {
+      final res = await Api.rpc('provider_remind_client', {'p_id': _id, 'p_token': _tk, 'p_request': r['id']});
+      final st = res is Map ? (res['state'] ?? '').toString() : '';
+      if (!mounted) return;
+      toast(context, res is Map && res['ok'] == true ? 'أرسلنا تذكيرًا للزبون' : (st == 'too_soon' ? 'ذكّرته مؤخرًا. جرّب بعد عدة ساعات' : 'الطلب مغلق'));
+    } catch (e) {
+      if (mounted) toast(context, errMsg(e));
+    }
+  }
+
   void _delete() {
     final me = _me ?? {};
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeleteAccountScreen(emailVerified: me['email_verified'] == true && (me['email'] ?? '').toString().isNotEmpty, email: (me['email'] ?? '').toString())));
@@ -156,6 +168,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Card(color: const Color(0xFFE3F0FD), child: const Padding(padding: EdgeInsets.all(14), child: Text('حسابك قيد المراجعة. سنتواصل معك على الواتساب للتحقق ثم يظهر ملفك للزبائن.', style: TextStyle(height: 1.5))))
       else if (status != 'approved')
         Card(color: const Color(0xFFFFE3E3), child: Padding(padding: const EdgeInsets.all(14), child: Text('حسابك غير مفعّل حاليًا ($status). تواصل مع الدعم.'))),
+      if (status == 'approved' && ((me['commission_due'] ?? 0) as num) > 0) ...[
+        InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            await Navigator.push(context, MaterialPageRoute(builder: (_) => const CommissionScreen()));
+            _load();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: const Color(0xFFFFF1E0), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFF2B36B))),
+            child: Row(children: [
+              const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFFE67E22)),
+              const SizedBox(width: 10),
+              Expanded(child: Text('عمولة مستحقة ${((me['commission_due'] as num).round())} جنيه — اضغط لعرض رسالة الإدارة وإرسال الإشعار', style: const TextStyle(fontWeight: FontWeight.w700, height: 1.5, color: Color(0xFF7A4300)))),
+              const Icon(Icons.chevron_left_rounded, color: Color(0xFFE67E22)),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 10),
+      ],
       if (status == 'approved') ...[
         Card(
           child: SwitchListTile(
@@ -189,7 +221,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('باقي ${next - jobs} للشارة التالية', style: const TextStyle(color: C.mute, fontSize: 12)),
               ],
               const SizedBox(height: 6),
-              Text('اضغط لمعرفة كيف تحصل على كل شارة. يُحتسب العمل عندما يؤكد العميل ثم تؤكد أنت. تُحصَّل عمولة ثابتة ${Config.commissionNote} جنيه عن كل عمل مؤكد.', style: const TextStyle(color: C.mute, fontSize: 12, height: 1.4)),
+              Text('اضغط لمعرفة كيف تحصل على كل شارة. يُحتسب العمل عندما يؤكد العميل ثم تؤكد أنت. العمولة ${((Meta.cfg['commission_fixed'] ?? Config.commissionNote) as num).round()} جنيه عن كل خدمة مكتملة، وتُدفع من الصنايعي فقط؛ الزبون لا يدفع شيئًا.', style: const TextStyle(color: C.mute, fontSize: 12, height: 1.4)),
             ]),
            ),
           ),
@@ -198,6 +230,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 16),
         Text('الطلبات (آخر 60 يومًا) — ${me['requests_week']} هذا الأسبوع', style: const TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
+        SafetyNote(provider: true),
         if (waiting > 0) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('$waiting طلب جديد بانتظار ردك (تنتهي مهلة الطلب بعد ساعتين)', style: const TextStyle(color: Color(0xFFB45309), fontWeight: FontWeight.w700))),
         if (pending.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${pending.length} طلب أكّد العميل إتمامه وينتظر تأكيدك', style: const TextStyle(color: C.blue, fontWeight: FontWeight.w600))),
         if (_reqs.isEmpty) const Text('لا توجد طلبات بعد', style: TextStyle(color: C.mute)),
@@ -242,15 +275,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ]),
       ]);
     } else if (acc == 'accepted') {
-      body = Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            title,
-            const SizedBox(height: 2),
-            Text('${_ago(r['ts'] as int)}\nالعميل: ${_cs(r['client'])}${r['confirm'] == null ? '' : ' · أنت: ${r['confirm'] == 'done' ? 'تمت' : 'لم تتم'}'}', style: const TextStyle(color: C.mute, fontSize: 12.5, height: 1.4)),
+      final cl = (r['client'] ?? 'new').toString();
+      final pc = r['confirm']?.toString();
+      final complete = cl == 'done' && pc == 'done';
+      final closed = cl == 'failed' || cl == 'not_agreed' || pc == 'not_done';
+      String help;
+      Color hc = C.mute;
+      if (complete) {
+        help = 'خدمة مكتملة ✓ أُضيفت إلى ملفك وتُحتسب في شارتك.';
+        hc = C.green;
+      } else if (closed) {
+        help = cl == 'not_agreed' ? 'أغلق الزبون الطلب (لم تتفقا).' : 'لم تُحتسب هذه الخدمة.';
+      } else if (pc == null) {
+        help = cl == 'done' ? 'الزبون أكّد إنجاز الخدمة. أكّدها أنت الآن لتُضاف إلى ملفك.' : 'أنجزت الخدمة؟ أكّدها الآن. لا تُحتسب لك إلا بتأكيد الطرفين.';
+        hc = C.blue;
+      } else {
+        help = 'بانتظار تأكيد الزبون. الخدمة لا تُضاف إلى ملفك وشارتك حتى يؤكد.';
+        hc = const Color(0xFFB45309);
+      }
+      Widget step(String who, bool ok, bool no) => Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(ok ? Icons.check_circle_rounded : (no ? Icons.cancel_rounded : Icons.radio_button_unchecked_rounded), size: 18, color: ok ? C.green : (no ? C.red : C.mute)),
+            const SizedBox(width: 4),
+            Text(who, style: TextStyle(fontSize: 12.5, color: ok ? C.green : C.mute, fontWeight: FontWeight.w600)),
+          ]);
+      body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Expanded(child: title), Text(_ago(r['ts'] as int), style: const TextStyle(color: C.mute, fontSize: 12))]),
+        const SizedBox(height: 6),
+        Wrap(spacing: 14, runSpacing: 4, children: [
+          step('الزبون: ${cl == 'done' ? 'أكّد' : (cl == 'new' ? 'لم يؤكد' : _cs(cl))}', cl == 'done', cl == 'failed' || cl == 'not_agreed'),
+          step('أنت: ${pc == 'done' ? 'أكّدت' : (pc == 'not_done' ? 'لم تتم' : 'لم تؤكد')}', pc == 'done', pc == 'not_done'),
+        ]),
+        const SizedBox(height: 6),
+        Text(help, style: TextStyle(color: hc, fontSize: 12.5, height: 1.5, fontWeight: FontWeight.w600)),
+        if (!complete && !closed) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            if (pc == null) Expanded(child: FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 40)), onPressed: () => _confirm(r), child: const Text('أكّدت إنجاز الخدمة'))),
+            if (pc == 'done' && cl == 'new') Expanded(child: OutlinedButton.icon(style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40)), onPressed: () => _remind(r), icon: const Icon(Icons.notifications_active_outlined, size: 18), label: const Text('ذكّر الزبون بالتأكيد'))),
           ]),
-        ),
-        if (r['confirm'] == null) FilledButton(style: FilledButton.styleFrom(minimumSize: const Size(0, 36)), onPressed: () => _confirm(r), child: const Text('أكّد')),
+        ],
       ]);
     } else {
       final t = const {'declined': 'اعتذرت', 'expired': 'انتهت المهلة دون رد', 'taken': 'بدأ العميل مع صنايعي آخر'}[acc] ?? acc;

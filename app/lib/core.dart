@@ -47,6 +47,7 @@ String errMsg(Object e) {
     'daily_limit': 'وصلت للحد اليومي للطلبات، حاول غدًا',
     'already_today': 'اعتذر هذا الصنايعي عن طلبك اليوم',
     'not_accepted': 'لم يقبل الصنايعي هذا الطلب',
+    'state_closed': 'الخدمة غير متاحة حاليًا في هذه الولاية',
     'invalid_price': 'أعلى سعر يجب ألا يقل عن أدنى سعر',
     'no_verified_email': 'وثّق بريدك أولًا من تعديل الملف',
     'invalid_email': 'البريد الإلكتروني غير صحيح',
@@ -254,7 +255,13 @@ class Meta {
     // الخدمات المحدّثة من الخادم (كاش ثم تحديث في الخلفية)
     final c = Store.cacheGet('services');
     if (c != null) _setServices(c as List);
+    final cc = Store.cacheGet('cfg');
+    if (cc is Map) cfg = Map<String, dynamic>.from(cc);
   }
+
+  /// الولايات التي أغلقتها الإدارة مؤقتًا
+  static Set<String> get closedStates => (cfg['closed_states'] ?? '').toString().split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toSet();
+  static bool stateClosed(String id) => closedStates.contains(id);
 
   static void _setServices(List l, {bool fromAsset = false}) {
     final out = <Service>[];
@@ -332,6 +339,12 @@ String normalizePhone(String raw) {
   if (d.startsWith('249')) d = d.substring(3);
   if (d.startsWith('0')) d = d.substring(1);
   return RegExp(r'^[19]\d{8}$').hasMatch(d) ? '+249$d' : '';
+}
+
+/// الأرقام التسعة بعد الصفر (للحقل ذي الصفر الثابت)
+String phoneBody(String p) {
+  final n = normalizePhone(p);
+  return n.isEmpty ? '' : n.substring(4);
 }
 
 String localPhone(String p) {

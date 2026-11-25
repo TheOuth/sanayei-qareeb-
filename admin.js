@@ -348,18 +348,25 @@
   async function viewPayments() {
     shell('<div id="paybox"><div class="spin">جاري التحميل...</div></div>');
     var list, cfg = {};
-    try { list = await db.adminCommissionLedger(code); cfg = await db.adminGetSettings(code); } catch (e) { return fail(e); }
+    var dueList = [];
+    try { list = await db.adminCommissionLedger(code); cfg = await db.adminGetSettings(code); dueList = await db.adminCommissions(code, 'due'); } catch (e) { return fail(e); }
     var fx = +cfg.commission_fixed || 0, box = document.getElementById('paybox'); if (!box) return;
+    var dueBy = {}; dueList.forEach(function (c) { var g = dueBy[c.provider_id] || (dueBy[c.provider_id] = { id: c.id, name: c.provider_name, phone: c.phone, n: 0, total: 0, svc: [] }); g.n++; g.total += +c.amount; g.svc.push(c.service); });
+    var dueRows = Object.keys(dueBy).map(function (k) { return dueBy[k]; });
+    var dueHtml = '<div class="card"><b>عمولات مستحقة بانتظار الاستلام</b><p class="note">تظهر للصنايعي كرسالة منك حتى تضغط «تم استلام المبلغ» بعد وصول التحويل.</p>' +
+      (dueRows.length ? dueRows.map(function (g) { return '<div class="kv"><span><b>' + esc(g.name) + '</b> <small class="ltr muted">' + esc(g.phone) + '</small><br><small class="muted">' + g.n + ' خدمة · ' + esc(g.svc.slice(0, 3).join('، ')) + '</small></span><span><b>' + g.total.toLocaleString('en') + '</b> جنيه <button class="btn primary" style="padding:6px 10px" data-cp="' + g.id + '">✔ تم الاستلام</button></span></div>'; }).join('') : '<p class="note">لا توجد عمولات مستحقة الآن ✓</p>') + '</div>';
     function due(x) { return x.jobs * fx; }
     var T = list.reduce(function (a, x) { a.d += due(x); a.p += x.paid; a.n += x.pay_count; return a; }, { d: 0, p: 0, n: 0 });
-    box.innerHTML = '<div class="stats"><div class="stat"><b>' + T.d.toLocaleString('en') + '</b><small>المستحق</small></div><div class="stat"><b>' + T.p.toLocaleString('en') + '</b><small>المحصّل (' + T.n + ' دفعة)</small></div><div class="stat"><b>' + (T.d - T.p).toLocaleString('en') + '</b><small>المتبقي</small></div></div>' +
+    box.innerHTML = dueHtml + '<div class="stats"><div class="stat"><b>' + T.d.toLocaleString('en') + '</b><small>المستحق</small></div><div class="stat"><b>' + T.p.toLocaleString('en') + '</b><small>المحصّل (' + T.n + ' دفعة)</small></div><div class="stat"><b>' + (T.d - T.p).toLocaleString('en') + '</b><small>المتبقي</small></div></div>' +
       '<p class="note">العمولة الحالية ' + fx.toLocaleString('en') + ' جنيه لكل خدمة مؤكدة من الطرفين، وتُطبّق على كل الأعمال السابقة. غيّرها من الإعدادات.</p>' +
       (list.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>الصنايعي</th><th>أعمال مؤكدة</th><th>المستحق</th><th>المدفوع</th><th>المتبقي</th><th>عدد الدفعات</th><th>آخر دفعة</th><th></th></tr></thead><tbody>' +
         list.map(function (x, i) {
           var rest = due(x) - x.paid;
           return '<tr><td><b>' + esc(x.name) + '</b><br><small class="ltr muted">' + esc(x.phone) + '</small></td><td>' + x.jobs + '</td><td>' + due(x).toLocaleString('en') + '</td><td>' + x.paid.toLocaleString('en') + '</td><td>' + (rest > 0 ? '<span class="dangertxt">' + rest.toLocaleString('en') + '</span>' : rest < 0 ? '<span class="muted">+' + (-rest).toLocaleString('en') + ' مقدم</span>' : '<span class="okc">مسدد</span>') + '</td><td>' + x.pay_count + '</td><td>' + (x.last_paid ? fmtDate(x.last_paid) : '—') + '</td><td class="nw"><button class="mini" data-pi="' + i + '" data-pa="add">+ دفعة</button> <button class="mini" data-pi="' + i + '" data-pa="log">السجل</button></td></tr>';
         }).join('') + '</tbody></table></div>' : '<div class="empty"><div class="big">💰</div>لا توجد أعمال مؤكدة ولا دفعيات بعد</div>');
-    box.onclick = function (e) {
+    box.onclick = async function (e) {
+      var cp = e.target.closest('[data-cp]');
+      if (cp) { if (!confirm('تأكيد استلام العمولة؟ ستختفي رسالة العمولة من لدى الصنايعي.')) return; try { await db.adminCommissionPaid(code, cp.getAttribute('data-cp'), true); toast('تم تأكيد الاستلام'); viewPayments(); } catch (err) { fail(err); } return; }
       var b = e.target.closest('[data-pa]'); if (!b) return; var x = list[+b.getAttribute('data-pi')];
       if (b.getAttribute('data-pa') === 'add') {
         modal('<h3>تسجيل دفعة من ' + esc(x.name) + '</h3><label class="field"><span>المبلغ (جنيه)</span><input id="pm_a" class="ltr" inputmode="numeric" value="' + (fx || '') + '"></label><label class="field"><span>ملاحظة (اختياري: بنكك، كاش، رقم العملية)</span><input id="pm_n" maxlength="100"></label><div class="row2 mt"><button class="btn ghost" id="pm_x">إلغاء</button><button class="btn primary" id="pm_ok">تسجيل</button></div>');
@@ -534,17 +541,38 @@
   async function viewSettings() {
     var cfg = {};
     try { cfg = await db.adminGetSettings(code); } catch (e) { return fail(e); }
+    var closedSet = String(cfg.closed_states || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
     shell('<div class="agrid"><div class="card"><b>بيانات الدعم</b><p class="note">تظهر للصنايعية والزبائن في زر "تواصل مع الدعم".</p>' +
       '<label class="field"><span>واتساب الدعم (بصيغة دولية بدون +)</span><input id="c_wa" class="ltr" inputmode="tel" placeholder="249912345678" value="' + esc(cfg.support_whatsapp || '') + '"></label>' +
       '<label class="field"><span>بريد الدعم</span><input id="c_em" class="ltr" type="email" value="' + esc(cfg.support_email || '') + '"></label><button class="btn primary" id="c_save" style="width:100%">حفظ</button></div>' +
-      '<div class="card"><b>عمولة الطلب</b><p class="note">تُحسب على الخدمات المؤكدة من الطرفين فقط، وتظهر للصنايعية في ملفهم. اتركها 0 لتعطيلها. أبلغ الصنايعية بها قبل تفعيلها.</p>' +
+      '<div class="card"><b>عمولة الخدمة</b><p class="note">على الصنايعي فقط؛ الزبون مجانًا. تُستحق عند اكتمال الخدمة بتأكيد الطرفين. عدّلها بما يناسب السوق (الافتراضي 5000 جنيه)، وتسري على الخدمات الجديدة فقط. اترك النسبة 0.</p>' +
       '<div class="row2"><label class="field"><span>مبلغ ثابت لكل خدمة (جنيه)</span><input id="c_fx" class="ltr" inputmode="numeric" value="' + esc(String(cfg.commission_fixed || 0)) + '"></label><label class="field"><span>نسبة من المبلغ (%)</span><input id="c_pc" class="ltr" inputmode="decimal" value="' + esc(String(cfg.commission_pct || 0)) + '"></label></div></div>' +
+      '<div class="card"><b>رسالة العمولة للصنايعي</b><p class="note">تصله بعد اكتمال الخدمة كرسالة منك، وتبقى حتى تؤكد استلام المبلغ. اكتب {amount} مكان المبلغ.</p>' +
+      '<label class="field"><span>نص الرسالة</span><textarea id="m_txt" rows="4" maxlength="600">' + esc(cfg.commission_text || '') + '</textarea></label>' +
+      '<label class="field"><span>رقم الحساب</span><input id="m_no" class="ltr" maxlength="120" value="' + esc(cfg.commission_account_no || '') + '"></label>' +
+      '<label class="field"><span>اسم الحساب</span><input id="m_nm" maxlength="120" value="' + esc(cfg.commission_account_name || '') + '"></label>' +
+      '<label class="field"><span>واتساب استلام الإشعار (بصيغة دولية بدون +)</span><input id="m_wa" class="ltr" inputmode="tel" placeholder="249912345678" value="' + esc(cfg.commission_whatsapp || '') + '"></label>' +
+      '<button class="btn primary" id="m_save" style="width:100%">حفظ رسالة العمولة</button></div>' +
+      '<div class="card"><b>الولايات المتاحة</b><p class="note">أزل العلامة عن الولاية غير الآمنة؛ تظهر في التطبيق «غير متاحة حاليًا» ولا يظهر صنايعيتها للزبائن ولا يُقبل الطلب منها.</p><div id="st_box">' +
+      SQ.COUNTRY.states.map(function (s) { return '<label class="kv" style="cursor:pointer"><span>' + esc(s.name) + '</span><input type="checkbox" data-st="' + esc(s.id) + '"' + (closedSet.indexOf(s.id) < 0 ? ' checked' : '') + ' style="width:22px;height:22px"></label>'; }).join('') + '</div>' +
+      '<button class="btn primary mt" id="st_save" style="width:100%">حفظ الولايات</button></div>' +
       '<div class="card"><b>تحديث التطبيق</b><p class="note">رقم النسخة يظهر في صفحة «عن التطبيق». «الحد الأدنى» أي نسخة أقل منه تُمنع من العمل حتى تتحدث (استخدمه للتحديثات الحرجة فقط). «الأحدث» يعرض تنبيهًا يمكن تجاوزه.</p><div class="row2"><label class="field"><span>الحد الأدنى الإجباري</span><input id="u_min" class="ltr" inputmode="numeric" value="' + esc(String(cfg.min_build || 0)) + '"></label><label class="field"><span>أحدث نسخة</span><input id="u_last" class="ltr" inputmode="numeric" value="' + esc(String(cfg.latest_build || 0)) + '"></label></div><label class="field"><span>رابط التحديث (https)</span><input id="u_url" class="ltr" value="' + esc(cfg.update_url || '') + '" placeholder="https://github.com/TheOuth/sanayei-qareeb-/releases/latest/download/sanayei-qareeb-native.apk"></label><label class="field"><span>رسالة للمستخدم (اختياري)</span><input id="u_msg" maxlength="300" value="' + esc(cfg.update_msg || '') + '"></label><button class="btn primary" id="u_save" style="width:100%">حفظ إعدادات التحديث</button></div>' +
       '<div class="card"><b>إشعار لجميع الصنايعية</b><p class="note">يصل إلى جرس الرسائل في تطبيق كل صنايعي (تحديث جديد، تنبيه، إعلان).</p><label class="field"><span>العنوان</span><input id="bc_t" maxlength="100"></label><label class="field"><span>النص</span><textarea id="bc_b" rows="3" maxlength="500"></textarea></label><button class="btn primary" id="bc_send" style="width:100%">🔔 إرسال للجميع</button></div>' +
       '<div class="card"><b>سجل النشاط</b><p class="note">آخر تغييرات الحالة والتوثيق وحذف الحسابات.</p><button class="btn ghost" id="au_show" style="width:100%">عرض السجل</button><div id="au_list"></div></div>' +
       '<div class="card"><b>تغيير رمز المدير</b>' + U.pwHtml('k_new', 'الرمز الجديد', '8 أحرف على الأقل، لا تشاركه') + U.pwHtml('k_new2', 'أعد كتابته') + '<button class="btn primary" id="k_save" style="width:100%">تغيير الرمز</button></div>' +
       '<div class="card"><b>نسخة احتياطية</b><p class="note">نزّل بيانات كل الصنايعية في ملف يفتح في Excel. أنصح بفعل ذلك أسبوعيا.</p><button class="btn ghost" id="c_csv" style="width:100%">⬇ تنزيل كل الصنايعية (CSV)</button></div>' +
       '<div class="card"><b>روابط</b><div class="kv"><span>التطبيق</span><a href="' + esc(appUrl()) + '" target="_blank" rel="noopener">فتح</a></div><div class="kv"><span>سياسة الخصوصية</span><a href="' + esc(appUrl()) + 'privacy-policy.html" target="_blank" rel="noopener">فتح</a></div></div></div>');
+    function baseCfg() { return { support_whatsapp: cfg.support_whatsapp || '', support_email: cfg.support_email || '', commission_pct: cfg.commission_pct || 0, commission_fixed: cfg.commission_fixed || 0 }; }
+    on('m_save', 'click', async function () {
+      var o = baseCfg(); o.commission_text = document.getElementById('m_txt').value.trim(); o.commission_account_no = document.getElementById('m_no').value.trim(); o.commission_account_name = document.getElementById('m_nm').value.trim(); o.commission_whatsapp = document.getElementById('m_wa').value.replace(/\D/g, '');
+      try { await db.adminSaveSettings(code, o); toast('تم حفظ رسالة العمولة'); } catch (e) { fail(e); }
+    });
+    on('st_save', 'click', async function () {
+      var closed = [].slice.call(document.querySelectorAll('#st_box [data-st]')).filter(function (x) { return !x.checked; }).map(function (x) { return x.getAttribute('data-st'); });
+      if (closed.length && !confirm('ستُغلق ' + closed.length + ' ولاية. متأكد؟')) return;
+      var o = baseCfg(); o.closed_states = closed.join(',');
+      try { await db.adminSaveSettings(code, o); toast('تم حفظ الولايات'); } catch (e) { fail(e); }
+    });
     on('c_csv', 'click', function () { exportCsv({}); });
     on('au_show', 'click', async function () {
       var box = document.getElementById('au_list');

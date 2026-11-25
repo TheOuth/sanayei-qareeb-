@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../widgets.dart';
 import 'app_drawer.dart';
 import 'dashboard.dart';
+import 'commission.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -113,6 +114,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   VoidCallback? _target(String k) {
     final base = k.split(':')[0];
     switch (base) {
+      case 'commission':
+        return () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CommissionScreen()));
+      case 'completed':
       case 'request':
       case 'confirm':
       case 'review':
@@ -137,6 +141,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'account' => Icons.manage_accounts_rounded,
         'broadcast' => Icons.campaign_rounded,
         'service' => Icons.handyman_rounded,
+        'commission' => Icons.account_balance_wallet_rounded,
+        'completed' => Icons.celebration_rounded,
         _ => Icons.mail_rounded,
       };
 
@@ -148,6 +154,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'verify' => C.blue,
         'account' => C.navy,
         'service' => C.blue,
+        'commission' => const Color(0xFFE67E22),
+        'completed' => C.green,
         _ => const Color(0xFF6D5BEF),
       };
 

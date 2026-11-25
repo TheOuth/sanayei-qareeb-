@@ -90,7 +90,7 @@ class _ListScreenState extends State<ListScreen> {
             ),
             const SizedBox(height: 10),
             if (items.isEmpty)
-              const SizedBox(height: 300, child: Empty('لا يوجد صنايعي متاح لهذه الخدمة الآن. جرّب لاحقًا أو غيّر المدينة'))
+              SizedBox(height: 300, child: Empty(Meta.stateClosed((Meta.stateOf((_loc?['city_id'] ?? '').toString())?.id) ?? '') ? 'الخدمة غير متاحة حاليًا في ولايتك. اختر ولاية أخرى من «موقعي».' : 'لا يوجد صنايعي متاح لهذه الخدمة الآن. جرّب لاحقًا أو غيّر المدينة'))
             else ...[
               if (note.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(note, style: const TextStyle(color: C.mute, fontSize: 13))),
               for (final p in items)

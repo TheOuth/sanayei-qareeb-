@@ -528,6 +528,8 @@
       this.d.payments = this.d.payments || []; var x = { id: uid(), provider_id: id, amount: amount, note: String(note || '').slice(0, 200), ts: Date.now() }; this.d.payments.push(x); save(this.d); return x.id;
     },
     adminDeletePayment: async function (code, pid) { this.admin(code); this.d.payments = (this.d.payments || []).filter(function (x) { return x.id !== pid; }); save(this.d); return true; },
+    adminCommissions: async function () { return []; },
+    adminCommissionPaid: async function () { return 0; },
     adminCommissionLedger: async function (code) {
       this.admin(code); var self = this, pays = this.d.payments || [], m = {};
       this.d.requests.forEach(function (q) { if (q.status === 'done' && q.pconfirm === 'done') { var p = self.find(q.provider_id); if (p) { m[p.id] = m[p.id] || { provider_id: p.id, name: p.name, phone: p.phone, jobs: 0, paid: 0, pay_count: 0, last_paid: null, payments: [] }; m[p.id].jobs++; } } });
@@ -648,6 +650,8 @@
     adminAddPayment: function (code, id, amount, note) { return SB.rpc('admin_add_payment', { p_code: code, p_id: id, p_amount: amount, p_note: note || '' }); },
     adminDeletePayment: function (code, pid) { return SB.rpc('admin_delete_payment', { p_code: code, p_pid: pid }); },
     adminCommissionLedger: function (code) { return SB.rpc('admin_commission_ledger', { p_code: code }); },
+    adminCommissions: function (code, status) { return SB.rpc('admin_commissions', { p_code: code, p_status: status || '' }); },
+    adminCommissionPaid: function (code, id, all) { return SB.rpc('admin_commission_paid', { p_code: code, p_id: id, p_all: !!all }); },
     setUsername: function (id, t, u) { return SB.rpc('set_username', { p_id: id, p_token: t, p_username: u }); },
     adminSetUsername: function (code, id, u) { return SB.rpc('admin_set_username', { p_code: code, p_id: id, p_username: u }); },
     providerByUsername: function (u) { return SB.rpc('provider_id_by_username', { p: u }); },

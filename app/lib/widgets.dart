@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'core.dart';
@@ -179,10 +180,14 @@ void trustSheet(BuildContext context, Map p, {bool own = false}) {
 class Stars extends StatelessWidget {
   final num? rating;
   final int n;
-  const Stars({super.key, this.rating, this.n = 0});
+  final bool isNew;
+  const Stars({super.key, this.rating, this.n = 0, this.isNew = false});
   @override
   Widget build(BuildContext context) {
-    if (rating == null) return Text(n == 0 ? 'جديد' : 'تقييم قيد التجميع', style: const TextStyle(color: C.mute, fontSize: 12));
+    if (rating == null) {
+      if (isNew) return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: C.green.withOpacity(.12), borderRadius: BorderRadius.circular(10)), child: const Text('مستخدم جديد', style: TextStyle(color: C.green, fontSize: 12, fontWeight: FontWeight.w700)));
+      return Text(n == 0 ? 'لا تقييمات بعد' : 'تقييم قيد التجميع', style: const TextStyle(color: C.mute, fontSize: 12));
+    }
     return Row(mainAxisSize: MainAxisSize.min, children: [
       const Icon(Icons.star_rounded, color: C.gold, size: 18),
       Text(' $rating ', style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -220,7 +225,7 @@ class ProviderCard extends StatelessWidget {
                 Text(services, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.mute, fontSize: 13)),
                 const SizedBox(height: 4),
                 Wrap(spacing: 10, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int),
+                  Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int, isNew: p['is_new'] == true),
                   if (d != null) Text('$d كم', style: const TextStyle(fontSize: 12, color: C.mute)),
                   if (p['age'] != null) Text('${p['age']} سنة', style: const TextStyle(fontSize: 12, color: C.mute)),
                   ReplyRing(p: p, size: 30),
@@ -271,7 +276,7 @@ class ProviderGridCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(services, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(color: C.mute, fontSize: 12)),
             const SizedBox(height: 6),
-            Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int),
+            Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int, isNew: p['is_new'] == true),
             if (p['reply_pct'] != null) Padding(padding: const EdgeInsets.only(top: 4), child: ReplyRing(p: p, size: 30)),
             const SizedBox(height: 2),
             Text(avail ? (d != null ? 'متاح · $d كم' : 'متاح') : 'غير متاح', style: TextStyle(fontSize: 11, color: avail ? C.green : C.mute)),
@@ -363,6 +368,92 @@ class RegistrationNote extends StatelessWidget {
           Icon(Icons.info_outline_rounded, size: 20, color: Color(0xFF9A6B00)),
           SizedBox(width: 8),
           Expanded(child: Text('التسجيل خاص بمقدمي الخدمات. إذا كنت تبحث عن خدمة فلا تحتاج إلى تسجيل.', style: TextStyle(color: Color(0xFF6B4A00), height: 1.5, fontWeight: FontWeight.w600))),
+        ]),
+      );
+}
+
+
+/// حقل رقم الهاتف: صفر ثابت لا يُعدَّل، ويقبل تسعة أرقام تبدأ بـ 9 أو 1 فقط.
+/// القيمة في controller.text هي الأرقام التسعة فقط (أضف '0' أمامها عند الاستخدام).
+class PhoneField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String? note;
+  final Iterable<String>? autofill;
+  final TextInputAction? action;
+  final ValueChanged<String>? onSubmitted;
+  const PhoneField({super.key, required this.controller, required this.label, this.note, this.autofill, this.action, this.onSubmitted});
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        textInputAction: action,
+        onSubmitted: onSubmitted,
+        autofillHints: autofill,
+        inputFormatters: [_PhoneBodyFormatter()],
+        style: const TextStyle(fontSize: 17, letterSpacing: 1),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: '9xxxxxxxx',
+          helperText: note ?? 'لا تكتب الصفر وابدأ بالرقم الذي يليه',
+          helperMaxLines: 2,
+          prefixIcon: Container(
+            width: 48,
+            alignment: Alignment.center,
+            child: const Text('0', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: C.mute)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PhoneBodyFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue old, TextEditingValue v) {
+    var d = v.text.replaceAllMapped(RegExp('[٠-٩]'), (m) => (m[0]!.codeUnitAt(0) - 1632).toString()).replaceAll(RegExp(r'\D'), '');
+    final pasted = v.text.length - old.text.length > 1;
+    if (pasted) {
+      if (d.startsWith('00249')) {
+        d = d.substring(5);
+      } else if (d.startsWith('249') && d.length > 9) {
+        d = d.substring(3);
+      } else if (d.startsWith('0')) {
+        d = d.substring(1);
+      }
+    }
+    if (d.isNotEmpty && d[0] != '9' && d[0] != '1') d = ''; // الصفر وأي رقم غير 9/1 غير مقبول
+    if (d.length > 9) d = d.substring(0, 9);
+    return TextEditingValue(text: d, selection: TextSelection.collapsed(offset: d.length));
+  }
+}
+
+/// تنبيه السلامة المالية في قسم الطلبات
+class SafetyNote extends StatelessWidget {
+  final bool provider;
+  const SafetyNote({super.key, this.provider = false});
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: const Color(0xFFFFF4D6), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF0C95A))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Row(children: [
+            Icon(Icons.shield_outlined, size: 20, color: Color(0xFF9A6B00)),
+            SizedBox(width: 8),
+            Text('حافظ على حقك', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF6B4A00))),
+          ]),
+          const SizedBox(height: 6),
+          Text(
+            provider
+                ? '• لا تطلب أي مبلغ مقدّمًا.\n• لا تشترِ مواد أو أدوات للخدمة على حسابك قبل الاتفاق مع الزبون وسداد ثمنها.\n• التسليم والدفع يتمّان وجهًا لوجه بعد إنهاء الخدمة.\n• التطبيق غير مسؤول عن أي مشتريات أو تحويلات تتم خارج ذلك.'
+                : '• لا تحوّل أي مبلغ ولا تدفع قبل أن تنتهي الخدمة وتستلمها.\n• تسليم الخدمة ودفع المال يتمّان وجهًا لوجه.\n• التطبيق غير مسؤول عن أي تعامل مالي يتم خارج ذلك.',
+            style: const TextStyle(color: Color(0xFF6B4A00), height: 1.6, fontSize: 13),
+          ),
         ]),
       );
 }

@@ -13,24 +13,31 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _ph = TextEditingController();
   final _pw = TextEditingController();
-  bool _busy = false, _show = false;
+  final _id = TextEditingController();
+  bool _busy = false, _show = false, _byPhone = true;
 
   @override
   void initState() {
     super.initState();
     final lp = Store.lastPhone;
-    if (lp.isNotEmpty) _ph.text = lp;
+    if (lp.isNotEmpty) _ph.text = phoneBody(lp);
   }
 
   Future<void> _go() async {
-    final ph = normalizePhone(_ph.text);
-    if (ph.isEmpty) return toast(context, 'اكتب رقم الهاتف بصيغة 09xxxxxxxx');
+    String ph;
+    if (_byPhone) {
+      ph = normalizePhone('0${_ph.text}');
+      if (ph.isEmpty) return toast(context, 'اكتب رقم هاتفك: 9 أرقام تبدأ بـ 9 أو 1 (بدون صفر)');
+    } else {
+      ph = _id.text.trim();
+      if (ph.length < 3) return toast(context, 'اكتب اسم المستخدم أو البريد الإلكتروني');
+    }
     if (_pw.text.isEmpty) return toast(context, 'اكتب كلمة السر');
     setState(() => _busy = true);
     try {
       final r = await Api.rpc('provider_login', {'p_phone': ph, 'p_password': _pw.text});
       if (r['ok'] == true) {
-        await Store.setLastPhone(localPhone(ph));
+        if (_byPhone) await Store.setLastPhone(localPhone(ph));
         await Store.signIn(r['id'], r['token']);
         Store.refreshMe();
         if (!mounted) return;
@@ -38,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
         toast(context, 'تم تسجيل الدخول. لوحتك من القائمة الجانبية');
       } else {
         final e = (r['error'] ?? 'invalid').toString();
-        toast(context, e == 'invalid' ? 'الرقم أو كلمة السر غير صحيحة' : errMsg(e));
+        toast(context, e == 'invalid' ? (_byPhone ? 'الرقم أو كلمة السر غير صحيحة' : 'البيانات أو كلمة السر غير صحيحة') : errMsg(e));
       }
     } catch (e) {
       if (mounted) toast(context, errMsg(e));
@@ -54,8 +61,15 @@ class _LoginScreenState extends State<LoginScreen> {
       body: AutofillGroup(child: ListView(padding: const EdgeInsets.all(20), children: [
         const RegistrationNote(),
         const SizedBox(height: 10),
-        TextField(controller: _ph, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, autofillHints: const [AutofillHints.username, AutofillHints.telephoneNumber], textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'رقم الهاتف', hintText: '09xxxxxxxx')),
-        const SizedBox(height: 12),
+        if (_byPhone)
+          PhoneField(controller: _ph, label: 'رقم الهاتف', autofill: const [AutofillHints.username, AutofillHints.telephoneNumber], action: TextInputAction.next)
+        else
+          TextField(controller: _id, keyboardType: TextInputType.emailAddress, textDirection: TextDirection.ltr, autofillHints: const [AutofillHints.username, AutofillHints.email], textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'اسم المستخدم أو البريد الإلكتروني', hintText: 'username أو name@mail.com')),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton(onPressed: () => setState(() => _byPhone = !_byPhone), child: Text(_byPhone ? 'الدخول باسم المستخدم أو البريد الإلكتروني' : 'الدخول برقم الهاتف')),
+        ),
+        const SizedBox(height: 4),
         TextField(
           controller: _pw,
           obscureText: !_show,

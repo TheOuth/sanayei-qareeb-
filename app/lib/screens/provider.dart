@@ -68,7 +68,7 @@ class _ProviderScreenState extends State<ProviderScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('تم إرسال طلبك'),
-          content: const Text('سيظهر لك رقم الصنايعي وواتساب في "طلباتي" بمجرد أن يضغط "قبول". يمكنك طلب الخدمة من أكثر من صنايعي، ومن يرد أولًا تبدأ معه.', style: TextStyle(height: 1.6)),
+          content: const Text('سيظهر لك رقم الصنايعي وواتساب في "طلباتي" بمجرد أن يضغط "قبول". يمكنك طلب الخدمة من أكثر من صنايعي، ومن يرد أولًا تبدأ معه.\n\nتنبيه: لا تحوّل أي مبلغ ولا تدفع قبل انتهاء الخدمة وتسلّمها؛ الدفع وجهًا لوجه.', style: TextStyle(height: 1.6)),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('البقاء هنا')),
             FilledButton(
@@ -144,9 +144,9 @@ class _ProviderScreenState extends State<ProviderScreen> {
                 padding: const EdgeInsets.all(12),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                  onPressed: (p['available'] == true && !_sending) ? _request : null,
+                  onPressed: (p['available'] == true && p['state_closed'] != true && !_sending) ? _request : null,
                   icon: _sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.handyman_rounded),
-                  label: Text(p['available'] == true ? 'طلب الخدمة' : 'غير متاح الآن'),
+                  label: Text(p['state_closed'] == true ? 'غير متاحة حاليًا في هذه الولاية' : (p['available'] == true ? 'طلب الخدمة' : 'غير متاح الآن')),
                 ),
               ),
             ),
@@ -176,14 +176,24 @@ class _ProviderScreenState extends State<ProviderScreen> {
                 child: Padding(padding: const EdgeInsets.only(top: 4), child: Text('شارة ${Meta.tierName(tier)} · $jobs معاملة ناجحة  ›', style: const TextStyle(color: C.blue, fontSize: 12, fontWeight: FontWeight.w600))),
               ),
             const SizedBox(height: 8),
-            Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int),
-            const SizedBox(height: 10),
-            Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.center, children: [
-              for (final s in (p['services'] as List)) Chip(label: Text(Meta.serviceName(s.toString())), backgroundColor: const Color(0xFFE3F0FD), side: BorderSide.none),
-            ]),
+            Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int, isNew: p['is_new'] == true),
           ]),
         ),
       ),
+      if (p['state_closed'] == true) ...[
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: const Color(0xFFFFE9E9), borderRadius: BorderRadius.circular(14)),
+          child: const Row(children: [
+            Icon(Icons.block_rounded, color: C.red),
+            SizedBox(width: 8),
+            Expanded(child: Text('الخدمة غير متاحة حاليًا في هذه الولاية.', style: TextStyle(color: C.red, fontWeight: FontWeight.w700))),
+          ]),
+        ),
+      ],
+      const SizedBox(height: 12),
+      _skills(p),
       const SizedBox(height: 12),
       Card(
         child: Padding(
@@ -234,6 +244,42 @@ class _ProviderScreenState extends State<ProviderScreen> {
         ),
       const SizedBox(height: 70),
     ]));
+  }
+
+  /// المهارات والخدمات التي يقدمها الصنايعي مع عدد ما أكمله من كل واحدة
+  Widget _skills(Map p) {
+    final sj = (p['svc_jobs'] as Map?) ?? {};
+    final list = (p['services'] as List).map((e) => e.toString()).toList();
+    list.sort((a, b) => ((sj[b] ?? 0) as int).compareTo((sj[a] ?? 0) as int));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Row(children: [Icon(Icons.handyman_rounded, size: 18, color: C.blue), SizedBox(width: 6), Text('المهارات والخدمات', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15))]),
+          const SizedBox(height: 10),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final id in list)
+              Builder(builder: (_) {
+                final s = Meta.service(id);
+                final n = (sj[id] ?? 0) as int;
+                final col = Meta.cat(s?.cat ?? 'other').color;
+                return Container(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
+                  decoration: BoxDecoration(color: Color(col).withOpacity(.10), borderRadius: BorderRadius.circular(14), border: Border.all(color: Color(col).withOpacity(.25))),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(s?.icon ?? '🔧', style: const TextStyle(fontSize: 18)),
+                    const SizedBox(width: 6),
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Text(Meta.serviceName(id), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                      Text(n > 0 ? '$n خدمة مكتملة' : 'لم تُسجَّل بعد', style: TextStyle(fontSize: 11.5, color: n > 0 ? C.green : C.mute, fontWeight: n > 0 ? FontWeight.w700 : FontWeight.w400)),
+                    ]),
+                  ]),
+                );
+              }),
+          ]),
+        ]),
+      ),
+    );
   }
 
   Widget _historyGrid(List h) {

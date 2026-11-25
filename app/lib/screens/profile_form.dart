@@ -50,7 +50,7 @@ class _ProfileFormState extends State<ProfileForm> {
     final i = widget.initial;
     if (i != null) {
       _name.text = (i['name'] ?? '').toString();
-      _wa.text = localPhone((i['whatsapp'] ?? '').toString());
+      _wa.text = phoneBody((i['whatsapp'] ?? '').toString());
       _hood.text = (i['hood'] ?? '').toString();
       _email.text = (i['email'] ?? '').toString();
       _exp.text = (i['experience'] ?? '').toString();
@@ -343,8 +343,8 @@ class _ProfileFormState extends State<ProfileForm> {
     if (_name.text.trim().length < 3) return toast(context, 'اكتب اسمك الكامل');
     String ph = '';
     if (reg) {
-      ph = normalizePhone(_phone.text);
-      if (ph.isEmpty) return toast(context, 'رقم الهاتف غير صحيح (09xxxxxxxx)');
+      ph = normalizePhone('0${_phone.text}');
+      if (ph.isEmpty) return toast(context, 'رقم الهاتف غير صحيح. اكتب 9 أرقام تبدأ بـ 9 أو 1');
       if (_pw.text.length < 6) return toast(context, 'كلمة السر 6 أحرف على الأقل');
       if (!_ok18) return toast(context, 'أقرّ بأن عمرك 18 سنة فأكثر وأن البيانات صحيحة');
     }
@@ -353,7 +353,7 @@ class _ProfileFormState extends State<ProfileForm> {
     if (_services.isEmpty && _customName.isEmpty) return toast(context, 'اختر خدمة واحدة على الأقل أو اقترح خدمة خاصة');
     final exp = int.tryParse(_exp.text.trim());
     if (exp == null) return toast(context, 'اكتب سنوات الخبرة');
-    final wa = _wa.text.trim().isEmpty ? '' : normalizePhone(_wa.text);
+    final wa = _wa.text.trim().isEmpty ? '' : normalizePhone('0${_wa.text}');
     if (_wa.text.trim().isNotEmpty && wa.isEmpty) return toast(context, 'رقم الواتساب غير صحيح');
     final body = <String, dynamic>{
       'name': _name.text.trim(),
@@ -419,10 +419,10 @@ class _ProfileFormState extends State<ProfileForm> {
       TextField(controller: _name, decoration: const InputDecoration(labelText: 'الاسم الكامل')),
       if (reg) ...[
         const SizedBox(height: 10),
-        TextField(controller: _phone, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, autofillHints: const [AutofillHints.username], decoration: const InputDecoration(labelText: 'رقم الهاتف', hintText: '09xxxxxxxx')),
+        PhoneField(controller: _phone, label: 'رقم الهاتف', autofill: const [AutofillHints.username]),
       ],
       const SizedBox(height: 10),
-      TextField(controller: _wa, keyboardType: TextInputType.phone, textDirection: TextDirection.ltr, decoration: InputDecoration(labelText: 'رقم الواتساب', helperText: reg ? 'اتركه فارغًا لو هو نفس رقم الهاتف' : null)),
+      PhoneField(controller: _wa, label: 'رقم الواتساب', note: reg ? 'اتركه فارغًا لو هو نفس رقم الهاتف' : null),
       if (!reg) ...[
         const SizedBox(height: 10),
         TextField(controller: _email, keyboardType: TextInputType.emailAddress, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'البريد الإلكتروني (اختياري)', helperText: 'للرسائل المهمة مثل التهنئة والتوثيق'), onChanged: (_) => setState(() {})),

@@ -85,7 +85,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
             actions = [
               FilledButton.icon(style: FilledButton.styleFrom(minimumSize: const Size(0, 38)), onPressed: () => _call(r), icon: const Icon(Icons.call_rounded, size: 18), label: const Text('اتصال')),
               FilledButton.icon(style: FilledButton.styleFrom(minimumSize: const Size(0, 38), backgroundColor: const Color(0xFF1FA463)), onPressed: () => _wa(r), icon: const Icon(Icons.chat_rounded, size: 18), label: const Text('واتساب')),
-              OutlinedButton(style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38)), onPressed: () => _rate(r), child: const Text('أنهيت الخدمة')),
+              OutlinedButton(style: OutlinedButton.styleFrom(minimumSize: const Size(0, 38)), onPressed: () => _rate(r), child: const Text('تمت الخدمة؟ أكّد')),
             ];
           } else {
             actions = [OutlinedButton(onPressed: () => _rate(r), child: const Text('قيّم'))];
@@ -188,9 +188,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
                       child: ListView.separated(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.all(16),
-                        itemCount: _items!.length,
+                        itemCount: _items!.length + 1,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => _card(_items![i] as Map),
+                        itemBuilder: (_, i) => i == 0 ? const SafetyNote() : _card(_items![i - 1] as Map),
                       ),
                     ),
     );

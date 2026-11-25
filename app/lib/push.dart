@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core.dart';
+import 'screens/commission.dart';
 import 'screens/dashboard.dart';
 import 'screens/notifications.dart';
 import 'screens/requests.dart';
@@ -85,8 +86,9 @@ class Push with WidgetsBindingObserver {
     if (nav == null) return;
     if (kind != 'client_accept' && !Store.loggedIn) return;
     Store.refreshUnread();
-    final goDash = kind == 'request' || kind == 'confirm' || kind.startsWith('badge');
-    nav.push(MaterialPageRoute(builder: (_) => kind == 'client_accept' ? const RequestsScreen() : goDash ? const DashboardScreen() : const NotificationsScreen()));
+    final goCommission = kind == 'commission';
+    final goDash = kind == 'completed' || kind == 'request' || kind == 'confirm' || kind.startsWith('badge');
+    nav.push(MaterialPageRoute(builder: (_) => kind == 'client_accept' ? const RequestsScreen() : goCommission ? const CommissionScreen() : goDash ? const DashboardScreen() : const NotificationsScreen()));
   }
 
   /// يربط هذا الجهاز بحساب الصنايعي الحالي
