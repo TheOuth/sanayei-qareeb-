@@ -10,6 +10,7 @@ import 'requests.dart';
 import 'login.dart';
 import 'register.dart';
 import 'dashboard.dart';
+import 'my_profile.dart';
 import 'dart:async';
 import 'about.dart';
 import 'app_drawer.dart';
@@ -37,7 +38,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Store.tick.addListener(_onTick);
     WidgetsBinding.instance.addObserver(this);
     Store.refreshUnread();
-    _poll = Timer.periodic(const Duration(seconds: 90), (_) => Store.refreshUnread());
+    Store.refreshReqBadge();
+    _poll = Timer.periodic(const Duration(seconds: 45), (_) {
+      Store.refreshUnread();
+      Store.refreshReqBadge();
+    });
     if (Store.loggedIn && Store.meName.isEmpty) Store.refreshMe();
     Meta.refresh().then((_) {
       if (mounted) setState(() {});
@@ -243,10 +248,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ]),
           const SizedBox(width: 12),
           const Expanded(child: Padding(padding: EdgeInsets.only(top: 10), child: Text('صنايعي قريب', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)))),
+          if (!Store.loggedIn) _reqBtn(),
           if (Store.loggedIn) const BellBtn(light: true),
           if (Store.loggedIn)
             GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen())).then((_) { if (mounted) setState(() {}); }),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyProfileScreen())).then((_) { if (mounted) setState(() {}); }),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Container(
                   padding: const EdgeInsets.all(3),
@@ -330,6 +336,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ]),
     );
   }
+
+  /// «طلباتي» للزبون بلا حساب: تظهر بعد أول طلب وعليها عدّاد أحمر عند قبول/اعتذار صنايعي، وتختفي عند تسجيل الدخول
+  Widget _reqBtn() => ValueListenableBuilder<List<int>>(
+        valueListenable: Store.reqInfo,
+        builder: (_, v, __) {
+          if (v[0] == 0) return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsetsDirectional.only(end: 10),
+            child: GestureDetector(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RequestsScreen())).then((_) => Store.refreshReqBadge()),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Stack(clipBehavior: Clip.none, children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(color: Colors.white24, shape: BoxShape.circle, border: Border.all(color: Colors.white70)),
+                    child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 24),
+                  ),
+                  if (v[1] > 0)
+                    Positioned(top: -3, right: -3, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: C.red, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white, width: 1.5)), child: Text('${v[1]}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))))
+                  else if (v[2] > 0)
+                    Positioned(top: 0, right: 0, child: Container(width: 11, height: 11, decoration: BoxDecoration(color: const Color(0xFFFFB020), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)))),
+                ]),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white70, width: 1)),
+                  child: const Text('طلباتي', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                ),
+              ]),
+            ),
+          );
+        },
+      );
 
   Widget _serviceTile(Service s) {
     final c = Color(Meta.cat(s.cat).color);

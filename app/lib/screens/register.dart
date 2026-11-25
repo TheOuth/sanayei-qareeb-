@@ -20,7 +20,7 @@ class RegisterScreen extends StatelessWidget {
           Store.refreshMe();
           if (!context.mounted) return;
           Navigator.of(context).popUntil((r) => r.isFirst);
-          toast(context, 'تم إنشاء حسابك وهو قيد المراجعة. تابع حالته من لوحتي في القائمة');
+          toast(context, 'تم إنشاء حسابك وهو قيد المراجعة. تابع حالته من «ملفي» في القائمة');
         },
       ),
     );

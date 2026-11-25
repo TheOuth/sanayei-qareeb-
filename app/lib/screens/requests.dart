@@ -27,6 +27,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
     try {
       final r = await Api.rpc('my_requests', {'p_anon': Store.anon});
       if (mounted) setState(() => _items = r as List);
+      Store.markReqsSeen(r as List);
       _timer?.cancel();
       if ((r as List).any((x) => x['accept'] == 'pending')) _timer = Timer(const Duration(seconds: 20), _load);
     } catch (e) {

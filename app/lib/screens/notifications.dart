@@ -6,6 +6,7 @@ import '../widgets.dart';
 import 'app_drawer.dart';
 import 'dashboard.dart';
 import 'commission.dart';
+import 'my_profile.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -120,10 +121,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'request':
       case 'confirm':
       case 'review':
+        return () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen()));
       case 'badge':
       case 'badge_down':
       case 'account':
-        return () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen()));
+        return () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyProfileScreen()));
       case 'service':
       case 'verify':
         return () => openEditProfile(context);

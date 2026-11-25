@@ -16,7 +16,10 @@ class Push with WidgetsBindingObserver {
   Push._();
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.resumed) refreshStatus();
+    if (s == AppLifecycleState.resumed) {
+      refreshStatus();
+      Store.refreshReqBadge();
+    }
   }
 
   static Future<void> refreshStatus() async {
@@ -60,7 +63,10 @@ class Push with WidgetsBindingObserver {
         sync();
       });
       // التطبيق مفتوح: نحدّث عدّاد الجرس فقط (النظام يعرض الإشعار وقت الخلفية)
-      FirebaseMessaging.onMessage.listen((_) => Store.refreshUnread());
+      FirebaseMessaging.onMessage.listen((_) {
+        Store.refreshUnread();
+        Store.refreshReqBadge();
+      });
       // الضغط على إشعار والتطبيق في الخلفية
       FirebaseMessaging.onMessageOpenedApp.listen((m) => _open((m.data['kind'] ?? '').toString()));
       _initial = await m.getInitialMessage(); // الضغط على إشعار والتطبيق مغلق

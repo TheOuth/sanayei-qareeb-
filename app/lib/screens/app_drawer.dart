@@ -7,6 +7,7 @@ import 'requests.dart';
 import 'login.dart';
 import 'register.dart';
 import 'dashboard.dart';
+import 'my_profile.dart';
 import 'about.dart';
 import 'location.dart';
 import 'notifications.dart';
@@ -135,7 +136,10 @@ class AppDrawer extends StatelessWidget {
           const Divider(),
           const Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 4), child: Text('أنا صنايعي', style: TextStyle(color: C.mute, fontWeight: FontWeight.w600))),
           if (Store.loggedIn)
-            _item(context, 'dash', Icons.dashboard_rounded, 'لوحتي', build: () => const DashboardScreen())
+            ...[
+              _item(context, 'dash', Icons.dashboard_rounded, 'لوحة الخدمات', build: () => const DashboardScreen()),
+              _item(context, 'me', Icons.person_rounded, 'ملفي', build: () => const MyProfileScreen()),
+            ]
           else ...[
             _item(context, 'login', Icons.login_rounded, 'تسجيل الدخول', build: () => const LoginScreen()),
             _item(context, 'register', Icons.app_registration_rounded, 'سجّل كصنايعي', subtitle: 'اعرض خدمتك حسب المهارات العندك', build: () => const RegisterScreen()),

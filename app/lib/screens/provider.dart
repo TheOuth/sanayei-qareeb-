@@ -63,6 +63,7 @@ class _ProviderScreenState extends State<ProviderScreen> {
       final l = Store.loc;
       await Api.rpc('create_request', {'p': {'provider_id': p['id'], 'anon_id': Store.anon, 'service': sid, 'city_id': l?['city_id'] ?? p['city_id']}});
       Push.syncClient();
+      Store.refreshReqBadge();
       if (!mounted) return;
       await showDialog(
         context: context,

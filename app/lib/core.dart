@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'dart:math';
@@ -134,6 +135,48 @@ class Store {
       unread.value = (c is num) ? c.toInt() : 0;
     } catch (_) {}
   }
+  /// حالة «طلباتي» للزبون بلا حساب: [هل لديه طلبات؟ 1/0، عدد الردود الجديدة، عدد المعلّقة]
+  static final ValueNotifier<List<int>> reqInfo = ValueNotifier([0, 0, 0]);
+
+  static Map<String, dynamic> _seenReqs() {
+    try {
+      final s = p.getString('req_seen');
+      if (s != null) return Map<String, dynamic>.from(jsonDecode(s) as Map);
+    } catch (_) {}
+    return {};
+  }
+
+  /// يحدّث عدّاد ردود الصنايعية على طلبات هذا الجهاز (قبول/اعتذار لم يرها الزبون بعد)
+  static Future<void> refreshReqBadge() async {
+    try {
+      final r = await Api.rpc('my_requests', {'p_anon': anon}) as List;
+      final first = !p.containsKey('req_seen');
+      final seen = _seenReqs();
+      var badge = 0, pend = 0;
+      final cutoff = DateTime.now().subtract(const Duration(days: 3)).millisecondsSinceEpoch;
+      for (final x in r) {
+        final a = (x['accept'] ?? '').toString();
+        if (a == 'pending') {
+          pend++;
+        } else if ((a == 'accepted' || a == 'declined') && (x['ts'] as int) > cutoff && seen[x['id'].toString()] != a) {
+          badge++;
+        }
+      }
+      if (first) {
+        await markReqsSeen(r);
+        badge = 0;
+      }
+      reqInfo.value = [r.isEmpty ? 0 : 1, badge, pend];
+    } catch (_) {}
+  }
+
+  /// يُستدعى عند فتح «طلباتي»: كل ما فيها صار مقروءًا
+  static Future<void> markReqsSeen(List r) async {
+    final m = <String, String>{for (final x in r) x['id'].toString(): (x['accept'] ?? '').toString()};
+    await p.setString('req_seen', jsonEncode(m));
+    reqInfo.value = [r.isEmpty ? 0 : 1, 0, r.where((x) => x['accept'] == 'pending').length];
+  }
+
   static Future<void> init() async => p = await SharedPreferences.getInstance();
 
   static String get anon {

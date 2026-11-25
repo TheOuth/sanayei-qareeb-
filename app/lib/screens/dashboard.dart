@@ -119,7 +119,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final me = _me;
     return Scaffold(
       drawer: const AppDrawer(current: 'dash'),
-      appBar: bar('لوحتي'),
+      appBar: bar('لوحة الخدمات'),
       body: _err != null
           ? ErrorRetry(_err!, _load)
           : me == null
@@ -128,48 +128,85 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  bool _finished(Map r) {
+    final cl = (r['client'] ?? 'new').toString();
+    final pc = r['confirm']?.toString();
+    return (cl == 'done' && pc == 'done') || cl == 'failed' || cl == 'not_agreed' || pc == 'not_done';
+  }
+
+  Widget _tip(IconData i, String t, {Color c = C.mute}) => Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 8),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(i, size: 15, color: c),
+          const SizedBox(width: 6),
+          Expanded(child: Text(t, style: TextStyle(color: c, fontSize: 12.5, height: 1.5))),
+        ]),
+      );
+
+  Widget _stat(IconData i, Color c, String n, String label) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          decoration: BoxDecoration(color: c.withOpacity(.09), borderRadius: BorderRadius.circular(16)),
+          child: Column(children: [
+            Icon(i, color: c, size: 22),
+            const SizedBox(height: 4),
+            Text(n, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: c)),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: C.mute, height: 1.3)),
+          ]),
+        ),
+      );
+
+  Widget _section(IconData i, Color c, String title, int count) => Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 2),
+        child: Row(children: [
+          Icon(i, size: 19, color: c),
+          const SizedBox(width: 6),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+          if (count > 0) ...[
+            const SizedBox(width: 6),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 1), decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(10)), child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
+          ],
+        ]),
+      );
+
+  /// لوحة الخدمات: الطلبات والعمولة فقط. الهوية والشارة والإعدادات في «ملفي».
   Widget _body(Map me) {
     final status = (me['status'] ?? '').toString();
     if (status == 'banned') return const BannedView();
     final jobs = (me['jobs'] ?? 0) as int;
-    final tier = Meta.tierOfProvider(me);
-    final next = jobs >= 100 ? null : (jobs >= 25 ? 100 : (jobs >= 5 ? 25 : 5));
-    final gs = (me['gray_status'] ?? '').toString();
-    final pending = _reqs.where((r) => r['confirm'] == null && r['client'] == 'done').toList();
-    final waiting = _reqs.where((r) => r['accept'] == 'pending').length;
+    final fresh = _reqs.where((r) => r['accept'] == 'pending').toList();
+    final active = _reqs.where((r) => r['accept'] == 'accepted' && !_finished(r)).toList();
+    final history = _reqs.where((r) => r['accept'] != 'pending' && !(r['accept'] == 'accepted' && !_finished(r))).toList();
+    final waitingMe = active.where((r) => r['confirm'] == null && r['client'] == 'done').length;
+    final visible = me['available'] == true;
     return ListView(padding: const EdgeInsets.all(16), children: [
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            Avatar(photo: me['photo'], name: me['name'] ?? '', size: 60),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [Flexible(child: Text(me['name'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700))), const SizedBox(width: 6), TierBadge(p: me, size: 22)]),
-                Text('اكتمال الملف ${me['pct']}%', style: const TextStyle(color: C.mute, fontSize: 12)),
-                if ((me['pct'] ?? 0) < 100 && (me['missing'] as List?)?.isNotEmpty == true)
-                  Padding(padding: const EdgeInsets.only(top: 3), child: Text('ينقصك: ${(me['missing'] as List).map((k) => const {'photo': 'الصورة', 'bio': 'الوصف (20 حرفًا)', 'hood': 'الحي', 'price': 'أدنى سعر', 'price_max': 'أعلى سعر', 'experience': 'سنوات الخبرة', 'password': 'كلمة السر'}[k] ?? k).join('، ')}', style: const TextStyle(color: Color(0xFFB45309), fontSize: 12, height: 1.4))),
-              ]),
-            ),
-            if (me['reply_pct'] != null) Padding(padding: const EdgeInsetsDirectional.only(end: 6), child: ReplyRing(p: me, size: 42)),
-            IconButton(
-              icon: const Icon(Icons.edit_rounded),
-              onPressed: () async {
-                await Navigator.push(context, MaterialPageRoute(builder: (_) => _EditScreen(me: me)));
-                _load();
-              },
-            ),
+      Row(children: [
+        Avatar(photo: me['photo'], name: me['name'] ?? '', size: 46),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('أهلًا ${shortName((me['name'] ?? '').toString())} 👋', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            if (status == 'approved')
+              InkWell(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyProfileScreen())).then((_) => _load()),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(children: [
+                    Icon(Icons.circle, size: 9, color: visible ? C.green : C.mute),
+                    const SizedBox(width: 5),
+                    Text(visible ? 'ملفك ظاهر للزبائن' : 'ملفك غير ظاهر — غيّر حالتك من «ملفي»', style: TextStyle(color: visible ? C.green : const Color(0xFFB45309), fontSize: 12.5, fontWeight: FontWeight.w600)),
+                  ]),
+                ),
+              ),
           ]),
         ),
-      ),
-      const SizedBox(height: 10),
-      if (me['birth_date'] == null)
-        Card(color: const Color(0xFFFFF4D6), child: const Padding(padding: EdgeInsets.all(12), child: Text('أضف تاريخ ميلادك الحقيقي من "تعديل" (مطلوب 18+).'))),
+        if (me['reply_pct'] != null) ReplyRing(p: me, size: 42),
+      ]),
+      const SizedBox(height: 14),
       if (status == 'pending')
         Card(color: const Color(0xFFE3F0FD), child: const Padding(padding: EdgeInsets.all(14), child: Text('حسابك قيد المراجعة. سنتواصل معك على الواتساب للتحقق ثم يظهر ملفك للزبائن.', style: TextStyle(height: 1.5))))
       else if (status != 'approved')
-        Card(color: const Color(0xFFFFE3E3), child: Padding(padding: const EdgeInsets.all(14), child: Text('حسابك غير مفعّل حاليًا ($status). تواصل مع الدعم.'))),
+        Card(color: const Color(0xFFFFE3E3), child: const Padding(padding: EdgeInsets.all(14), child: Text('حسابك غير مفعّل حاليًا. تواصل مع الدعم.'))),
       if (status == 'approved' && ((me['commission_due'] ?? 0) as num) > 0) ...[
         InkWell(
           borderRadius: BorderRadius.circular(16),
@@ -188,58 +225,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ]),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
       ],
       if (status == 'approved') ...[
-        Card(
-          child: SwitchListTile(
-            value: me['flag'] == true,
-            onChanged: _toggle,
-            title: const Text('أنا متاح الآن', style: TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text(me['available'] == true ? 'ملفك ظاهر للزبائن' : (me['flag'] == true ? 'خارج ساعات العمل (${t12(me['from'])} - ${t12(me['to'])})' : 'غير ظاهر في القوائم')),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Card(
-          child: InkWell(
-           borderRadius: BorderRadius.circular(16),
-           onTap: () => trustSheet(context, me, own: true),
-           child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                if (tier.isNotEmpty) Image.asset('assets/badges/badge-$tier.png', width: 34, height: 34),
-                const SizedBox(width: 8),
-                Expanded(child: Text(tier.isEmpty ? 'لم تحصل على شارة بعد' : 'شارة ${Meta.tierName(tier)}', style: const TextStyle(fontWeight: FontWeight.w700))),
-                Text('$jobs معاملة ناجحة'),
-                const Icon(Icons.info_outline_rounded, size: 18, color: C.blue),
-              ]),
-              if (gs == 'pending') const Padding(padding: EdgeInsets.only(top: 8), child: Text('ملفك مكتمل ✓ وينتظر موافقة الإدارة على الشارة الرمادية.', style: TextStyle(color: C.blue, fontSize: 12.5, height: 1.4))),
-              if (gs == 'none' && (me['pct'] ?? 0) < 100) const Padding(padding: EdgeInsets.only(top: 8), child: Text('أكمل ملفك 100% (الصورة، الوصف، الحي، السعر، الخبرة) لتُراجَع للحصول على الشارة الرمادية.', style: TextStyle(color: C.mute, fontSize: 12.5, height: 1.4))),
-              if (next != null) ...[
-                const SizedBox(height: 8),
-                LinearProgressIndicator(value: (jobs / next).clamp(0, 1).toDouble(), minHeight: 8, borderRadius: BorderRadius.circular(6)),
-                const SizedBox(height: 4),
-                Text('باقي ${next - jobs} للشارة التالية', style: const TextStyle(color: C.mute, fontSize: 12)),
-              ],
-              const SizedBox(height: 6),
-              Text('اضغط لمعرفة كيف تحصل على كل شارة. يُحتسب العمل عندما يؤكد العميل ثم تؤكد أنت. العمولة ${((Meta.cfg['commission_fixed'] ?? Config.commissionNote) as num).round()} جنيه عن كل خدمة مكتملة، وتُدفع من الصنايعي فقط؛ الزبون لا يدفع شيئًا.', style: const TextStyle(color: C.mute, fontSize: 12, height: 1.4)),
-            ]),
-           ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        const SizedBox(height: 16),
-        Text('الطلبات (آخر 60 يومًا) — ${me['requests_week']} هذا الأسبوع', style: const TextStyle(fontWeight: FontWeight.w700)),
+        Row(children: [
+          _stat(Icons.notifications_active_rounded, const Color(0xFFE67E22), '${fresh.length}', 'طلبات جديدة'),
+          const SizedBox(width: 8),
+          _stat(Icons.handyman_rounded, C.blue, '${active.length}', 'قيد التنفيذ'),
+          const SizedBox(width: 8),
+          _stat(Icons.verified_rounded, C.green, '$jobs', 'خدمات مكتملة'),
+        ]),
         const SizedBox(height: 8),
-        SafetyNote(provider: true),
-        if (waiting > 0) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('$waiting طلب جديد بانتظار ردك (تنتهي مهلة الطلب بعد ساعتين)', style: const TextStyle(color: Color(0xFFB45309), fontWeight: FontWeight.w700))),
-        if (pending.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${pending.length} طلب أكّد العميل إتمامه وينتظر تأكيدك', style: const TextStyle(color: C.blue, fontWeight: FontWeight.w600))),
-        if (_reqs.isEmpty) const Text('لا توجد طلبات بعد', style: TextStyle(color: C.mute)),
-        for (final r in _reqs) _reqCard(r),
+        const SafetyNote(provider: true),
+        _section(Icons.notifications_active_rounded, const Color(0xFFE67E22), 'طلبات جديدة', fresh.length),
+        _tip(Icons.lightbulb_outline_rounded, 'اقبل أو اعتذر بسرعة. تنتهي مهلة الطلب بعد ساعتين، وسرعة ردك تظهر للزبائن وتزيد ظهورك.'),
+        if (fresh.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 10), child: Text('لا توجد طلبات جديدة الآن. تأكد أن حالتك «متاح الآن» من «ملفي».', style: TextStyle(color: C.mute, height: 1.5))),
+        for (final r in fresh) _reqCard(r),
+        _section(Icons.handyman_rounded, C.blue, 'قيد التنفيذ', active.length),
+        _tip(Icons.lightbulb_outline_rounded, waitingMe > 0 ? '$waitingMe خدمة أكّد الزبون إنجازها وتنتظر تأكيدك لتُضاف إلى ملفك.' : 'بعد إنهاء الخدمة أكّدها هنا. لا تُحتسب لك ولشارتك إلا بتأكيد الطرفين.', c: waitingMe > 0 ? C.blue : C.mute),
+        if (active.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 10), child: Text('لا توجد خدمات جارية.', style: TextStyle(color: C.mute))),
+        for (final r in active) _reqCard(r),
+        if (history.isNotEmpty)
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: EdgeInsets.zero,
+              title: Text('السجل (${history.length})', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5)),
+              subtitle: const Text('آخر 60 يومًا: المكتملة والمعتذَر عنها والمنتهية', style: TextStyle(fontSize: 12)),
+              children: [for (final r in history) _reqCard(r)],
+            ),
+          ),
       ],
-      const SizedBox(height: 20),
-      OutlinedButton(style: OutlinedButton.styleFrom(foregroundColor: C.red), onPressed: _delete, child: const Text('حذف حسابي')),
       const SizedBox(height: 30),
     ]);
   }
