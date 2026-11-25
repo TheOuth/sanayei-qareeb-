@@ -138,7 +138,7 @@ class _ProviderScreenState extends State<ProviderScreen> {
               : p.isEmpty
                   ? const Empty('هذا الصنايعي غير متاح')
                   : _body(p),
-      bottomNavigationBar: (p == null || p.isEmpty)
+      bottomNavigationBar: (p == null || p.isEmpty || widget.id == Store.pid)
           ? null
           : SafeArea(
               child: Padding(
@@ -154,134 +154,240 @@ class _ProviderScreenState extends State<ProviderScreen> {
     );
   }
 
+  int _tab = 0;
+
+  String _date(int ts) {
+    final d = DateTime.fromMillisecondsSinceEpoch(ts);
+    return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')}';
+  }
+
+  Widget _ring(int? pct, Color col, {double size = 54}) => SizedBox(
+        width: size,
+        height: size,
+        child: Stack(alignment: Alignment.center, children: [
+          SizedBox(width: size, height: size, child: CircularProgressIndicator(value: pct == null ? 0 : pct / 100, strokeWidth: size / 9, backgroundColor: col.withOpacity(.15), valueColor: AlwaysStoppedAnimation(col))),
+          Text(pct == null ? '—' : '$pct%', style: TextStyle(fontSize: size * .30, fontWeight: FontWeight.w800, color: pct == null ? C.mute : col)),
+        ]),
+      );
+
+  Widget _statTile(Widget top, String label, String sub) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: C.hair)),
+          child: Column(children: [
+            SizedBox(height: 54, child: Center(child: top)),
+            const SizedBox(height: 6),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+            Text(sub, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(color: C.mute, fontSize: 11, height: 1.3)),
+          ]),
+        ),
+      );
+
+  Widget _chip(IconData i, String t, Color c) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(color: c.withOpacity(.10), borderRadius: BorderRadius.circular(12)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [Icon(i, size: 14, color: c), const SizedBox(width: 4), Text(t, style: TextStyle(fontSize: 12, color: c, fontWeight: FontWeight.w700))]),
+      );
+
+  Widget _tabs(int reviewsN) {
+    Widget b(int i, String t) => Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _tab = i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(color: _tab == i ? C.blue : Colors.transparent, borderRadius: BorderRadius.circular(12)),
+              child: Text(t, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: _tab == i ? Colors.white : C.mute)),
+            ),
+          ),
+        );
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFFE9F2FD), borderRadius: BorderRadius.circular(16)),
+      child: Row(children: [b(0, 'الأعمال'), b(1, reviewsN > 0 ? 'التقييمات ($reviewsN)' : 'التقييمات'), b(2, 'معلومات')]),
+    );
+  }
+
   Widget _body(Map p) {
-    final reviews = (p['reviews'] as List?) ?? [];
     final jobs = (p['jobs'] ?? 0) as int;
     final tier = Meta.tierOfProvider(p);
+    final rn = (p['rating_n'] ?? 0) as int;
+    final rating = p['rating'] as num?;
+    final ratePct = rating == null ? null : (rating / 5 * 100).round();
+    final replyPct = p['reply_pct'] == null ? null : (p['reply_pct'] as num).toInt().clamp(0, 100);
+    final avail = p['available'] == true;
+    final place = '${Meta.cityName((p['city_id'] ?? '').toString())}${(p['hood'] ?? '').toString().isEmpty ? '' : ' - ${p['hood']}'}';
+    Color rc(int? v) => v == null ? C.mute : (v >= 80 ? const Color(0xFF1A7F4B) : (v >= 50 ? const Color(0xFFB45309) : const Color(0xFFB42318)));
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(16), children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
+              Avatar(photo: p['photo'], name: p['name'] ?? '', size: 92),
+              const SizedBox(height: 10),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Flexible(child: Text(p['name'] ?? '', textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+                const SizedBox(width: 6),
+                TierBadge(p: p, size: 26),
+              ]),
+              if (tier.isNotEmpty)
+                GestureDetector(
+                  onTap: () => trustSheet(context, p),
+                  child: Padding(padding: const EdgeInsets.only(top: 4), child: Text('شارة ${Meta.tierName(tier)}  ›', style: const TextStyle(color: C.blue, fontSize: 12.5, fontWeight: FontWeight.w700))),
+                ),
+              const SizedBox(height: 10),
+              Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
+                _chip(Icons.circle, avail ? 'متاح الآن' : 'غير متاح الآن', avail ? C.green : C.mute),
+                if (p['is_new'] == true) _chip(Icons.fiber_new_rounded, 'مستخدم جديد', C.green),
+                _chip(Icons.place_rounded, place, C.blue),
+                if (p['distance_km'] != null) _chip(Icons.near_me_rounded, '${p['distance_km']} كم', C.blue),
+              ]),
+              if ((p['bio'] ?? '').toString().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(p['bio'].toString(), textAlign: TextAlign.center, style: const TextStyle(height: 1.7, color: Color(0xFF3B4A5A))),
+              ],
+            ]),
+          ),
+        ),
+        if (p['state_closed'] == true) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: const Color(0xFFFFE9E9), borderRadius: BorderRadius.circular(14)),
+            child: const Row(children: [
+              Icon(Icons.block_rounded, color: C.red),
+              SizedBox(width: 8),
+              Expanded(child: Text('الخدمة غير متاحة حاليًا في هذه الولاية.', style: TextStyle(color: C.red, fontWeight: FontWeight.w700))),
+            ]),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _statTile(Text('$jobs', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: C.green)), 'خدمات مكتملة', jobs == 0 ? 'لم يكمل بعد' : 'مؤكدة من الطرفين'),
+          const SizedBox(width: 8),
+          _statTile(_ring(ratePct, rc(ratePct)), 'التقييم', rating != null ? 'من $rn تقييم' : (rn > 0 ? '$rn من 3 تقييمات لعرض النسبة' : 'بلا تقييمات بعد')),
+          const SizedBox(width: 8),
+          _statTile(_ring(replyPct, rc(replyPct)), 'سرعة الرد', replyPct != null ? 'يردّ خلال 15 دقيقة' : 'تظهر بعد 3 طلبات'),
+        ]),
+        const SizedBox(height: 14),
+        _tabs(rn),
+        const SizedBox(height: 12),
+        if (_tab == 0) _worksTab(p),
+        if (_tab == 1) _reviewsTab(p, ratePct, rc(ratePct)),
+        if (_tab == 2) _infoTab(p),
+        const SizedBox(height: 70),
+      ]),
+    );
+  }
+
+  /// تبويب الأعمال: الخدمات المنجزة لكل مهارة ثم آخر الأعمال
+  Widget _worksTab(Map p) {
+    final sj = (p['svc_jobs'] as Map?) ?? {};
+    final list = (p['services'] as List).map((e) => e.toString()).toList();
+    list.sort((a, b) => ((sj[b] ?? 0) as int).compareTo((sj[a] ?? 0) as int));
+    final maxN = list.fold<int>(1, (m, id) => ((sj[id] ?? 0) as int) > m ? (sj[id] as int) : m);
     final history = (p['history'] as List?) ?? [];
-    return RefreshIndicator(onRefresh: _load, child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(16), children: [
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('المهارات والخدمات المنجزة', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+      const SizedBox(height: 8),
+      for (final id in list)
+        Builder(builder: (_) {
+          final s = Meta.service(id);
+          final n = (sj[id] ?? 0) as int;
+          final col = Color(Meta.cat(s?.cat ?? 'other').color);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: n > 0 ? col.withOpacity(.35) : C.hair)),
+            child: Row(children: [
+              CircleAvatar(radius: 22, backgroundColor: col.withOpacity(.12), child: Text(s?.icon ?? '🔧', style: const TextStyle(fontSize: 22))),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(Meta.serviceName(id), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+                  const SizedBox(height: 6),
+                  LinearProgressIndicator(value: n == 0 ? 0 : (n / maxN).clamp(.08, 1).toDouble(), minHeight: 6, borderRadius: BorderRadius.circular(6), color: col, backgroundColor: col.withOpacity(.12)),
+                ]),
+              ),
+              const SizedBox(width: 12),
+              Column(children: [
+                Text('$n', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: n > 0 ? C.green : C.mute)),
+                Text(n > 0 ? 'مكتملة' : 'لم تُسجَّل', style: const TextStyle(fontSize: 11, color: C.mute)),
+              ]),
+            ]),
+          );
+        }),
+      const SizedBox(height: 10),
+      const Text('آخر الأعمال', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+      const SizedBox(height: 8),
+      if (history.isEmpty) const Text('لا توجد أعمال بعد', style: TextStyle(color: C.mute)) else _historyGrid(history),
+    ]);
+  }
+
+  /// تبويب التقييمات: ملخص ثم آخر الآراء
+  Widget _reviewsTab(Map p, int? pct, Color col) {
+    final reviews = (p['reviews'] as List?) ?? [];
+    final ok = (p['ok'] ?? 0) as int, fail = (p['fail'] ?? 0) as int;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Card(
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(children: [
-            Avatar(photo: p['photo'], name: p['name'] ?? '', size: 88),
-            const SizedBox(height: 10),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Flexible(child: Text(p['name'] ?? '', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700))),
-              const SizedBox(width: 6),
-              TierBadge(p: p, size: 26),
-            ]),
-            if (tier.isNotEmpty)
-              GestureDetector(
-                onTap: () => trustSheet(context, p),
-                child: Padding(padding: const EdgeInsets.only(top: 4), child: Text('شارة ${Meta.tierName(tier)} · $jobs معاملة ناجحة  ›', style: const TextStyle(color: C.blue, fontSize: 12, fontWeight: FontWeight.w600))),
-              ),
-            const SizedBox(height: 8),
-            Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int, isNew: p['is_new'] == true),
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            _ring(pct, col, size: 62),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(pct != null ? 'رضا العملاء $pct%' : 'لا توجد نسبة بعد', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 4),
+                Text(pct != null ? 'محسوبة من متوسط تقييمات العملاء (من 5 نجوم).' : 'تظهر النسبة بعد 3 تقييمات على الأقل، حتى تكون عادلة.', style: const TextStyle(color: C.mute, fontSize: 12, height: 1.5)),
+                const SizedBox(height: 6),
+                Text('خدمات نجحت: $ok · لم تنجح: $fail', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+              ]),
+            ),
           ]),
         ),
       ),
-      if (p['state_closed'] == true) ...[
-        const SizedBox(height: 12),
+      const SizedBox(height: 10),
+      if (reviews.isEmpty) const Padding(padding: EdgeInsets.all(8), child: Text('لا توجد آراء بعد. التقييم اختياري ويضيفه الزبون بعد الخدمة.', style: TextStyle(color: C.mute, height: 1.6))),
+      for (final r in reviews)
         Container(
+          margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: const Color(0xFFFFE9E9), borderRadius: BorderRadius.circular(14)),
-          child: const Row(children: [
-            Icon(Icons.block_rounded, color: C.red),
-            SizedBox(width: 8),
-            Expanded(child: Text('الخدمة غير متاحة حاليًا في هذه الولاية.', style: TextStyle(color: C.red, fontWeight: FontWeight.w700))),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.hair)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              if (r['stars'] != null) ...List.generate(5, (i) => Icon(i < (r['stars'] as num) ? Icons.star_rounded : Icons.star_outline_rounded, size: 18, color: const Color(0xFFF5A623))),
+              if (r['stars'] == null) const Text('بلا تقييم بالنجوم', style: TextStyle(color: C.mute, fontSize: 12)),
+              const Spacer(),
+              Icon(r['success'] == true ? Icons.check_circle_rounded : Icons.cancel_rounded, size: 16, color: r['success'] == true ? C.green : C.red),
+              const SizedBox(width: 4),
+              Text(r['success'] == true ? 'خدمة ناجحة' : 'لم تنجح', style: TextStyle(fontSize: 12, color: r['success'] == true ? C.green : C.red, fontWeight: FontWeight.w700)),
+            ]),
+            if ((r['comment'] ?? '').toString().isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(r['comment'].toString(), style: const TextStyle(height: 1.6))),
+            Padding(padding: const EdgeInsets.only(top: 6), child: Text(_date(r['ts'] as int), style: const TextStyle(fontSize: 11, color: C.mute))),
           ]),
         ),
-      ],
-      const SizedBox(height: 12),
-      _skills(p),
-      const SizedBox(height: 12),
-      Card(
+      if (reviews.isNotEmpty) const Text('تُعرض آخر 5 آراء.', textAlign: TextAlign.center, style: TextStyle(color: C.mute, fontSize: 11.5)),
+    ]);
+  }
+
+  Widget _infoTab(Map p) => Card(
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Column(children: [
             _kv('الحالة', p['available'] == true ? 'متاح الآن' : 'غير متاح الآن'),
-            if (p['distance_km'] != null) _kv('المسافة', '${p['distance_km']} كم'),
             _kv('المنطقة', '${Meta.cityName((p['city_id'] ?? '').toString())}${(p['hood'] ?? '').toString().isEmpty ? '' : ' - ${p['hood']}'}'),
+            if (p['distance_km'] != null) _kv('المسافة', '${p['distance_km']} كم'),
             _kv('ساعات العمل', 'من ${t12(p['from'])} إلى ${t12(p['to'])}'),
             _kv('الخبرة', '${p['experience']} سنة'),
             if (priceText(p).isNotEmpty) _kv('السعر', priceText(p)),
-            if (priceText(p).isNotEmpty) const Padding(padding: EdgeInsets.only(top: 2, bottom: 4), child: Text('السعر النهائي يُتفق عليه مع الصنايعي بعد معرفة حجم الخدمة، ويكون ضمن هذا النطاق.', style: TextStyle(color: C.mute, fontSize: 12, height: 1.5))),
+            if (priceText(p).isNotEmpty) const Padding(padding: EdgeInsets.only(top: 2, bottom: 4, left: 8, right: 8), child: Text('السعر النهائي يُتفق عليه مع الصنايعي بعد معرفة حجم الخدمة، ويكون ضمن هذا النطاق.', style: TextStyle(color: C.mute, fontSize: 12, height: 1.5))),
             if (p['age'] != null) _kv('العمر', '${p['age']} سنة'),
           ]),
         ),
-      ),
-      if ((p['bio'] ?? '').toString().isNotEmpty) ...[
-        const SizedBox(height: 12),
-        Card(child: Padding(padding: const EdgeInsets.all(16), child: Text(p['bio']))),
-      ],
-      const SizedBox(height: 12),
-      Card(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: p['reply_pct'] != null
-              ? ReplyRing(p: p, size: 46, label: true)
-              : const Row(children: [Icon(Icons.timer_outlined, color: C.mute), SizedBox(width: 8), Expanded(child: Text('سرعة الرد تظهر بعد 3 طلبات على الأقل', style: TextStyle(color: C.mute, fontSize: 13)))]),
-        ),
-      ),
-      const SizedBox(height: 16),
-      const Text('آخر أعمال الصنايعي', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-      const SizedBox(height: 8),
-      if (history.isEmpty) const Text('لا توجد أعمال بعد', style: TextStyle(color: C.mute)) else _historyGrid(history),
-      const SizedBox(height: 16),
-      const Text('آراء العملاء', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-      const SizedBox(height: 8),
-      if (reviews.isEmpty) const Text('لا توجد تقييمات بعد', style: TextStyle(color: C.mute)),
-      for (final r in reviews)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Card(
-            child: ListTile(
-              leading: Icon(r['success'] == true ? Icons.check_circle_rounded : Icons.cancel_rounded, color: r['success'] == true ? C.green : C.red),
-              title: Row(children: [if (r['stars'] != null) Stars(rating: r['stars'] as num, n: 0)]),
-              subtitle: (r['comment'] ?? '').toString().isEmpty ? null : Text(r['comment']),
-            ),
-          ),
-        ),
-      const SizedBox(height: 70),
-    ]));
-  }
-
-  /// المهارات والخدمات التي يقدمها الصنايعي مع عدد ما أكمله من كل واحدة
-  Widget _skills(Map p) {
-    final sj = (p['svc_jobs'] as Map?) ?? {};
-    final list = (p['services'] as List).map((e) => e.toString()).toList();
-    list.sort((a, b) => ((sj[b] ?? 0) as int).compareTo((sj[a] ?? 0) as int));
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Row(children: [Icon(Icons.handyman_rounded, size: 18, color: C.blue), SizedBox(width: 6), Text('المهارات والخدمات', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15))]),
-          const SizedBox(height: 10),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final id in list)
-              Builder(builder: (_) {
-                final s = Meta.service(id);
-                final n = (sj[id] ?? 0) as int;
-                final col = Meta.cat(s?.cat ?? 'other').color;
-                return Container(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 12, 8),
-                  decoration: BoxDecoration(color: Color(col).withOpacity(.10), borderRadius: BorderRadius.circular(14), border: Border.all(color: Color(col).withOpacity(.25))),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(s?.icon ?? '🔧', style: const TextStyle(fontSize: 18)),
-                    const SizedBox(width: 6),
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                      Text(Meta.serviceName(id), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                      Text(n > 0 ? '$n خدمة مكتملة' : 'لم تُسجَّل بعد', style: TextStyle(fontSize: 11.5, color: n > 0 ? C.green : C.mute, fontWeight: n > 0 ? FontWeight.w700 : FontWeight.w400)),
-                    ]),
-                  ]),
-                );
-              }),
-          ]),
-        ]),
-      ),
-    );
-  }
+      );
 
   Widget _historyGrid(List h) {
     const meta = {

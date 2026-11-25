@@ -8,6 +8,7 @@ import '../widgets.dart';
 import 'dashboard.dart';
 import 'delete_account.dart';
 import 'banned.dart';
+import 'provider.dart';
 
 /// ملفي: الهوية والإعدادات (الحالة، الشارة، تعديل الملف، الرابط). أما الخدمات والطلبات ففي «لوحة الخدمات».
 class MyProfileScreen extends StatefulWidget {
@@ -106,6 +107,15 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               icon: const Icon(Icons.edit_rounded, size: 18),
               label: const Text('تعديل الملف'),
             ),
+            if (status == 'approved') ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderScreen(id: Store.pid!))),
+                icon: const Icon(Icons.visibility_rounded, size: 18),
+                label: const Text('شاهد ملفك كما يراه الزبون'),
+              ),
+            ],
           ]),
         ),
       ),
