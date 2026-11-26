@@ -754,6 +754,9 @@
       '<label class="field"><span>اسم الحساب</span><input id="m_nm" maxlength="120" value="' + esc(cfg.commission_account_name || '') + '"></label>' +
       '<label class="field"><span>واتساب استلام الإشعار (بصيغة دولية بدون +)</span><input id="m_wa" class="ltr" inputmode="tel" placeholder="249912345678" value="' + esc(cfg.commission_whatsapp || '') + '"></label>' +
       '<button class="btn primary" id="m_save" style="width:100%">حفظ رسالة العمولة</button></div>' +
+      '<div class="card"><b>حدود أسعار الخدمات</b><p class="note">أقل وأعلى سعر يستطيع الصنايعي كتابته في ملفه. أي رقم خارج الحدين (مثل 10 جنيه أو مليار) يُرفض عند التسجيل والتعديل. غيّرها متى تغيّر السوق؛ لا تتأثر الأسعار المحفوظة حاليًا حتى يعدّلها صاحبها.</p>' +
+      '<div class="row2"><label class="field"><span>أقل سعر (جنيه)</span><input id="p_floor" class="ltr" inputmode="numeric" value="' + esc(String(cfg.price_floor == null ? 10000 : cfg.price_floor)) + '"></label><label class="field"><span>أعلى سعر (جنيه)</span><input id="p_cap" class="ltr" inputmode="numeric" value="' + esc(String(cfg.price_cap == null ? 1000000 : cfg.price_cap)) + '"></label></div>' +
+      '<button class="btn primary" id="p_save" style="width:100%">حفظ حدود الأسعار</button></div>' +
       '<div class="card"><b>الولايات المتاحة</b><p class="note">أزل العلامة عن الولاية غير الآمنة؛ تظهر في التطبيق «غير متاحة حاليًا» ولا يظهر صنايعيتها للزبائن ولا يُقبل الطلب منها.</p><div id="st_box">' +
       SQ.COUNTRY.states.map(function (s) { return '<label class="kv" style="cursor:pointer"><span>' + esc(s.name) + '</span><input type="checkbox" data-st="' + esc(s.id) + '"' + (closedSet.indexOf(s.id) < 0 ? ' checked' : '') + ' style="width:22px;height:22px"></label>'; }).join('') + '</div>' +
       '<button class="btn primary mt" id="st_save" style="width:100%">حفظ الولايات</button></div>' +
@@ -785,7 +788,7 @@
       } catch (e) { toast('تعذر تحميل السجل'); }
     });
     on('au_hide', 'click', function () { document.getElementById('au_list').innerHTML = ''; document.getElementById('au_hide').style.display = 'none'; var sh = document.getElementById('au_show'); sh.style.display = ''; sh.textContent = 'عرض السجل'; });
-    lockCards([['c_save', 'c_fx'], 'm_save', 'st_save', 'u_save', 'k_save']);
+    lockCards([['c_save', 'c_fx'], 'p_save', 'm_save', 'st_save', 'u_save', 'k_save']);
     on('bc_send', 'click', async function () {
       var t = document.getElementById('bc_t').value.trim(), b = document.getElementById('bc_b').value.trim();
       if (!t) return toast('اكتب عنوانا للإشعار');
@@ -794,6 +797,12 @@
     });
     on('c_save', 'click', async function () {
       try { await db.adminSaveSettings(code, { support_whatsapp: document.getElementById('c_wa').value.replace(/\D/g, ''), support_email: document.getElementById('c_em').value.trim(), commission_pct: document.getElementById('c_pc').value, commission_fixed: document.getElementById('c_fx').value }); toast('تم الحفظ'); viewSettings(); } catch (e) { fail(e); }
+    });
+    on('p_save', 'click', async function () {
+      var fl = Math.round(+String(document.getElementById('p_floor').value).replace(/[^\d.]/g, '')), cp = Math.round(+String(document.getElementById('p_cap').value).replace(/[^\d.]/g, ''));
+      if (!(fl > 0) || !(cp > 0)) return toast('اكتب رقمين صحيحين');
+      if (cp < fl) return toast('الحد الأعلى يجب ألا يقل عن الحد الأدنى');
+      try { await db.adminSaveSettings(code, { support_whatsapp: cfg.support_whatsapp || '', support_email: cfg.support_email || '', commission_pct: cfg.commission_pct || 0, commission_fixed: cfg.commission_fixed || 0, price_floor: fl, price_cap: cp }); toast('تم حفظ حدود الأسعار'); viewSettings(); } catch (e) { fail(e); }
     });
     on('u_save', 'click', async function () {
       var mn = +document.getElementById('u_min').value || 0, lt = +document.getElementById('u_last').value || 0;

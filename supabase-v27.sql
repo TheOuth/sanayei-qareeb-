@@ -1,0 +1,2 @@
+-- v27: حدود أسعار الخدمات (price_floor / price_cap) في app_settings + app_config + admin_save_settings
+-- + trigger providers_check_price يمنع الأسعار خارج الحدود عند الإنشاء أو تغيير السعر. مطبّق على القاعدة الحية (migration price_limits_v27).

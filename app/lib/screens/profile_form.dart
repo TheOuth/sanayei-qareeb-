@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import '../core.dart';
+import 'legal.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -346,7 +347,7 @@ class _ProfileFormState extends State<ProfileForm> {
       ph = normalizePhone('0${_phone.text}');
       if (ph.isEmpty) return toast(context, 'رقم الهاتف غير صحيح. اكتب 9 أرقام تبدأ بـ 9 أو 1');
       if (_pw.text.length < 6) return toast(context, 'كلمة السر 6 أحرف على الأقل');
-      if (!_ok18) return toast(context, 'أقرّ بأن عمرك 18 سنة فأكثر وأن البيانات صحيحة');
+      if (!_ok18) return toast(context, 'أقرّ بأن عمرك 18 سنة فأكثر ووافق على الشروط والأحكام');
     }
     if (_d == null || _m == null || _y == null) return toast(context, 'اختر تاريخ ميلادك الحقيقي');
     if (_city == null) return toast(context, 'اختر مدينتك');
@@ -386,6 +387,8 @@ class _ProfileFormState extends State<ProfileForm> {
     }
     final pmn = int.tryParse(_price.text.trim()) ?? 0, pmx = int.tryParse(_pmax.text.trim()) ?? 0;
     if (pmn > 0 && pmx > 0 && pmx < pmn) return toast(context, 'أعلى سعر يجب ألا يقل عن أدنى سعر');
+    if (pmn > 0 && (pmn < priceFloor || pmn > priceCap)) return toast(context, priceRangeMsg());
+    if (pmx > 0 && (pmx < priceFloor || pmx > priceCap)) return toast(context, priceRangeMsg());
     setState(() => _busy = true);
     try {
       await widget.onSubmit(body);
@@ -484,7 +487,7 @@ class _ProfileFormState extends State<ProfileForm> {
         Expanded(child: TextField(controller: _pmax, onChanged: (_) => setState(() {}), keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'أعلى سعر (جنيه)'))),
       ]),
       const Padding(padding: EdgeInsets.only(top: 6), child: Text('السعر النهائي يُحدَّد بالاتفاق مع الزبون بعد أن تعرف حجم الخدمة، ويقع بين الأدنى والأعلى. يظهر هذا للزبون في ملفك.', style: TextStyle(color: C.mute, fontSize: 12, height: 1.5))),
-      _need((int.tryParse(_price.text.trim()) ?? 0) <= 0, 'ناقص: اكتب أدنى سعر لخدمتك (10%)'),
+      _need((int.tryParse(_price.text.trim()) ?? 0) <= 0, 'ناقص: اكتب أدنى سعر لخدمتك (10%). ${priceRangeMsg()}'),
       _need((int.tryParse(_price.text.trim()) ?? 0) > 0 && (int.tryParse(_pmax.text.trim()) ?? 0) < (int.tryParse(_price.text.trim()) ?? 0), 'اكتب أعلى سعر (لا يقل عن الأدنى)'),
       const SizedBox(height: 10),
       Row(children: [
@@ -496,13 +499,28 @@ class _ProfileFormState extends State<ProfileForm> {
       TextField(controller: _bio, onChanged: (_) => setState(() {}), maxLength: 200, maxLines: 3, decoration: const InputDecoration(labelText: 'نبذة عنك وعن شغلك')),
       _need(_bio.text.trim().length < 20, 'ناقص: اكتب وصفًا لا يقل عن 20 حرفًا (25% من اكتمال الملف)، متبقي ${20 - _bio.text.trim().length} حرفًا'),
       if (reg) ...[
-        CheckboxListTile(
-          value: _ok18,
-          onChanged: (v) => setState(() => _ok18 = v ?? false),
-          controlAffinity: ListTileControlAffinity.leading,
-          contentPadding: EdgeInsets.zero,
-          title: const Text('أقرّ أن عمري 18 سنة فأكثر وأن بياناتي صحيحة، وأوافق على التواصل معي للتحقق من هويتي.', style: TextStyle(fontSize: 13)),
-        ),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Checkbox(value: _ok18, onChanged: (v) => setState(() => _ok18 = v ?? false)),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text.rich(
+                TextSpan(style: const TextStyle(fontSize: 13, height: 1.6, color: C.ink), children: [
+                  const TextSpan(text: 'أقرّ أن عمري 18 سنة فأكثر وأن بياناتي صحيحة، وأوافق على '),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
+                    child: GestureDetector(
+                      onTap: () => LegalScreen.showSheet(context),
+                      child: const Text('الشروط والأحكام', style: TextStyle(fontSize: 13, height: 1.6, color: C.blue, fontWeight: FontWeight.w800, decoration: TextDecoration.underline)),
+                    ),
+                  ),
+                  const TextSpan(text: '، والتواصل معي للتحقق من هويتي.'),
+                ]),
+              ),
+            ),
+          ),
+        ]),
       ],
       if (widget.footer != null) ...[const SizedBox(height: 16), widget.footer!],
       const SizedBox(height: 10),

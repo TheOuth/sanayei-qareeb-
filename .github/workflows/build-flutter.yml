@@ -43,6 +43,7 @@ jobs:
               </queries>
               '''
           s=s.replace('<application',perms+'<application',1)
+          s=s.replace('</application>','<meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="sq_alerts"/></application>',1)
           open(p,'w',encoding='utf8').write(s)
           print(s)
           PY
@@ -54,6 +55,9 @@ jobs:
               }
           }
           KTS
+          mkdir -p android/app/src/main/res/raw
+          cp native/raw/*.ogg android/app/src/main/res/raw/
+          cp native/MainActivity.kt android/app/src/main/kotlin/sd/sanayei/qareeb/MainActivity.kt
           cp ../android/test.keystore android/app/test.keystore
           cp google-services.json android/app/google-services.json
           python3 - <<'PY2'

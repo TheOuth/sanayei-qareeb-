@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../push.dart';
 import '../theme.dart';
 import 'home.dart';
+import 'onboarding.dart';
 
 /// شاشة البداية: الشعار ثم الاسم ثم العبارة، ثم تنتقل للرئيسية بتلاشٍ هادئ.
 class SplashScreen extends StatefulWidget {
@@ -27,7 +28,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (!mounted) return;
     Navigator.of(context).pushReplacement(PageRouteBuilder(
       transitionDuration: const Duration(milliseconds: 450),
-      pageBuilder: (_, __, ___) => const HomeScreen(),
+      pageBuilder: (_, __, ___) => Onboarding.needed ? const OnboardingScreen() : const HomeScreen(),
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
     ));
     Push.openInitial();

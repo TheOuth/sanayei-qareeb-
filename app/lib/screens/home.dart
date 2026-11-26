@@ -285,10 +285,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
         ]),
         const SizedBox(height: 14),
-        const Text('خدمتك لحدّ بيتك', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 4),
-        const Text('أقرب صنايعي ليك، اطلب الخدمة منه مباشرة', style: TextStyle(color: Color(0xFFD6E9FF))),
-        const SizedBox(height: 14),
+        const Text('اطلب الخدمة من أقرب صنايعي ليك', style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3))]),
           child: Row(children: [
@@ -322,7 +320,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ]),
         ),
-        if (_loc != null) Padding(padding: const EdgeInsets.only(top: 6), child: InkWell(onTap: _pickLoc, child: Row(children: [const Icon(Icons.place_rounded, size: 14, color: Color(0xFFD6E9FF)), const SizedBox(width: 4), Flexible(child: Text('الصنايعية في: ${_locLabel()}', overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFD6E9FF), fontSize: 12))), const Text('  ·  تغيير', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))]))),
       ]),
     );
   }

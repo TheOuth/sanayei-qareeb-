@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core.dart';
+import 'sound.dart';
 import 'screens/commission.dart';
 import 'screens/dashboard.dart';
 import 'screens/notifications.dart';
@@ -63,7 +64,8 @@ class Push with WidgetsBindingObserver {
         sync();
       });
       // التطبيق مفتوح: نحدّث عدّاد الجرس فقط (النظام يعرض الإشعار وقت الخلفية)
-      FirebaseMessaging.onMessage.listen((_) {
+      FirebaseMessaging.onMessage.listen((m) {
+        Sfx.forKind((m.data['kind'] ?? '').toString());
         Store.refreshUnread();
         Store.refreshReqBadge();
       });

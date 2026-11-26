@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 18),
         FilledButton(onPressed: _busy ? null : _go, child: Text(_busy ? 'جارٍ الدخول…' : 'دخول')),
         const SizedBox(height: 10),
-        OutlinedButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RegisterScreen())), child: const Text('ما عندي حساب؟ سجّل كصنايعي')),
+        OutlinedButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RegisterScreen())), child: const Text('ما عندي حساب؟ إنشاء حساب صنايعي')),
         const SizedBox(height: 10),
         const Text('نسيت كلمة السر؟ تواصل مع الدعم من قائمة "عن التطبيق".', style: TextStyle(fontSize: 12), textAlign: TextAlign.center),
       ])),

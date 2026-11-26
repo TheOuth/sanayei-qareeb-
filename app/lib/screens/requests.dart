@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'app_drawer.dart';
 import '../core.dart';
+import '../sound.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'provider.dart';
@@ -33,6 +34,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
         try {
           _recv = await Api.rpc('provider_requests', {'p_id': Store.pid, 'p_token': Store.token}) as List;
         } catch (_) {}
+      }
+      final before = _items;
+      if (before != null) {
+        final pend = {for (final x in before) if ((x as Map)['accept'] == 'pending') x['id']};
+        if ((r as List).any((x) => pend.contains((x as Map)['id']) && x['accept'] == 'accepted')) Sfx.request();
       }
       if (mounted) setState(() => _items = r as List);
       Store.markReqsSeen(r as List);

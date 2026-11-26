@@ -55,8 +55,15 @@ class ApiError implements Exception {
   String toString() => code;
 }
 
+/// حدود السعر التي تضعها الإدارة (من إعدادات التطبيق)
+int get priceFloor => ((Meta.cfg['price_floor'] ?? 10000) as num).toInt();
+int get priceCap => ((Meta.cfg['price_cap'] ?? 1000000) as num).toInt();
+String _n(int v) => v.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+String priceRangeMsg() => 'السعر يجب أن يكون بين ${_n(priceFloor)} و${_n(priceCap)} جنيه';
+
 String errMsg(Object e) {
   final c = e is ApiError ? e.code : e.toString();
+  if (c.contains('price_range')) return priceRangeMsg();
   const m = {
     'forbidden': 'غير مسموح. سجّل الدخول من جديد',
     'invalid_phone': 'رقم الهاتف غير صحيح',

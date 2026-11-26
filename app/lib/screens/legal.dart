@@ -63,7 +63,7 @@ class LegalScreen extends StatelessWidget {
     ('تعديل القوانين', ['قد نحدّث هذه القوانين عند الحاجة، واستمرارك في استخدام التطبيق يعني موافقتك على النسخة المحدّثة.']),
   ];
 
-  Widget _sections(List<(String, List<String>)> items) => ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
+  static Widget _sections(List<(String, List<String>)> items) => ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
         for (final s in items)
           Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -89,6 +89,39 @@ class LegalScreen extends StatelessWidget {
           return OutlinedButton.icon(onPressed: () => openUrl('https://wa.me/$wa'), icon: const Icon(Icons.chat_rounded, color: C.green), label: const Text('تواصل مع الدعم'));
         }),
       ]);
+
+  /// يعرض الشروط والأحكام في لوحة طويلة فوق الصفحة الحالية دون مغادرتها (فلا تضيع البيانات المكتوبة)
+  static Future<void> showSheet(BuildContext context, {int initial = 1}) => showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+        builder: (ctx) => FractionallySizedBox(
+          heightFactor: 0.92,
+          child: DefaultTabController(
+            length: 2,
+            initialIndex: initial,
+            child: Column(children: [
+              const SizedBox(height: 8),
+              Container(width: 44, height: 4, decoration: BoxDecoration(color: C.hair, borderRadius: BorderRadius.circular(4))),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+                child: Row(children: [
+                  const SizedBox(width: 8),
+                  const Expanded(child: Text('الشروط والأحكام', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+                  IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded)),
+                ]),
+              ),
+              const TabBar(tabs: [Tab(text: 'سياسة الخصوصية'), Tab(text: 'قوانين التطبيق')]),
+              Expanded(child: TabBarView(children: [_sections(_privacy), _sections(_terms)])),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: SizedBox(width: double.infinity, child: FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('تم، رجوع'))),
+              ),
+            ]),
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) => DefaultTabController(

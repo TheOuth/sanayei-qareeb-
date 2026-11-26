@@ -142,7 +142,7 @@ class AppDrawer extends StatelessWidget {
             ]
           else ...[
             _item(context, 'login', Icons.login_rounded, 'تسجيل الدخول', build: () => const LoginScreen()),
-            _item(context, 'register', Icons.app_registration_rounded, 'سجّل كصنايعي', subtitle: 'اعرض خدمتك حسب المهارات العندك', build: () => const RegisterScreen()),
+            _item(context, 'register', Icons.app_registration_rounded, 'إنشاء حساب صنايعي', subtitle: 'اعرض خدمتك حسب المهارات العندك', build: () => const RegisterScreen()),
           ],
           const Divider(),
           _item(context, 'about', Icons.info_outline_rounded, 'عن التطبيق والدعم', build: () => const AboutScreen()),
