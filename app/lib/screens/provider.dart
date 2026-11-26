@@ -262,7 +262,9 @@ class _ProviderScreenState extends State<ProviderScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(children: [
               Avatar(photo: p['photo'], name: p['name'] ?? '', size: 92),
-              const SizedBox(height: 10),
+              const SizedBox(height: 4),
+              SeenLabel(p: p, size: 12),
+              const SizedBox(height: 8),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Flexible(child: Text(p['name'] ?? '', textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
                 const SizedBox(width: 6),

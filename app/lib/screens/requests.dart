@@ -5,6 +5,7 @@ import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'provider.dart';
+import 'dashboard.dart';
 
 class RequestsScreen extends StatefulWidget {
   const RequestsScreen({super.key});
@@ -14,6 +15,8 @@ class RequestsScreen extends StatefulWidget {
 
 class _RequestsScreenState extends State<RequestsScreen> {
   List? _items;
+  List _recv = [];
+  int _tab = 0; // 0 طلبتها أنا، 1 وصلتني
   Object? _err;
 
   @override
@@ -26,6 +29,11 @@ class _RequestsScreenState extends State<RequestsScreen> {
     setState(() => _err = null);
     try {
       final r = await Api.rpc('my_requests', {'p_anon': Store.anon});
+      if (Store.loggedIn) {
+        try {
+          _recv = await Api.rpc('provider_requests', {'p_id': Store.pid, 'p_token': Store.token}) as List;
+        } catch (_) {}
+      }
       if (mounted) setState(() => _items = r as List);
       Store.markReqsSeen(r as List);
       _timer?.cancel();
@@ -108,6 +116,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
         tag = _tag('ألغيت الطلب', C.mute, Icons.block_rounded);
     }
     return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFF59E0B), width: 1.4)),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderScreen(id: r['provider_id']))),
@@ -173,6 +182,72 @@ class _RequestsScreenState extends State<RequestsScreen> {
     );
   }
 
+  Widget _recvCard(Map r) {
+    final d = DateTime.fromMillisecondsSinceEpoch(r['ts'] as int);
+    final acc = (r['accept'] ?? 'accepted').toString();
+    final cl = (r['client'] ?? 'new').toString();
+    final pc = r['confirm']?.toString();
+    Widget tag;
+    if (acc == 'pending') {
+      tag = _tag('بانتظار ردك', C.blue, Icons.hourglass_top_rounded);
+    } else if (acc == 'accepted') {
+      if (cl == 'done' && pc == 'done') {
+        tag = _tag('خدمة مكتملة', C.green, Icons.verified_rounded);
+      } else if (cl == 'failed' || cl == 'not_agreed' || pc == 'not_done') {
+        tag = _tag('لم تُحتسب', C.mute, Icons.info_outline_rounded);
+      } else {
+        tag = _tag('قبلتَه، بانتظار التأكيد', C.green, Icons.check_circle_rounded);
+      }
+    } else if (acc == 'declined') {
+      tag = _tag('اعتذرت', C.red, Icons.cancel_rounded);
+    } else {
+      tag = _tag('انتهى', C.mute, Icons.timer_off_rounded);
+    }
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: C.green, width: 1.4)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => openPage('dashboard', () => const DashboardScreen()),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(Meta.serviceName((r['service'] ?? '').toString()), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              const SizedBox(height: 4),
+              Text('طلب وصلك · ${d.day}/${d.month}', style: const TextStyle(color: C.mute, fontSize: 13)),
+            ])),
+            tag,
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _seg(int i, String t, int n, Color c) => Expanded(
+        child: GestureDetector(
+          onTap: () => setState(() => _tab = i),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(color: _tab == i ? c.withOpacity(.14) : Colors.transparent, borderRadius: BorderRadius.circular(12), border: Border.all(color: _tab == i ? c : C.hair)),
+            child: Text('$t ($n)', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w700, color: _tab == i ? c : C.mute)),
+          ),
+        ),
+      );
+
+  Widget _list(List items, Widget Function(Map) card, String empty) {
+    if (items.isEmpty) return Empty(empty, icon: Icons.history_rounded);
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        itemBuilder: (_, i) => card(items[i] as Map),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -182,18 +257,23 @@ class _RequestsScreenState extends State<RequestsScreen> {
           ? ErrorRetry(_err!, _load)
           : _items == null
               ? const Center(child: CircularProgressIndicator())
-              : _items!.isEmpty
-                  ? const Empty('ما عندك طلبات بعد. افتح صنايعي واضغط "طلب الخدمة"', icon: Icons.history_rounded)
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.separated(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _items!.length + 1,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) => i == 0 ? const SafetyNote() : _card(_items![i - 1] as Map),
-                      ),
+              : Column(children: [
+                  const Padding(padding: EdgeInsets.fromLTRB(16, 12, 16, 8), child: SafetyNote()),
+                  if (Store.loggedIn)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Row(children: [
+                        _seg(0, 'طلبتها أنا', _items!.length, const Color(0xFFF59E0B)),
+                        const SizedBox(width: 8),
+                        _seg(1, 'وصلتني', _recv.length, C.green),
+                      ]),
                     ),
+                  Expanded(
+                    child: (Store.loggedIn && _tab == 1)
+                        ? _list(_recv, _recvCard, 'لا توجد طلبات وصلتك بعد')
+                        : _list(_items!, _card, 'ما عندك طلبات بعد. افتح صنايعي واضغط "طلب الخدمة"'),
+                  ),
+                ]),
     );
   }
 }

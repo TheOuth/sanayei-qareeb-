@@ -6,45 +6,40 @@
   var code = '', tab = 'overview', ov = null, cn = { badges: 0, custom: 0 }, bf = { filter: 'pending', q: '' };
   var pf = { q: '', status: '', service: '', city: '', limit: 30, offset: 0 }, rf = { status: '' };
   var rows = {}; // نسخة الصنايعية المعروضين حسب المعرّف
+  var mp = null, rng = '7d'; // الصنايعي المفتوح في صفحة الإدارة، وفترة الطلبات في النظرة العامة
   try { code = sessionStorage.getItem('sq_admin') || ''; } catch (e) {}
   document.body.classList.add('admin');
 
-  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['bans', 'الحظر'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
+  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['reviews', 'التقييمات'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['bans', 'الحظر'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
   var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'], banned: ['محظور', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
   function refOf(p) { return String(p.id).replace(/-/g, '').slice(0, 4).toUpperCase(); }
-  var SIGN = '\n\n— فريق *' + C.appName + '* 🛠️\n' + C.tagline;
+  var SIGN = '\n\n— فريق ' + C.appName;
   function waText(p) {
-    var svcs = U.svcNames(p.services), city = SQ.cityName(p.city_id) || '', hi = 'السلام عليكم ورحمة الله وبركاته أخي/أختي ' + p.name + ' 🌿\n';
-    if (p.status === 'pending') return hi + 'معك فريق *' + C.appName + '*، المنصة التي تربط الناس بأقرب صنايعي في السودان.\n\nاستلمنا طلب انضمامك كمقدم خدمة (' + svcs + ') في ' + city + '، ونحتاج لتأكيد بياناتك حتى يظهر ملفك للزبائن 👷\n\n' +
-      '*للتأكيد رد على هذه الرسالة بـ:*\n1️⃣ رقم طلبك: *' + refOf(p) + '* (يظهر لك في التطبيق على صفحة "طلبك قيد المراجعة")\n2️⃣ كلمة *تأكيد* إن كانت بياناتك صحيحة (الاسم والخدمة والمنطقة)\n\n' +
-      '💡 لتتقدم في ترتيب الظهور: أضف صورة شخصية ووصفا لمهارتك من ملفك الشخصي.' + SIGN;
-    if (p.status === 'approved') return hi + 'يسعدنا إبلاغك بأنه تم *اعتماد حسابك* في ' + C.appName + ' ✅\nيمكنك الآن تفعيل زر "متاح" ليصلك الزبائن القريبون منك.\n\nالتطبيق: ' + appUrl() + '\n\n💡 الملفات المكتملة (صورة + وصف + حي) والأنشط تظهر أولا للزبائن.' + SIGN;
-    if (p.status === 'rejected') return hi + 'شكرا لتسجيلك في ' + C.appName + '. لم نتمكن حاليا من اعتماد طلبك، وغالبا لأن بعض البيانات تحتاج استكمالا أو تأكيدا.\nيمكنك الرد هنا لنساعدك في تصحيح بياناتك وإعادة النظر في طلبك.' + SIGN;
-    if (p.status === 'suspended') return hi + 'نود إبلاغك بأنه تم إيقاف ظهور حسابك في ' + C.appName + ' مؤقتا لمراجعته. يرجى الرد على هذه الرسالة لنتواصل معك ونحل الأمر سريعا.' + SIGN;
+    var svcs = U.svcNames(p.services), city = SQ.cityName(p.city_id) || '', hi = 'السلام عليكم أخي/أختي ' + p.name + '\n';
+    if (p.status === 'pending') return hi + 'معك فريق ' + C.appName + '. استلمنا طلب انضمامك (' + svcs + ' - ' + city + ').\nللتأكيد رد برقم طلبك: ' + refOf(p) + ' وكلمة "تأكيد".\nلترتيب أفضل أضف صورة ووصفا من ملفك.' + SIGN;
+    if (p.status === 'approved') return hi + 'تم اعتماد حسابك في ' + C.appName + '. فعّل زر "متاح" ليصلك الزبائن.\nالتطبيق: ' + appUrl() + SIGN;
+    if (p.status === 'rejected') return hi + 'شكرا لتسجيلك في ' + C.appName + '. لم نتمكن من اعتماد طلبك حاليا لحاجة بياناتك للاستكمال. رد هنا لنساعدك.' + SIGN;
+    if (p.status === 'suspended') return hi + 'تم إيقاف ظهور حسابك في ' + C.appName + ' مؤقتا للمراجعة. رد هنا لنحل الأمر سريعا.' + SIGN;
     return hi + 'معك فريق ' + C.appName + '.' + SIGN;
   }
-  /* قوالب الرسائل اليدوية (واتساب / إيميل / نسخ) */
+  /* قوالب الرسائل اليدوية (واتساب / إيميل / نسخ): قصيرة وبلا رموز تعبيرية */
   function msgTemplates(x) {
-    var hi = 'السلام عليكم ورحمة الله وبركاته أخي/أختي ' + x.name + ' 🌿\n', t = SQ.tierOf(x.jobs), nx = SQ.nextTier(x.jobs), url = appUrl() + (x.username ? '#/u/' + x.username : '');
-    var next = nx ? '\nباقي لك ' + (nx.min - x.jobs) + ' من الأعمال المؤكدة لتصل إلى شارة «' + nx.name + '».' : '\nوصلت إلى أعلى شارة إنجاز، شكرا لتميزك!';
-    var how = '*كيف تحصل على علامة التوثيق؟*\n' +
-      '✅ *توثيق الهوية:* أرسل لنا هنا صورة وثيقة سارية (بطاقة قومية أو رخصة قيادة أو جواز) مع صورة لك وأنت تحمل الوثيقة. بعد التحقق تُفعَّل علامتك، ونحذف الصور من محادثتنا.\n' +
-      '🏅 *شارات الإنجاز:* تظهر تلقائيا مع كل عمل يؤكده عملاء مختلفون: ' + SQ.TIERS.slice().reverse().map(function (s) { return s.min + ' أعمال ← ' + s.name; }).join('، ') + '.\n\n' +
-      '💡 اطلب من عملائك تأكيد «تمت الخدمة» من «طلباتي» في التطبيق، وأكّد أنت العمل من لوحتك.';
+    var hi = 'السلام عليكم أخي/أختي ' + x.name + '\n', t = SQ.tierOf(x.jobs), nx = SQ.nextTier(x.jobs), url = appUrl() + (x.username ? '#/u/' + x.username : '');
+    var next = nx ? ' باقي ' + (nx.min - x.jobs) + ' عمل لشارة «' + nx.name + '».' : ' وصلت لأعلى شارة، شكرا لتميزك.';
     return [
-      { id: 'done', label: 'تهنئة بإتمام خدمة', subject: 'مبروك! تم تأكيد خدمة جديدة', body: hi + 'مبروك 🎉 تم *تأكيد إتمامك لخدمة جديدة* عبر تطبيق *' + C.appName + '* ✅\nمجموع أعمالك المؤكدة: *' + x.jobs + '*.' + (t ? '\nشارتك الحالية: *' + t.name + '*.' : '') + next + '\n\nشكرا لجودة عملك وأمانتك، ونتمنى لك المزيد من الطلبات.' + SIGN },
-      { id: 'badge', label: 'تهنئة بالحصول على شارة', subject: 'مبروك شارتك الجديدة', body: hi + (t ? 'مبروك 🏅 حصلت على شارة *«' + t.name + '»* في تطبيق *' + C.appName + '* بعد ' + x.jobs + ' عمل مؤكد من عملائك.\nستظهر الشارة بجوار اسمك وتزيد ثقة الناس بك وترفع ظهورك.' + next : 'نشكرك على انضمامك إلى *' + C.appName + '* 🌿\nأول شارة إنجاز تحصل عليها بعد *' + SQ.TIERS[SQ.TIERS.length - 1].min + ' أعمال مؤكدة*، ونحن بجانبك لتصلها.') + '\n\nرابط ملفك للمشاركة:\n' + url + SIGN },
-      { id: 'how', label: 'كيف تحصل على علامة التوثيق', subject: 'كيف تحصل على علامة التوثيق في ' + C.appName, body: hi + 'نود مساعدتك في رفع ثقة الناس بك داخل *' + C.appName + '*.\n\n' + how + SIGN }
+      { id: 'done', label: 'تهنئة بإتمام خدمة', subject: 'مبروك إتمام خدمة جديدة', body: hi + 'مبروك، تم تأكيد إتمامك خدمة جديدة. أعمالك المؤكدة: ' + x.jobs + (t ? '، شارتك: ' + t.name : '') + '.' + next + SIGN },
+      { id: 'badge', label: 'تهنئة بشارة', subject: 'مبروك شارتك الجديدة', body: hi + (t ? 'مبروك، حصلت على شارة «' + t.name + '» بعد ' + x.jobs + ' عمل مؤكد. تزيد الشارة ثقة الزبائن وترفع ظهورك.' : 'أول شارة إنجاز تحصل عليها بعد ' + SQ.TIERS[SQ.TIERS.length - 1].min + ' أعمال مؤكدة ونحن معك.') + '\nرابط ملفك: ' + url + SIGN },
+      { id: 'how', label: 'كيف أحصل على التوثيق', subject: 'كيف تحصل على علامة التوثيق', body: hi + 'للحصول على علامة التوثيق أرسل لنا صورة وثيقة سارية (بطاقة أو رخصة أو جواز) مع صورة لك تحملها، وسنحذف الصور بعد التحقق. شارات الإنجاز تظهر تلقائيا مع الأعمال المؤكدة من عملائك.' + SIGN }
     ];
   }
   function msgModal(x) {
     var T = msgTemplates(x), cur = 0;
     modal('<h3>رسالة إلى ' + esc(x.name) + '</h3><div class="seg" id="mt_t" style="flex-wrap:wrap;gap:6px">' + T.map(function (t, i) { return '<button class="chip' + (i === 0 ? ' on' : '') + '" data-i="' + i + '">' + t.label + '</button>'; }).join('') + '</div>' +
-      '<label class="field mt"><span>نص الرسالة (يمكنك تعديله قبل الإرسال)</span><textarea id="mt_b" rows="10" style="min-height:220px"></textarea></label>' +
-      '<div class="btnrow"><button class="btn wa" id="mt_wa">💬 واتساب</button><button class="btn ghost" id="mt_em">✉️ إيميل</button><button class="btn ghost" id="mt_cp">📋 نسخ</button></div>' +
-      (x.id ? '<button class="btn ghost mt" id="mt_in" style="width:100%">🔔 إرسال كإشعار داخل التطبيق</button>' : '') +
+      '<label class="field mt"><span>نص الرسالة (يمكنك تعديله قبل الإرسال)</span><textarea id="mt_b" rows="7" style="min-height:150px"></textarea></label>' +
+      '<div class="btnrow"><button class="btn wa" id="mt_wa">واتساب</button><button class="btn ghost" id="mt_em">إيميل</button><button class="btn ghost" id="mt_cp">نسخ</button></div>' +
+      (x.id ? '<button class="btn ghost mt" id="mt_in" style="width:100%">إرسال كإشعار داخل التطبيق</button>' : '') +
       '<button class="btn ghost mt" id="mt_x" style="width:100%">إغلاق</button>');
     var ta = document.getElementById('mt_b'); ta.value = T[0].body;
     document.getElementById('mt_t').addEventListener('click', function (e) {
@@ -99,7 +94,7 @@
     $app.innerHTML = '<header class="top"><a class="back" href="' + esc(appUrl()) + '" title="فتح التطبيق" aria-label="التطبيق">' + SQ.I('home', 22) + '</a><h1>إدارة صنايعي قريب</h1><button class="back" id="out" title="خروج" aria-label="خروج">' + SQ.I('out', 22) + '</button></header>' +
       '<nav class="anav">' + nav + '</nav><main class="main">' + inner + '</main>';
     on('out', 'click', logout);
-    U.each('.anav button', function (b) { b.addEventListener('click', function () { tab = b.getAttribute('data-tab'); render(); }); });
+    U.each('.anav button', function (b) { b.addEventListener('click', function () { tab = b.getAttribute('data-tab'); mp = null; render(); }); });
   }
 
   /* تحديث تلقائي لعدّادات التبويبات كل دقيقة دون إزعاج ما تعمل عليه */
@@ -119,7 +114,7 @@
     try { ov = await db.adminOverview(code); } catch (e) { if (guard(e)) return; ov = null; }
     try { if (ov) ov.totals = await db.adminTotals(code); } catch (e) {}
     try { cn = await db.adminCounts(code); } catch (e) { cn = { badges: 0, custom: 0 }; }
-    ({ overview: viewOverview, custom: viewCustom, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings, bans: viewBans })[tab]();
+    ({ overview: viewOverview, custom: viewCustom, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings, bans: viewBans, reviews: viewReviews })[tab]();
   }
 
   /* ---------- نظرة عامة ---------- */
@@ -132,19 +127,70 @@
         ['معتمدون', ov.approved, ''], ['بانتظار الموافقة', ov.pending, ov.pending ? 'warn' : ''], ['متاحون الآن', ov.available_now, ''], ['موقوفون', ov.suspended, ''],
         ['طلبات اليوم', ov.requests_today, ''], ['طلبات الأسبوع', ov.requests_week, ''], ['إجمالي الطلبات', ov.requests_total, ''], ['متوسط التقييم', ov.reviews_total ? '★ ' + ov.avg_rating : '-', '']
       ].map(function (x) { return '<div class="sbox ' + x[2] + '"><b>' + x[1] + '</b><small>' + x[0] + '</small></div>'; }).join('') + '</div>' +
-      '<div class="agrid"><div class="card"><b>الطلبات في آخر 7 أيام</b><div class="bars">' + ov.by_day.map(function (d) {
-        return '<div class="bar"><b>' + d.n + '</b><i style="height:' + Math.round(d.n / max * 100) + '%"></i><small>' + esc(d.d) + '</small></div>';
-      }).join('') + '</div></div>' +
+      '<div class="agrid"><div class="card"><div class="rhead"><b>الطلبات</b><select id="rngSel" class="rsel">' + [['7d', 'آخر 7 أيام'], ['28d', 'آخر 28 يوما'], ['6m', 'آخر 6 أشهر'], ['1y', 'آخر سنة'], ['all', 'كل الوقت']].map(function (r) { return '<option value="' + r[0] + '"' + (rng === r[0] ? ' selected' : '') + '>' + r[1] + '</option>'; }).join('') + '</select></div><div id="rngBox"><div class="spin">...</div></div></div>' +
       '<div class="card"><b>أكثر الخدمات طلبا</b><table class="tbl"><tr><th>الخدمة</th><th>صنايعية</th><th>طلبات الأسبوع</th></tr>' + ov.top_services.map(function (s) {
         return '<tr><td>' + esc(s.icon) + ' ' + esc(s.name) + '</td><td>' + s.providers + '</td><td>' + s.requests_week + '</td></tr>';
       }).join('') + '</table></div>' +
       '<div class="card"><b>الصنايعية حسب المدينة</b>' + (ov.by_city.length ? '<table class="tbl">' + ov.by_city.map(function (c) { return '<tr><td>' + esc(SQ.cityName(c.city_id) || c.city_id) + '</td><td>' + c.n + '</td></tr>'; }).join('') + '</table>' : '<p class="muted">لا يوجد بعد</p>') + '</div>' +
       '<div class="card"><b>إجراءات سريعة</b><div class="btnrow"><button class="btn primary" id="qAdd">➕ إضافة صنايعي</button><button class="btn ghost" id="qSvc">🧰 إدارة الخدمات</button><button class="btn ghost" id="qCsv">⬇ تصدير الصنايعية (CSV)</button></div></div></div>';
     shell(body);
+    on('rngSel', 'change', function () { rng = this.value; loadSeries(); });
+    loadSeries();
     on('goPending', 'click', function () { pf.status = 'pending'; pf.offset = 0; tab = 'providers'; render(); });
     on('qAdd', 'click', function () { tab = 'providers'; render().then(function () { openProvForm(null); }); });
     on('qSvc', 'click', function () { tab = 'services'; render(); });
     on('qCsv', 'click', function () { exportCsv({}); });
+  }
+
+  async function loadSeries() {
+    var box = document.getElementById('rngBox'); if (!box) return;
+    var r;
+    try { r = await db.adminRequestsSeries(code, rng); } catch (e) { box.innerHTML = '<p class="muted">تعذر تحميل الإحصاء</p>'; return; }
+    box = document.getElementById('rngBox'); if (!box) return;
+    var pts = r.points || [], max = Math.max.apply(null, pts.map(function (d) { return d.n; }).concat([1])), dense = pts.length > 14, step = pts.length > 14 ? Math.ceil(pts.length / 7) : 1;
+    var cmp = '';
+    if (r.prev != null) {
+      if (r.prev === 0) cmp = r.total > 0 ? '<span class="up">جديد مقارنة بالفترة السابقة</span>' : '';
+      else { var ch = Math.round((r.total - r.prev) / r.prev * 100); cmp = '<span class="' + (ch >= 0 ? 'up' : 'down') + '">' + (ch >= 0 ? '▲ ' : '▼ ') + Math.abs(ch) + '% عن الفترة السابقة (' + r.prev + ')</span>'; }
+    }
+    box.innerHTML = '<div class="rtotal"><b>' + Number(r.total).toLocaleString('en') + '</b> طلب ' + cmp + '</div><div class="bars' + (dense ? ' dense' : '') + '">' + pts.map(function (d, i) {
+      return '<div class="bar"><b>' + (dense && !d.n ? '' : d.n) + '</b><i style="height:' + Math.round(d.n / max * 100) + '%"></i><small>' + (i % step === 0 || i === pts.length - 1 ? esc(d.d) : '') + '</small></div>';
+    }).join('') + '</div>';
+  }
+
+  /* ---------- التقييمات: مراجعة وإخفاء وحذف ---------- */
+  var rv = { filter: 'all', q: '' };
+  async function viewReviews() {
+    shell('<div class="toolbar"><input id="rq" type="search" placeholder="ابحث باسم الصنايعي أو بنص التعليق" value="' + esc(rv.q) + '"><select id="rf">' + [['all', 'كل التقييمات'], ['low', 'منخفضة أو غير ناجحة'], ['comments', 'فيها تعليق'], ['hidden', 'المخفية']].map(function (f) { return '<option value="' + f[0] + '"' + (rv.filter === f[0] ? ' selected' : '') + '>' + f[1] + '</option>'; }).join('') + '</select></div>' +
+      '<p class="note">إخفاء التقييم يزيله من نسبة الصنايعي وعرضه للزبائن، ويمكنك إرجاعه. الحذف نهائي. عدد الخدمات المكتملة لا يتأثر.</p><div id="rvlist" class="plist"><div class="spin">جاري التحميل...</div></div>');
+    var t; on('rq', 'input', function () { var v = this.value; clearTimeout(t); t = setTimeout(function () { rv.q = v.trim(); loadReviews(); }, 350); });
+    on('rf', 'change', function () { rv.filter = this.value; loadReviews(); });
+    document.getElementById('rvlist').addEventListener('click', onReviewAct);
+    loadReviews();
+  }
+  var rvRows = {};
+  async function loadReviews() {
+    var box = document.getElementById('rvlist'); if (!box) return;
+    var list;
+    try { list = await db.adminReviews(code, rv.filter, rv.q); } catch (e) { return fail(e); }
+    rvRows = {};
+    box.innerHTML = list.length ? list.map(function (r) {
+      rvRows[r.id] = r;
+      var stars = r.stars ? '<span class="star">' + '★'.repeat(r.stars) + '<span style="color:#cbd5e1">' + '★'.repeat(5 - r.stars) + '</span></span>' : '<span class="muted">بلا نجوم</span>';
+      return '<div class="card rvcard' + (r.hidden ? ' hid' : '') + '"><div class="rv-top"><b>' + esc(r.provider) + '</b>' + stars + (r.success ? pill('ناجحة') : pill('لم تنجح', 'bad')) + (r.hidden ? pill('مخفي', 'warn') : '') + '<span class="muted" style="margin-inline-start:auto">' + fmtDate(r.ts) + '</span></div>' +
+        (r.comment ? '<p class="rv-c">' + esc(r.comment) + '</p>' : '<p class="muted">بلا تعليق</p>') + (r.hidden && r.reason ? '<p class="note">سبب الإخفاء: ' + esc(r.reason) + '</p>' : '') +
+        '<div class="btnrow">' + (r.hidden ? '<button class="btn primary" data-rv="restore" data-id="' + r.id + '">إرجاع</button>' : '<button class="btn ghost" data-rv="hide" data-id="' + r.id + '">إخفاء</button>') + '<button class="btn danger" data-rv="del" data-id="' + r.id + '">حذف نهائي</button></div></div>';
+    }).join('') : '<div class="empty"><div class="big">☆</div>لا توجد تقييمات</div>';
+  }
+  async function onReviewAct(e) {
+    var b = e.target.closest('[data-rv]'); if (!b) return;
+    var id = b.getAttribute('data-id'), a = b.getAttribute('data-rv');
+    try {
+      if (a === 'hide') { var why = prompt('سبب الإخفاء (للسجل فقط):', 'تقييم غير لائق'); if (why === null) return; await db.adminReviewHide(code, id, why.trim()); toast('تم الإخفاء'); }
+      else if (a === 'restore') { await db.adminReviewRestore(code, id); toast('تم الإرجاع'); }
+      else if (a === 'del') { if (!confirm('حذف هذا التقييم نهائيا؟ لا يمكن التراجع.')) return; await db.adminReviewDelete(code, id); toast('تم الحذف'); }
+      loadReviews();
+    } catch (x) { fail(x); }
   }
 
   /* ---------- الصنايعية ---------- */
@@ -159,7 +205,7 @@
       '<select id="fv"><option value="">كل الخدمات</option>' + SQ.SERVICES.map(function (s) { return '<option value="' + s.id + '"' + (pf.service === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('') + '</select>' +
       '<select id="fc">' + cityFilterOptions(pf.city) + '</select>' +
       '<button class="btn primary" id="add">➕ إضافة صنايعي</button><button class="btn ghost" id="csv">⬇ CSV</button>' + (cn.badges ? '<button class="btn ghost" id="pbadges">🏅 شارات بانتظارك (' + cn.badges + ')</button>' : '') + '</div>' +
-      '<div class="muted" id="pcount" style="margin-bottom:8px"></div><div id="plist" class="agrid"></div><div class="center mt" id="more"></div>');
+      '<div class="muted" id="pcount" style="margin-bottom:8px"></div><div id="plist" class="plist"></div><div class="center mt" id="more"></div>');
     var t;
     on('q', 'input', function () { var v = this.value; clearTimeout(t); t = setTimeout(function () { pf.q = v.trim(); pf.offset = 0; loadProviders(true); }, 350); });
     [['fs', 'status'], ['fv', 'service'], ['fc', 'city']].forEach(function (x) { on(x[0], 'change', function () { pf[x[1]] = this.value; pf.offset = 0; loadProviders(true); }); });
@@ -189,46 +235,44 @@
     on('moreBtn', 'click', function () { pf.offset = shown; loadProviders(false); });
   }
 
+  /* صف مضغوط: الاسم والحالة وسطر صغير؛ الضغط يفتح صفحة الصنايعي كاملة */
   function provCard(p) {
     var st = STATUS[p.status] || ['—', ''];
-    var wa = 'https://wa.me/' + SQ.util.digits(p.whatsapp || p.phone) + '?text=' + encodeURIComponent(waText(p));
-    var act = [];
-    if (p.status === 'pending') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ موافقة</button><button class="btn danger" data-act="rejected" data-id="' + p.id + '">✖ رفض</button>');
-    if (p.status === 'approved') act.push('<button class="btn danger" data-act="suspended" data-id="' + p.id + '">⛔ إيقاف</button>');
-    if (p.status === 'suspended' || p.status === 'rejected') act.push('<button class="btn primary" data-act="approved" data-id="' + p.id + '">✔ اعتماد</button>');
-    if (p.status !== 'banned') act.push('<button class="btn danger" data-act="banned" data-id="' + p.id + '">🚫 حظر</button>');
-    else act.push('<button class="btn primary" data-act="unban" data-id="' + p.id + '">♻ رفع الحظر</button>');
-    if (p.ban_match && p.status !== 'banned') act.push('<button class="btn ghost" data-act="dismiss" data-id="' + p.id + '">تجاهل تطابق الحظر</button>');
-    return '<div class="card acard"><div class="top2">' + U.avatar(p) + '<div class="pname">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.status === 'approved' && p.available ? ' ' + pill('🟢 متاح الآن') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + (p.ban_match && p.status !== 'banned' ? ' ' + pill('⚠ يتطابق مع محظور', 'bad') : '') + ' ' + (p.verified ? '<span class="vtag">✔ موثّق</span>' : pill('غير موثّق', 'warn')) + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + '</div></div>' +
-      '<div class="psvc">' + esc(U.svcNames(p.services)) + '</div>' +
-      '<div class="meta"><span class="ltr">@' + esc(p.username || '') + '</span><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + (p.age ? '🎂 ' + p.age + ' سنة' : '<span class="dangertxt">بلا تاريخ ميلاد</span>') + '</span><span>' + p.experience + ' سنة خبرة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
-      '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span>🔖 رقم الطلب <b class="ltr">' + refOf(p) + '</b></span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
-      (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') + (p.admin_note ? '<p class="note">📝 ' + esc(p.admin_note) + '</p>' : '') + (p.verified && p.verify_doc ? '<p class="note">✔ التحقق: ' + esc(p.verify_doc) + '</p>' : '') +
-      '<div class="btnrow">' + (p.status === 'pending' ? act[0] : '') + '<button class="btn primary" data-act="manage" data-id="' + p.id + '">⚙ إدارة الصنايعي</button><a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">' + (p.status === 'pending' ? '💬 رسالة التأكيد' : 'واتساب') + '</a><a class="btn ghost" href="tel:' + esc(p.phone) + '">📞</a></div></div>';
+    var sub = [SQ.cityName(p.city_id) || p.city_id, 'كشف ' + Number(p.price || 0).toLocaleString('en'), (p.jobs || 0) + ' عمل مؤكد', p.rating != null ? '★ ' + p.rating : 'بلا تقييم', U.timeAgo(p.last_seen)].join(' · ');
+    var q = p.status === 'pending' ? '<span class="prq"><button class="btn primary" data-act="approved" data-id="' + p.id + '">موافقة</button><button class="btn danger" data-act="rejected" data-id="' + p.id + '">رفض</button></span>' : '<span class="chev">إدارة</span>';
+    return '<div class="prow" data-act="manage" data-id="' + p.id + '">' + U.avatar(p) + '<div class="pr-main"><div class="pr-name">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.verified ? ' <span class="vtag">موثّق</span>' : '') + (p.ban_match && p.status !== 'banned' ? ' ' + pill('يتطابق مع محظور', 'bad') : '') + '</div><div class="pr-sub">' + esc(sub) + '</div></div>' + q + '</div>';
   }
 
-
   /* ---------- لوحة إدارة صنايعي واحد: الحالة، الشارة، التواصل، الحساب ---------- */
+  function kvRow(k, v) { return '<div class="kv"><span class="muted">' + k + '</span><span>' + v + '</span></div>'; }
   function openManage(p) {
+    mp = p.id; rows[p.id] = p;
     var st = STATUS[p.status] || ['—', ''];
+    var wa = 'https://wa.me/' + SQ.util.digits(p.whatsapp || p.phone) + '?text=' + encodeURIComponent(waText(p));
     var statusBtns = [];
-    if (p.status === 'approved') statusBtns.push('<button class="btn danger" data-ma="suspended">⛔ إيقاف مؤقت</button>');
-    if (p.status === 'suspended' || p.status === 'rejected') statusBtns.push('<button class="btn primary" data-ma="approved">✔ اعتماد</button>');
-    if (p.status === 'pending') statusBtns.push('<button class="btn primary" data-ma="approved">✔ موافقة</button><button class="btn danger" data-ma="rejected">✖ رفض</button>');
+    if (p.status === 'approved') statusBtns.push('<button class="btn danger" data-ma="suspended">إيقاف مؤقت</button>');
+    if (p.status === 'suspended' || p.status === 'rejected') statusBtns.push('<button class="btn primary" data-ma="approved">اعتماد</button>');
+    if (p.status === 'pending') statusBtns.push('<button class="btn primary" data-ma="approved">موافقة</button><button class="btn danger" data-ma="rejected">رفض</button>');
     if (p.ban_match && p.status !== 'banned') statusBtns.push('<button class="btn ghost" data-ma="dismiss">تجاهل تطابق الحظر</button>');
-    modal('<h3>' + esc(p.name) + ' ' + pill(st[0], st[1]) + '</h3><div class="psvc">' + esc(U.svcNames(p.services)) + ' · <span class="ltr">' + esc(p.phone) + '</span></div>' +
-      '<div class="mgrp"><b>🔖 الحالة</b>' + (statusBtns.length ? '<div class="btnrow">' + statusBtns.join('') + '</div>' : '<p class="note">لا إجراءات متاحة لهذه الحالة. استخدم «الحظر» أدناه عند الحاجة.</p>') + '</div>' +
-      '<div class="mgrp"><b>🏅 الشارة</b><div id="mg_badge" class="muted">جارٍ التحميل…</div></div>' +
-      '<div class="mgrp"><b>✉️ التواصل</b><div class="btnrow"><button class="btn primary" data-ma="msg">رسالة خاصة (إشعار/واتساب/إيميل)</button></div></div>' +
-      '<div class="mgrp"><b>👤 الحساب</b><div class="btnrow"><button class="btn ghost" data-ma="edit">✏️ تعديل البيانات</button><button class="btn ghost" data-ma="verify">' + (p.verified ? 'إلغاء التوثيق' : '✔ توثيق') + '</button><button class="btn ghost" data-ma="uname">@ اسم المستخدم</button><button class="btn ghost" data-ma="pw">🔑 كلمة السر</button></div></div>' +
-      '<div class="mgrp" style="border-color:#f3c0c0"><b style="color:#b42318">⚠ منطقة الخطر</b><div class="btnrow">' + (p.status !== 'banned' ? '<button class="btn danger" data-ma="banned">🚫 حظر</button>' : '<button class="btn primary" data-ma="unban">♻ رفع الحظر</button>') + '<button class="btn danger" data-ma="del">🗑 حذف نهائي</button></div></div>' +
-      '<button class="btn ghost mt" id="mg_x" style="width:100%">إغلاق</button>');
-    on('mg_x', 'click', closeModal);
-    var mb = document.getElementById('modal');
-    mb.onclick = function (e) {
+    var data = '<div class="card"><div class="top2">' + U.avatar(p, 'big') + '<div class="pname">' + esc(p.name) + '<div style="margin-top:4px">' + pill(st[0], st[1]) + (p.verified ? ' <span class="vtag">موثّق</span>' : ' ' + pill('غير موثّق', 'warn')) + ' ' + pill('ملف ' + p.pct + '%', p.pct >= 70 ? '' : 'warn') + (p.ban_match && p.status !== 'banned' ? ' ' + pill('يتطابق مع محظور', 'bad') : '') + (!p.has_password ? ' ' + pill('بلا كلمة سر', 'warn') : '') + '</div></div></div>' +
+      '<div class="kvs">' + kvRow('الهاتف', '<span class="ltr">' + esc(p.phone) + '</span>') + kvRow('واتساب', '<span class="ltr">' + esc(p.whatsapp || p.phone) + '</span>') + (p.email ? kvRow('البريد', '<span class="ltr">' + esc(p.email) + '</span>') : '') +
+      kvRow('اسم المستخدم', '<span class="ltr">@' + esc(p.username || '') + '</span>') + kvRow('الخدمات', esc(U.svcNames(p.services))) + kvRow('المنطقة', esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id))) +
+      kvRow('الخبرة', p.experience + ' سنة') + kvRow('العمر', p.age ? p.age + ' سنة' : '<span class="dangertxt">بلا تاريخ ميلاد</span>') + kvRow('سعر الكشف', Number(p.price).toLocaleString('en') + (p.price_max ? ' - ' + Number(p.price_max).toLocaleString('en') : '')) +
+      kvRow('الأعمال المؤكدة', (p.jobs || 0)) + kvRow('الطلبات', p.requests_week + ' هذا الأسبوع / ' + p.requests_total + ' الكل') + kvRow('التقييم', (p.rating != null ? '★ ' + p.rating + ' (' + p.rating_n + ')' : 'بلا تقييم') + ' · ناجحة ' + p.ok + ' · فاشلة ' + p.fail) +
+      kvRow('رقم الطلب', '<b class="ltr">' + refOf(p) + '</b>') + kvRow('التسجيل', fmtDate(p.created)) + kvRow('آخر ظهور', U.timeAgo(p.last_seen)) + '</div>' +
+      (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') + (p.admin_note ? '<p class="note">ملاحظة: ' + esc(p.admin_note) + '</p>' : '') + (p.verified && p.verify_doc ? '<p class="note">التحقق: ' + esc(p.verify_doc) + '</p>' : '') + '</div>';
+    shell('<div class="mhead"><button class="btn ghost" id="mp_back">‹ الصنايعية</button><b>إدارة الصنايعي</b></div>' + data +
+      '<div class="mgrp"><b>الحالة</b>' + (statusBtns.length ? '<div class="btnrow">' + statusBtns.join('') + '</div>' : '<p class="note">لا إجراءات متاحة لهذه الحالة. استخدم «الحظر» أدناه عند الحاجة.</p>') + '</div>' +
+      '<div class="mgrp"><b>الشارة</b><div id="mg_badge" class="muted">جارٍ التحميل…</div></div>' +
+      '<div class="mgrp"><b>التواصل</b><div class="btnrow"><button class="btn primary" data-ma="msg">رسالة خاصة</button><a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">واتساب</a><a class="btn ghost" href="tel:' + esc(p.phone) + '">اتصال</a></div></div>' +
+      '<div class="mgrp"><b>الحساب</b><div class="btnrow"><button class="btn ghost" data-ma="edit">تعديل البيانات</button><button class="btn ghost" data-ma="verify">' + (p.verified ? 'إلغاء التوثيق' : 'توثيق') + '</button><button class="btn ghost" data-ma="uname">اسم المستخدم</button><button class="btn ghost" data-ma="pw">كلمة السر</button></div></div>' +
+      '<div class="mgrp" style="border-color:#f3c0c0"><b style="color:#b42318">منطقة الخطر</b><div class="btnrow">' + (p.status !== 'banned' ? '<button class="btn danger" data-ma="banned">حظر</button>' : '<button class="btn primary" data-ma="unban">رفع الحظر</button>') + '<button class="btn danger" data-ma="del">حذف نهائي</button></div></div>');
+    on('mp_back', 'click', function () { mp = null; viewProviders(); });
+    document.querySelector('main.main').onclick = function (e) {
       var b = e.target.closest('[data-ma]'); if (!b) return;
-      var act = b.getAttribute('data-ma'); closeModal(); provAction(act, p, { disabled: false });
+      provAction(b.getAttribute('data-ma'), p, { disabled: false });
     };
+    window.scrollTo(0, 0);
     loadManageBadge(p);
   }
   async function loadManageBadge(p) {
@@ -314,7 +358,15 @@
     btn.disabled = true;
     try { await db.adminSetStatus(code, p.id, a); toast('تم'); refreshAll(); } catch (e) { btn.disabled = false; fail(e); }
   }
-  async function refreshAll() { try { ov = await db.adminOverview(code); } catch (e) {} if (tab === 'providers') { shellKeep(); loadProviders(true); } else render(); }
+  async function refreshAll() {
+    try { ov = await db.adminOverview(code); } catch (e) {}
+    if (mp && tab === 'providers') {
+      var cur = rows[mp], np = null;
+      try { var rs = await db.adminProviders(code, { q: cur ? cur.phone : '', status: '', service: '', city: '', limit: 10, offset: 0 }); np = (rs.items || []).filter(function (x) { return x.id === mp; })[0] || null; } catch (e) {}
+      if (np) return openManage(np);
+      mp = null; return viewProviders();
+    }
+    if (tab === 'providers') { shellKeep(); loadProviders(true); } else render(); }
   function shellKeep() { /* تحديث عدّاد الشريط فقط */
     var b = document.querySelector('.anav button[data-tab="providers"]'); if (!b || !ov) return;
     b.innerHTML = 'الصنايعية' + (ov.pending ? '<span class="cnt">' + ov.pending + '</span>' : '');
@@ -707,30 +759,33 @@
       '<button class="btn primary mt" id="st_save" style="width:100%">حفظ الولايات</button></div>' +
       '<div class="card"><b>تحديث التطبيق</b><p class="note">رقم النسخة يظهر في صفحة «عن التطبيق». «الحد الأدنى» أي نسخة أقل منه تُمنع من العمل حتى تتحدث (استخدمه للتحديثات الحرجة فقط). «الأحدث» يعرض تنبيهًا يمكن تجاوزه.</p><div class="row2"><label class="field"><span>الحد الأدنى الإجباري</span><input id="u_min" class="ltr" inputmode="numeric" value="' + esc(String(cfg.min_build || 0)) + '"></label><label class="field"><span>أحدث نسخة</span><input id="u_last" class="ltr" inputmode="numeric" value="' + esc(String(cfg.latest_build || 0)) + '"></label></div><label class="field"><span>رابط التحديث (https)</span><input id="u_url" class="ltr" value="' + esc(cfg.update_url || '') + '" placeholder="https://github.com/TheOuth/sanayei-qareeb-/releases/latest/download/sanayei-qareeb-native.apk"></label><label class="field"><span>رسالة للمستخدم (اختياري)</span><input id="u_msg" maxlength="300" value="' + esc(cfg.update_msg || '') + '"></label><button class="btn primary" id="u_save" style="width:100%">حفظ إعدادات التحديث</button></div>' +
       '<div class="card"><b>إشعار لجميع الصنايعية</b><p class="note">يصل إلى جرس الرسائل في تطبيق كل صنايعي (تحديث جديد، تنبيه، إعلان).</p><label class="field"><span>العنوان</span><input id="bc_t" maxlength="100"></label><label class="field"><span>النص</span><textarea id="bc_b" rows="3" maxlength="500"></textarea></label><button class="btn primary" id="bc_send" style="width:100%">🔔 إرسال للجميع</button></div>' +
-      '<div class="card"><b>سجل النشاط</b><p class="note">آخر تغييرات الحالة والتوثيق وحذف الحسابات.</p><button class="btn ghost" id="au_show" style="width:100%">عرض السجل</button><div id="au_list"></div></div>' +
+      '<div class="card"><div class="rhead"><b>سجل النشاط</b><button class="mini" id="au_hide" style="display:none;width:auto;padding:0 12px" title="تصغير">▲ تصغير</button></div><p class="note">آخر تغييرات الحالة والتوثيق وحذف الحسابات.</p><button class="btn ghost" id="au_show" style="width:100%">عرض السجل</button><div id="au_list"></div></div>' +
       '<div class="card"><b>تغيير رمز المدير</b>' + U.pwHtml('k_new', 'الرمز الجديد', '8 أحرف على الأقل، لا تشاركه') + U.pwHtml('k_new2', 'أعد كتابته') + '<button class="btn primary" id="k_save" style="width:100%">تغيير الرمز</button></div>' +
       '<div class="card"><b>نسخة احتياطية</b><p class="note">نزّل بيانات كل الصنايعية في ملف يفتح في Excel. أنصح بفعل ذلك أسبوعيا.</p><button class="btn ghost" id="c_csv" style="width:100%">⬇ تنزيل كل الصنايعية (CSV)</button></div>' +
       '<div class="card"><b>روابط</b><div class="kv"><span>التطبيق</span><a href="' + esc(appUrl()) + '" target="_blank" rel="noopener">فتح</a></div><div class="kv"><span>سياسة الخصوصية</span><a href="' + esc(appUrl()) + 'privacy-policy.html" target="_blank" rel="noopener">فتح</a></div></div></div>');
     function baseCfg() { return { support_whatsapp: cfg.support_whatsapp || '', support_email: cfg.support_email || '', commission_pct: cfg.commission_pct || 0, commission_fixed: cfg.commission_fixed || 0 }; }
     on('m_save', 'click', async function () {
       var o = baseCfg(); o.commission_text = document.getElementById('m_txt').value.trim(); o.commission_account_no = document.getElementById('m_no').value.trim(); o.commission_account_name = document.getElementById('m_nm').value.trim(); o.commission_whatsapp = document.getElementById('m_wa').value.replace(/\D/g, '');
-      try { await db.adminSaveSettings(code, o); toast('تم حفظ رسالة العمولة'); } catch (e) { fail(e); }
+      try { await db.adminSaveSettings(code, o); toast('تم حفظ رسالة العمولة'); viewSettings(); } catch (e) { fail(e); }
     });
     on('st_save', 'click', async function () {
       var closed = [].slice.call(document.querySelectorAll('#st_box [data-st]')).filter(function (x) { return !x.checked; }).map(function (x) { return x.getAttribute('data-st'); });
       if (closed.length && !confirm('ستُغلق ' + closed.length + ' ولاية. متأكد؟')) return;
       var o = baseCfg(); o.closed_states = closed.join(',');
-      try { await db.adminSaveSettings(code, o); toast('تم حفظ الولايات'); } catch (e) { fail(e); }
+      try { await db.adminSaveSettings(code, o); toast('تم حفظ الولايات'); viewSettings(); } catch (e) { fail(e); }
     });
     on('c_csv', 'click', function () { exportCsv({}); });
     on('au_show', 'click', async function () {
       var box = document.getElementById('au_list');
       try {
         var rows = await db.adminAudit(code, 100);
-        var lbl = { status: 'تغيير حالة', verified: 'توثيق', delete_provider: 'حذف حساب' };
+        var lbl = { status: 'تغيير حالة', verified: 'توثيق', delete_provider: 'حذف حساب', commission_paid: 'استلام عمولة', review_hide: 'إخفاء تقييم', review_restore: 'إرجاع تقييم', review_delete: 'حذف تقييم' };
         box.innerHTML = rows.length ? rows.map(function (r) { return '<div class="kv"><span>' + esc(lbl[r.action] || r.action) + ' — ' + esc(r.detail || '') + '</span><span class="note">' + esc(new Date(r.at).toLocaleString('ar-EG')) + '</span></div>'; }).join('') : '<p class="note">لا توجد أحداث بعد.</p>';
+        document.getElementById('au_hide').style.display = ''; document.getElementById('au_show').style.display = 'none';
       } catch (e) { toast('تعذر تحميل السجل'); }
     });
+    on('au_hide', 'click', function () { document.getElementById('au_list').innerHTML = ''; document.getElementById('au_hide').style.display = 'none'; var sh = document.getElementById('au_show'); sh.style.display = ''; sh.textContent = 'عرض السجل'; });
+    lockCards([['c_save', 'c_fx'], 'm_save', 'st_save', 'u_save', 'k_save']);
     on('bc_send', 'click', async function () {
       var t = document.getElementById('bc_t').value.trim(), b = document.getElementById('bc_b').value.trim();
       if (!t) return toast('اكتب عنوانا للإشعار');
@@ -738,18 +793,40 @@
       try { await db.adminSendNotification(code, null, t, b); document.getElementById('bc_t').value = ''; document.getElementById('bc_b').value = ''; toast('تم الإرسال للجميع'); } catch (e) { toast('تعذر الإرسال'); }
     });
     on('c_save', 'click', async function () {
-      try { await db.adminSaveSettings(code, { support_whatsapp: document.getElementById('c_wa').value.replace(/\D/g, ''), support_email: document.getElementById('c_em').value.trim(), commission_pct: document.getElementById('c_pc').value, commission_fixed: document.getElementById('c_fx').value }); toast('تم الحفظ'); } catch (e) { fail(e); }
+      try { await db.adminSaveSettings(code, { support_whatsapp: document.getElementById('c_wa').value.replace(/\D/g, ''), support_email: document.getElementById('c_em').value.trim(), commission_pct: document.getElementById('c_pc').value, commission_fixed: document.getElementById('c_fx').value }); toast('تم الحفظ'); viewSettings(); } catch (e) { fail(e); }
     });
     on('u_save', 'click', async function () {
       var mn = +document.getElementById('u_min').value || 0, lt = +document.getElementById('u_last').value || 0;
       if (mn > 0 && !confirm('سيُمنع كل من نسخته أقل من ' + mn + ' من استخدام التطبيق حتى يتحدث. متأكد؟')) return;
-      try { await db.adminSaveSettings(code, { support_whatsapp: cfg.support_whatsapp || '', support_email: cfg.support_email || '', commission_pct: cfg.commission_pct || 0, commission_fixed: cfg.commission_fixed || 0, min_build: mn, latest_build: lt, update_url: document.getElementById('u_url').value.trim(), update_msg: document.getElementById('u_msg').value.trim() }); toast('تم حفظ إعدادات التحديث'); } catch (e) { fail(e); }
+      try { await db.adminSaveSettings(code, { support_whatsapp: cfg.support_whatsapp || '', support_email: cfg.support_email || '', commission_pct: cfg.commission_pct || 0, commission_fixed: cfg.commission_fixed || 0, min_build: mn, latest_build: lt, update_url: document.getElementById('u_url').value.trim(), update_msg: document.getElementById('u_msg').value.trim() }); toast('تم حفظ إعدادات التحديث'); viewSettings(); } catch (e) { fail(e); }
     });
     on('k_save', 'click', async function () {
       var a = document.getElementById('k_new').value, b = document.getElementById('k_new2').value;
       if (a.length < 8) return toast('الرمز 8 أحرف على الأقل');
       if (a !== b) return toast('الرمزان غير متطابقين');
-      try { await db.adminChangeCode(code, a); code = a; try { sessionStorage.setItem('sq_admin', a); } catch (e) {} toast('تم تغيير الرمز. احفظه جيدا'); document.getElementById('k_new').value = ''; document.getElementById('k_new2').value = ''; } catch (e) { fail(e); }
+      try { await db.adminChangeCode(code, a); code = a; try { sessionStorage.setItem('sq_admin', a); } catch (e) {} toast('تم تغيير الرمز. احفظه جيدا'); viewSettings(); } catch (e) { fail(e); }
+    });
+  }
+
+  /* تقفل بطاقات الإعدادات افتراضيا ويظهر زر «تعديل» لكل بطاقة */
+  function lockCards(ids) {
+    ids.forEach(function (it) {
+      var id = Array.isArray(it) ? it[0] : it, extra = Array.isArray(it) ? it.slice(1) : [];
+      var btn = document.getElementById(id); if (!btn) return;
+      var card = btn.closest('.card'), cards = [card], title = card.querySelector('b');
+      extra.forEach(function (x) { var el = document.getElementById(x); if (el) cards.push(el.closest('.card')); });
+      var fields = []; cards.forEach(function (c) { fields = fields.concat([].slice.call(c.querySelectorAll('input,textarea,select'))); });
+      fields.forEach(function (f) { f.disabled = true; });
+      btn.style.display = 'none';
+      var head = document.createElement('div'); head.className = 'rhead'; title.parentNode.insertBefore(head, title); head.appendChild(title);
+      var ed = document.createElement('button'); ed.className = 'mini editbtn'; ed.textContent = 'تعديل'; head.appendChild(ed);
+      cards.forEach(function (c) { c.classList.add('locked'); });
+      ed.addEventListener('click', function () {
+        if (card.classList.contains('locked')) {
+          cards.forEach(function (c) { c.classList.remove('locked'); }); fields.forEach(function (f) { f.disabled = false; }); btn.style.display = ''; ed.textContent = 'إلغاء';
+          var first = card.querySelector('input:not([type=checkbox]),textarea'); if (first) first.focus();
+        } else viewSettings();
+      });
     });
   }
 

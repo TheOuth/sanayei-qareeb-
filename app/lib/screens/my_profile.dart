@@ -90,7 +90,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(children: [
             Avatar(photo: me['photo'], name: me['name'] ?? '', size: 84),
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
+            const SeenLabel(p: {'seen_s': 0}, size: 12),
+            const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Flexible(child: Text(me['name'] ?? '', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800))),
               const SizedBox(width: 6),

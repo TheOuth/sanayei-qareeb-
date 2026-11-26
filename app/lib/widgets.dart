@@ -206,6 +206,37 @@ class Stars extends StatelessWidget {
   }
 }
 
+/// "نشط الآن" أو "آخر ظهور قبل X" تحت أيقونة الصنايعي.
+class SeenLabel extends StatelessWidget {
+  final Map p;
+  final double size;
+  const SeenLabel({super.key, required this.p, this.size = 10.5});
+  static String? text(Map p) {
+    final v = p['seen_s'];
+    if (v == null) return null;
+    final s = (v as num).toInt();
+    if (s < 300) return 'نشط الآن';
+    final m = s ~/ 60;
+    if (m < 60) return 'آخر ظهور قبل $m د';
+    final h = m ~/ 60;
+    if (h < 24) return h == 1 ? 'آخر ظهور قبل ساعة' : (h == 2 ? 'آخر ظهور قبل ساعتين' : (h <= 10 ? 'آخر ظهور قبل $h ساعات' : 'آخر ظهور قبل $h ساعة'));
+    final d = h ~/ 24;
+    if (d == 1) return 'آخر ظهور أمس';
+    if (d < 30) return 'آخر ظهور قبل $d يوم';
+    return 'آخر ظهور منذ مدة';
+  }
+  @override
+  Widget build(BuildContext context) {
+    final t = text(p);
+    if (t == null) return const SizedBox.shrink();
+    final on = t == 'نشط الآن';
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (on) Container(width: 7, height: 7, margin: const EdgeInsetsDirectional.only(end: 4), decoration: const BoxDecoration(color: C.green, shape: BoxShape.circle)),
+      Flexible(child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: size, color: on ? C.green : C.mute, fontWeight: on ? FontWeight.w700 : FontWeight.w500))),
+    ]);
+  }
+}
+
 class ProviderCard extends StatelessWidget {
   final Map p;
   final VoidCallback onTap;
@@ -222,8 +253,12 @@ class ProviderCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(children: [
-            Avatar(photo: p['photo'], name: p['name'] ?? '', size: 60),
-            const SizedBox(width: 12),
+            SizedBox(width: 74, child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Avatar(photo: p['photo'], name: p['name'] ?? '', size: 60),
+              const SizedBox(height: 4),
+              SeenLabel(p: p, size: 10),
+            ])),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
@@ -277,7 +312,9 @@ class ProviderGridCard extends StatelessWidget {
                 child: Container(width: 14, height: 14, decoration: BoxDecoration(color: avail ? C.green : Colors.grey, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2))),
               ),
             ]),
-            const SizedBox(height: 8),
+            const SizedBox(height: 3),
+            SeenLabel(p: p),
+            const SizedBox(height: 5),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Flexible(child: Text(shortName((p['name'] ?? '').toString()), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
               const SizedBox(width: 4),
