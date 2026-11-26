@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../widgets.dart' show openUrl;
+import '../widgets.dart' show openUrl, openSocial;
 import '../core.dart';
 import '../push.dart';
 import '../theme.dart';
