@@ -44,7 +44,7 @@ Future<void> openPage(String name, Widget Function() build) async {
 class Config {
   static const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://pwqtvixjkpvyajqmfqpa.supabase.co');
   static const apiKey = String.fromEnvironment('API_KEY', defaultValue: 'sb_publishable_sFHW2864oPilfQvjs3txaA__QjKY0sG');
-  static const siteUrl = 'https://theouth.github.io';
+  static const siteUrl = 'https://saqapp.net';
   static const commissionNote = 5000;
 }
 
