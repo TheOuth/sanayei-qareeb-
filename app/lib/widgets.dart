@@ -26,6 +26,16 @@ Future<void> openUrl(String u) async {
   } catch (_) {}
 }
 
+/// يفتح تطبيق المنصة مباشرة إن كان مثبتًا، وإلا المتصفح الخارجي (وليس داخل تطبيقنا)
+Future<void> openSocial(String web, String? app) async {
+  if (app != null) {
+    try {
+      if (await launchUrl(Uri.parse(app), mode: LaunchMode.externalNonBrowserApplication)) return;
+    } catch (_) {}
+  }
+  await openUrl(web);
+}
+
 double haversine(double a, double b, double c, double d) {
   const r = 6371.0;
   double rad(double x) => x * pi / 180;

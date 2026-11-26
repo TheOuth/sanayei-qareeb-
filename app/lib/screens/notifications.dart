@@ -116,16 +116,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final base = k.split(':')[0];
     switch (base) {
       case 'commission':
-        return () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CommissionScreen()));
+        return () => openPage('CommissionScreen', () => const CommissionScreen());
       case 'completed':
       case 'request':
       case 'confirm':
       case 'review':
-        return () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DashboardScreen()));
+        return () => openPage('DashboardScreen', () => const DashboardScreen());
       case 'badge':
       case 'badge_down':
       case 'account':
-        return () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyProfileScreen()));
+        return () => openPage('MyProfileScreen', () => const MyProfileScreen());
       case 'service':
       case 'verify':
         return () => openEditProfile(context);
@@ -144,6 +144,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'broadcast' => Icons.campaign_rounded,
         'service' => Icons.handyman_rounded,
         'commission' => Icons.account_balance_wallet_rounded,
+        'commission_thanks' => Icons.favorite_rounded,
         'completed' => Icons.celebration_rounded,
         _ => Icons.mail_rounded,
       };
@@ -157,6 +158,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'account' => C.navy,
         'service' => C.blue,
         'commission' => const Color(0xFFE67E22),
+        'commission_thanks' => C.green,
         'completed' => C.green,
         _ => const Color(0xFF6D5BEF),
       };

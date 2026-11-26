@@ -94,7 +94,15 @@ class Push with WidgetsBindingObserver {
     Store.refreshUnread();
     final goCommission = kind == 'commission';
     final goDash = kind == 'completed' || kind == 'request' || kind == 'confirm' || kind.startsWith('badge');
-    nav.push(MaterialPageRoute(builder: (_) => kind == 'client_accept' ? const RequestsScreen() : goCommission ? const CommissionScreen() : goDash ? const DashboardScreen() : const NotificationsScreen()));
+    if (kind == 'client_accept') {
+      openPage('RequestsScreen', () => const RequestsScreen());
+    } else if (goCommission) {
+      openPage('CommissionScreen', () => const CommissionScreen());
+    } else if (goDash) {
+      openPage('DashboardScreen', () => const DashboardScreen());
+    } else {
+      openPage('NotificationsScreen', () => const NotificationsScreen());
+    }
   }
 
   /// يربط هذا الجهاز بحساب الصنايعي الحالي

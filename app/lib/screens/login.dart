@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
           banned = me is Map && me['status'] == 'banned';
         } catch (_) {}
         if (banned) {
-          navKey.currentState?.push(MaterialPageRoute(builder: (_) => const DashboardScreen()));
+          openPage('DashboardScreen', () => const DashboardScreen());
         } else {
           final c = navKey.currentContext;
           if (c != null) toast(c, 'تم تسجيل الدخول. لوحتك من القائمة الجانبية');

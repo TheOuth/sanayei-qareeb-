@@ -10,6 +10,35 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// مفتاح الملاحة العام (للتنقل من الإشعارات)
 final GlobalKey<NavigatorState> navKey = GlobalKey<NavigatorState>();
 
+/// يتتبّع الصفحات المفتوحة حتى لا تتكدّس نسخ مكرّرة من نفس الصفحة فوق بعضها
+final List<Route> openRoutes = [];
+
+class RouteTracker extends NavigatorObserver {
+  @override
+  void didPush(Route route, Route? previousRoute) => openRoutes.add(route);
+  @override
+  void didPop(Route route, Route? previousRoute) => openRoutes.remove(route);
+  @override
+  void didRemove(Route route, Route? previousRoute) => openRoutes.remove(route);
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) {
+    if (oldRoute != null) openRoutes.remove(oldRoute);
+    if (newRoute != null) openRoutes.add(newRoute);
+  }
+}
+
+/// يفتح صفحة؛ وإن كانت مفتوحة أصلًا في الخلف يرجع إليها بدل فتح نسخة جديدة فوقها.
+/// بهذا يرجع زر «رجوع» خطوة واحدة منطقية ثم إلى الرئيسية.
+Future<void> openPage(String name, Widget Function() build) async {
+  final nav = navKey.currentState;
+  if (nav == null) return;
+  if (openRoutes.any((r) => r.settings.name == name)) {
+    nav.popUntil((r) => r.settings.name == name);
+    return;
+  }
+  await nav.push(MaterialPageRoute(settings: RouteSettings(name: name), builder: (_) => build()));
+}
+
 /// إعدادات الخادم: غيّر هذين السطرين (أو مرّرهما وقت البناء) لنقل التطبيق لخادم آخر.
 /// flutter build apk --dart-define=API_URL=https://... --dart-define=API_KEY=...
 class Config {
@@ -51,6 +80,7 @@ String errMsg(Object e) {
     'banned_contact': 'لا يمكن استخدام هذه البيانات لأن حسابًا مرتبطًا بها محظور. تواصل مع الدعم',
     'appeal_pending': 'لديك طعن قيد المراجعة',
     'appeal_wait': 'يمكنك تقديم طعن جديد بعد 3 أيام من الرد على طعنك السابق',
+    'self_request': 'لا يمكنك طلب خدمتك من نفسك',
     'state_closed': 'الخدمة غير متاحة حاليًا في هذه الولاية',
     'invalid_price': 'أعلى سعر يجب ألا يقل عن أدنى سعر',
     'no_verified_email': 'وثّق بريدك أولًا من تعديل الملف',

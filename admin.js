@@ -9,7 +9,7 @@
   try { code = sessionStorage.getItem('sq_admin') || ''; } catch (e) {}
   document.body.classList.add('admin');
 
-  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['badges', 'الشارات'], ['bans', 'الحظر'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
+  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['bans', 'الحظر'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
   var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'], banned: ['محظور', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
@@ -117,15 +117,17 @@
   async function render() {
     if (!code) return login();
     try { ov = await db.adminOverview(code); } catch (e) { if (guard(e)) return; ov = null; }
+    try { if (ov) ov.totals = await db.adminTotals(code); } catch (e) {}
     try { cn = await db.adminCounts(code); } catch (e) { cn = { badges: 0, custom: 0 }; }
-    ({ overview: viewOverview, custom: viewCustom, badges: viewBadges, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings, bans: viewBans })[tab]();
+    ({ overview: viewOverview, custom: viewCustom, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings, bans: viewBans })[tab]();
   }
 
   /* ---------- نظرة عامة ---------- */
   function viewOverview() {
     if (!ov) { shell('<div class="empty"><div class="big">📶</div>تعذر الاتصال<div class="mt"><button class="btn primary" id="retry">إعادة المحاولة</button></div></div>'); return on('retry', 'click', render); }
-    var max = Math.max.apply(null, ov.by_day.map(function (d) { return d.n; }).concat([1]));
+    var tt = ov.totals || {}; var max = Math.max.apply(null, ov.by_day.map(function (d) { return d.n; }).concat([1]));
     var body = (ov.pending ? '<div class="banner">🔔 عندك <b>' + ov.pending + '</b> طلب انضمام بانتظار موافقتك.<br><button class="btn primary" id="goPending">راجع الطلبات الآن</button></div>' : '') +
+      '<div class="card" style="background:linear-gradient(135deg,#0F4C8A,#2B8CF0);color:#fff"><b>💰 الأرباح الكلية</b><div style="font-size:30px;font-weight:800;margin:6px 0">' + Number(tt.earn_total || 0).toLocaleString('en') + ' <small style="font-size:14px">جنيه</small></div><div style="display:flex;gap:18px;flex-wrap:wrap;font-size:13px;opacity:.95"><span>✔ محصّل: <b>' + Number(tt.earn_paid || 0).toLocaleString('en') + '</b></span><span>⏳ مستحق: <b>' + Number(tt.earn_due || 0).toLocaleString('en') + '</b></span><span>🛠 إجمالي الخدمات المكتملة: <b>' + Number(tt.services_total || 0).toLocaleString('en') + '</b></span></div>' + (tt.first_ts ? '<div style="font-size:12px;opacity:.85;margin-top:6px">من ' + fmtDate(tt.first_ts) + ' إلى ' + fmtDate(tt.last_ts) + '</div>' : '') + '</div>' +
       '<div class="sgrid">' + [
         ['معتمدون', ov.approved, ''], ['بانتظار الموافقة', ov.pending, ov.pending ? 'warn' : ''], ['متاحون الآن', ov.available_now, ''], ['موقوفون', ov.suspended, ''],
         ['طلبات اليوم', ov.requests_today, ''], ['طلبات الأسبوع', ov.requests_week, ''], ['إجمالي الطلبات', ov.requests_total, ''], ['متوسط التقييم', ov.reviews_total ? '★ ' + ov.avg_rating : '-', '']
@@ -156,13 +158,14 @@
       '<select id="fs"><option value="">كل الحالات</option>' + Object.keys(STATUS).map(function (k) { return '<option value="' + k + '"' + (pf.status === k ? ' selected' : '') + '>' + STATUS[k][0] + '</option>'; }).join('') + '</select>' +
       '<select id="fv"><option value="">كل الخدمات</option>' + SQ.SERVICES.map(function (s) { return '<option value="' + s.id + '"' + (pf.service === s.id ? ' selected' : '') + '>' + esc(s.name) + '</option>'; }).join('') + '</select>' +
       '<select id="fc">' + cityFilterOptions(pf.city) + '</select>' +
-      '<button class="btn primary" id="add">➕ إضافة صنايعي</button><button class="btn ghost" id="csv">⬇ CSV</button></div>' +
+      '<button class="btn primary" id="add">➕ إضافة صنايعي</button><button class="btn ghost" id="csv">⬇ CSV</button>' + (cn.badges ? '<button class="btn ghost" id="pbadges">🏅 شارات بانتظارك (' + cn.badges + ')</button>' : '') + '</div>' +
       '<div class="muted" id="pcount" style="margin-bottom:8px"></div><div id="plist" class="agrid"></div><div class="center mt" id="more"></div>');
     var t;
     on('q', 'input', function () { var v = this.value; clearTimeout(t); t = setTimeout(function () { pf.q = v.trim(); pf.offset = 0; loadProviders(true); }, 350); });
     [['fs', 'status'], ['fv', 'service'], ['fc', 'city']].forEach(function (x) { on(x[0], 'change', function () { pf[x[1]] = this.value; pf.offset = 0; loadProviders(true); }); });
     on('add', 'click', function () { openProvForm(null); });
     on('csv', 'click', function () { exportCsv(pf); });
+    on('pbadges', 'click', openPendingBadges);
     var list = document.getElementById('plist');
     list.addEventListener('click', function (e) {
       var b = e.target.closest('[data-act]'); if (!b) return;
@@ -201,12 +204,60 @@
       '<div class="meta"><span class="ltr">@' + esc(p.username || '') + '</span><span>📞 <span class="ltr">' + esc(p.phone) + '</span></span><span>📍 ' + esc((p.hood ? p.hood + '، ' : '') + (SQ.cityName(p.city_id) || p.city_id)) + '</span><span>' + (p.age ? '🎂 ' + p.age + ' سنة' : '<span class="dangertxt">بلا تاريخ ميلاد</span>') + '</span><span>' + p.experience + ' سنة خبرة</span><span>💰 ' + Number(p.price).toLocaleString('en') + '</span></div>' +
       '<div class="meta"><span>📨 ' + p.requests_week + ' هذا الأسبوع / ' + p.requests_total + '</span><span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : 'بلا تقييم') + '</span><span>✔ ' + p.ok + ' ✖ ' + p.fail + '</span><span>🔖 رقم الطلب <b class="ltr">' + refOf(p) + '</b></span><span class="muted">سُجّل ' + fmtDate(p.created) + ' · ظهر ' + U.timeAgo(p.last_seen) + '</span></div>' +
       (p.bio ? '<p class="note">' + esc(p.bio) + '</p>' : '') + (p.admin_note ? '<p class="note">📝 ' + esc(p.admin_note) + '</p>' : '') + (p.verified && p.verify_doc ? '<p class="note">✔ التحقق: ' + esc(p.verify_doc) + '</p>' : '') +
-      '<div class="btnrow">' + act.join('') + '<a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">' + (p.status === 'pending' ? '💬 رسالة التأكيد' : 'واتساب') + '</a><button class="btn ghost" data-act="verify" data-id="' + p.id + '">' + (p.verified ? 'إلغاء التوثيق' : '✔ توثيق') + '</button><a class="btn ghost" href="tel:' + esc(p.phone) + '">📞</a>' +
-      '<button class="btn ghost" data-act="msg" data-id="' + p.id + '">✉️ رسائل</button><button class="btn ghost" data-act="uname" data-id="' + p.id + '">@ المستخدم</button><button class="btn ghost" data-act="edit" data-id="' + p.id + '">✏️ تعديل</button><button class="btn ghost" data-act="pw" data-id="' + p.id + '">🔑 كلمة سر</button><button class="btn danger" data-act="del" data-id="' + p.id + '">🗑</button></div></div>';
+      '<div class="btnrow">' + (p.status === 'pending' ? act[0] : '') + '<button class="btn primary" data-act="manage" data-id="' + p.id + '">⚙ إدارة الصنايعي</button><a class="btn wa" href="' + wa + '" target="_blank" rel="noopener">' + (p.status === 'pending' ? '💬 رسالة التأكيد' : 'واتساب') + '</a><a class="btn ghost" href="tel:' + esc(p.phone) + '">📞</a></div></div>';
+  }
+
+
+  /* ---------- لوحة إدارة صنايعي واحد: الحالة، الشارة، التواصل، الحساب ---------- */
+  function openManage(p) {
+    var st = STATUS[p.status] || ['—', ''];
+    var statusBtns = [];
+    if (p.status === 'approved') statusBtns.push('<button class="btn danger" data-ma="suspended">⛔ إيقاف مؤقت</button>');
+    if (p.status === 'suspended' || p.status === 'rejected') statusBtns.push('<button class="btn primary" data-ma="approved">✔ اعتماد</button>');
+    if (p.status === 'pending') statusBtns.push('<button class="btn primary" data-ma="approved">✔ موافقة</button><button class="btn danger" data-ma="rejected">✖ رفض</button>');
+    if (p.ban_match && p.status !== 'banned') statusBtns.push('<button class="btn ghost" data-ma="dismiss">تجاهل تطابق الحظر</button>');
+    modal('<h3>' + esc(p.name) + ' ' + pill(st[0], st[1]) + '</h3><div class="psvc">' + esc(U.svcNames(p.services)) + ' · <span class="ltr">' + esc(p.phone) + '</span></div>' +
+      '<div class="mgrp"><b>🔖 الحالة</b>' + (statusBtns.length ? '<div class="btnrow">' + statusBtns.join('') + '</div>' : '<p class="note">لا إجراءات متاحة لهذه الحالة. استخدم «الحظر» أدناه عند الحاجة.</p>') + '</div>' +
+      '<div class="mgrp"><b>🏅 الشارة</b><div id="mg_badge" class="muted">جارٍ التحميل…</div></div>' +
+      '<div class="mgrp"><b>✉️ التواصل</b><div class="btnrow"><button class="btn primary" data-ma="msg">رسالة خاصة (إشعار/واتساب/إيميل)</button></div></div>' +
+      '<div class="mgrp"><b>👤 الحساب</b><div class="btnrow"><button class="btn ghost" data-ma="edit">✏️ تعديل البيانات</button><button class="btn ghost" data-ma="verify">' + (p.verified ? 'إلغاء التوثيق' : '✔ توثيق') + '</button><button class="btn ghost" data-ma="uname">@ اسم المستخدم</button><button class="btn ghost" data-ma="pw">🔑 كلمة السر</button></div></div>' +
+      '<div class="mgrp" style="border-color:#f3c0c0"><b style="color:#b42318">⚠ منطقة الخطر</b><div class="btnrow">' + (p.status !== 'banned' ? '<button class="btn danger" data-ma="banned">🚫 حظر</button>' : '<button class="btn primary" data-ma="unban">♻ رفع الحظر</button>') + '<button class="btn danger" data-ma="del">🗑 حذف نهائي</button></div></div>' +
+      '<button class="btn ghost mt" id="mg_x" style="width:100%">إغلاق</button>');
+    on('mg_x', 'click', closeModal);
+    var mb = document.getElementById('modal');
+    mb.onclick = function (e) {
+      var b = e.target.closest('[data-ma]'); if (!b) return;
+      var act = b.getAttribute('data-ma'); closeModal(); provAction(act, p, { disabled: false });
+    };
+    loadManageBadge(p);
+  }
+  async function loadManageBadge(p) {
+    var box = document.getElementById('mg_badge'); if (!box) return;
+    var r = null;
+    try { var rows = await db.adminBadges(code, 'all', p.phone); r = (rows || []).filter(function (x) { return x.id === p.id; })[0] || null; } catch (e) {}
+    box = document.getElementById('mg_badge'); if (!box) return;
+    if (!r) { box.textContent = 'تعذر تحميل بيانات الشارة'; return; }
+    box.className = '';
+    box.innerHTML = '<p class="note">الحالية: <b>' + TIER_NAMES[r.tier || ''] + '</b> · أعمال مؤكدة ' + r.jobs + ' · اكتمال الملف ' + r.pct + '% · الرمادية: ' + GRAY[r.gray_status] + (r.manual ? ' · منح يدوي: ' + TIER_NAMES[r.manual] + (r.reason ? ' (' + esc(r.reason) + ')' : '') : '') + '</p>' +
+      (r.gray_status === 'pending' ? '<div class="btnrow"><button class="btn primary" data-bg="ok">✔ اعتماد الرمادية</button><button class="btn danger" data-bg="no">✖ رفض</button></div>' : '') +
+      '<div class="row2"><label class="field"><span>منح شارة</span><select id="mg_t">' + ['gray', 'green', 'blue', 'gold'].map(function (k) { return '<option value="' + k + '">' + TIER_NAMES[k] + '</option>'; }).join('') + '</select></label><label class="field"><span>السبب (يصل للصنايعي)</span><input id="mg_r" maxlength="200" placeholder="مثال: أبلغ عن خطأ"></label></div>' +
+      '<div class="btnrow"><button class="btn primary" data-bg="grant">🏅 منح</button>' + (r.manual ? '<button class="btn ghost" data-bg="revoke">إزالة المنح اليدوي</button>' : '') + '</div>';
+    box.onclick = async function (e) {
+      var b = e.target.closest('[data-bg]'); if (!b) return; var act = b.getAttribute('data-bg');
+      try {
+        if (act === 'ok') { b.disabled = true; await db.adminBadgeDecide(code, p.id, true, ''); toast('تم الاعتماد وأُرسلت تهنئة'); }
+        else if (act === 'no') { var note = prompt('سبب الرفض (يصل للصنايعي):', ''); if (note === null) return; b.disabled = true; await db.adminBadgeDecide(code, p.id, false, note); toast('تم الرفض'); }
+        else if (act === 'grant') { var t = document.getElementById('mg_t').value; if (!confirm('منح الشارة ' + TIER_NAMES[t] + ' لـ ' + p.name + '؟')) return; b.disabled = true; await db.adminSetBadge(code, p.id, t, document.getElementById('mg_r').value.trim()); toast('تم المنح وأُرسل إشعار'); }
+        else if (act === 'revoke') { if (!confirm('إزالة الشارة الممنوحة يدويًا؟')) return; b.disabled = true; await db.adminSetBadge(code, p.id, '', ''); toast('تمت الإزالة'); }
+        loadManageBadge(p);
+        try { ov = await db.adminOverview(code); cn = await db.adminCounts(code); } catch (x) {}
+      } catch (x) { b.disabled = false; fail(x); }
+    };
   }
 
   async function provAction(a, p, btn) {
     if (!p) return;
+    if (a === 'manage') return openManage(p);
     if (a === 'edit') return openProvForm(p);
     if (a === 'msg') return msgModal({ id: p.id, name: p.name, phone: p.whatsapp || p.phone, jobs: p.jobs || 0, verified: p.verified, username: p.username, email: p.email || '' });
     if (a === 'uname') {
@@ -371,10 +422,10 @@
     var dueList = [];
     try { list = await db.adminCommissionLedger(code); cfg = await db.adminGetSettings(code); dueList = await db.adminCommissions(code, 'due'); } catch (e) { return fail(e); }
     var fx = +cfg.commission_fixed || 0, box = document.getElementById('paybox'); if (!box) return;
-    var dueBy = {}; dueList.forEach(function (c) { var g = dueBy[c.provider_id] || (dueBy[c.provider_id] = { id: c.id, name: c.provider_name, phone: c.phone, n: 0, total: 0, svc: [] }); g.n++; g.total += +c.amount; g.svc.push(c.service); });
+    var dueBy = {}; dueList.forEach(function (c) { var g = dueBy[c.provider_id] || (dueBy[c.provider_id] = { pid: c.provider_id, id: c.id, name: c.provider_name, phone: c.phone, n: 0, total: 0, svc: [] }); g.n++; g.total += +c.amount; g.svc.push(c.service); });
     var dueRows = Object.keys(dueBy).map(function (k) { return dueBy[k]; });
     var dueHtml = '<div class="card"><b>عمولات مستحقة بانتظار الاستلام</b><p class="note">تظهر للصنايعي كرسالة منك حتى تضغط «تم استلام المبلغ» بعد وصول التحويل.</p>' +
-      (dueRows.length ? dueRows.map(function (g) { return '<div class="kv"><span><b>' + esc(g.name) + '</b> <small class="ltr muted">' + esc(g.phone) + '</small><br><small class="muted">' + g.n + ' خدمة · ' + esc(g.svc.slice(0, 3).join('، ')) + '</small></span><span><b>' + g.total.toLocaleString('en') + '</b> جنيه <button class="btn primary" style="padding:6px 10px" data-cp="' + g.id + '">✔ تم الاستلام</button></span></div>'; }).join('') : '<p class="note">لا توجد عمولات مستحقة الآن ✓</p>') + '</div>';
+      (dueRows.length ? dueRows.map(function (g) { return '<div class="kv"><span><b>' + esc(g.name) + '</b> <small class="ltr muted">' + esc(g.phone) + '</small><br><small class="muted">' + g.n + ' خدمة · ' + esc(g.svc.slice(0, 3).join('، ')) + '</small></span><span><b>' + g.total.toLocaleString('en') + '</b> جنيه <button class="btn primary" style="padding:6px 10px" data-cp="' + g.id + '">✔ تم الاستلام</button> <button class="btn ghost" style="padding:6px 10px" data-rm="' + g.pid + '" title="يصل للصنايعي إشعار ورسالة تذكير">🔔 تذكير</button></span></div>'; }).join('') : '<p class="note">لا توجد عمولات مستحقة الآن ✓</p>') + '</div>';
     function due(x) { return x.jobs * fx; }
     var T = list.reduce(function (a, x) { a.d += due(x); a.p += x.paid; a.n += x.pay_count; return a; }, { d: 0, p: 0, n: 0 });
     box.innerHTML = dueHtml + '<div class="stats"><div class="stat"><b>' + T.d.toLocaleString('en') + '</b><small>المستحق</small></div><div class="stat"><b>' + T.p.toLocaleString('en') + '</b><small>المحصّل (' + T.n + ' دفعة)</small></div><div class="stat"><b>' + (T.d - T.p).toLocaleString('en') + '</b><small>المتبقي</small></div></div>' +
@@ -382,9 +433,11 @@
       (list.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>الصنايعي</th><th>أعمال مؤكدة</th><th>المستحق</th><th>المدفوع</th><th>المتبقي</th><th>عدد الدفعات</th><th>آخر دفعة</th><th></th></tr></thead><tbody>' +
         list.map(function (x, i) {
           var rest = due(x) - x.paid;
-          return '<tr><td><b>' + esc(x.name) + '</b><br><small class="ltr muted">' + esc(x.phone) + '</small></td><td>' + x.jobs + '</td><td>' + due(x).toLocaleString('en') + '</td><td>' + x.paid.toLocaleString('en') + '</td><td>' + (rest > 0 ? '<span class="dangertxt">' + rest.toLocaleString('en') + '</span>' : rest < 0 ? '<span class="muted">+' + (-rest).toLocaleString('en') + ' مقدم</span>' : '<span class="okc">مسدد</span>') + '</td><td>' + x.pay_count + '</td><td>' + (x.last_paid ? fmtDate(x.last_paid) : '—') + '</td><td class="nw"><button class="mini" data-pi="' + i + '" data-pa="add">+ دفعة</button> <button class="mini" data-pi="' + i + '" data-pa="log">السجل</button></td></tr>';
+          return '<tr><td><b>' + esc(x.name) + '</b><br><small class="ltr muted">' + esc(x.phone) + '</small></td><td>' + x.jobs + '</td><td>' + due(x).toLocaleString('en') + '</td><td>' + x.paid.toLocaleString('en') + '</td><td>' + (rest > 0 ? '<span class="dangertxt">' + rest.toLocaleString('en') + '</span>' : rest < 0 ? '<span class="muted">+' + (-rest).toLocaleString('en') + ' مقدم</span>' : '<span class="okc">مسدد</span>') + '</td><td>' + x.pay_count + '</td><td>' + (x.last_paid ? fmtDate(x.last_paid) : '—') + '</td><td class="nw">' + (x.pay_count > 0 ? '<button class="mini" data-pi="' + i + '" data-pa="log">✏ تعديل</button>' : '<button class="mini" data-pi="' + i + '" data-pa="add">+ دفعة</button>') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '<div class="empty"><div class="big">💰</div>لا توجد أعمال مؤكدة ولا دفعيات بعد</div>');
     box.onclick = async function (e) {
+      var rm = e.target.closest('[data-rm]');
+      if (rm) { if (!confirm('إرسال تذكير بالعمولة المستحقة لهذا الصنايعي؟')) return; try { await db.adminRemindCommission(code, rm.getAttribute('data-rm')); toast('تم إرسال التذكير'); } catch (err) { toast(/remind_cooldown/.test(String(err && err.message || err)) ? 'أُرسل تذكير قبل أقل من 6 ساعات' : /nothing_due/.test(String(err && err.message || err)) ? 'لا توجد عمولة مستحقة' : U.errMsg(err)); } return; }
       var cp = e.target.closest('[data-cp]');
       if (cp) { if (!confirm('تأكيد استلام العمولة؟ ستختفي رسالة العمولة من لدى الصنايعي.')) return; try { await db.adminCommissionPaid(code, cp.getAttribute('data-cp'), true); toast('تم تأكيد الاستلام'); viewPayments(); } catch (err) { fail(err); } return; }
       var b = e.target.closest('[data-pa]'); if (!b) return; var x = list[+b.getAttribute('data-pi')];
@@ -397,10 +450,23 @@
           try { await db.adminAddPayment(code, x.provider_id, +v, document.getElementById('pm_n').value.trim()); closeModal(); toast('تم تسجيل الدفعة'); viewPayments(); } catch (err) { closeModal(); fail(err); }
         });
       } else {
-        modal('<h3>دفعات ' + esc(x.name) + '</h3>' + (x.payments.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead><tbody>' + x.payments.map(function (p) { return '<tr><td>' + fmtDate(p.ts) + '</td><td>' + Number(p.amount).toLocaleString('en') + '</td><td>' + esc(p.note || '') + '</td><td><button class="mini" data-del="' + p.id + '" title="حذف">🗑</button></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="note">لا توجد دفعات.</p>') + '<button class="btn ghost mt" id="pl_x" style="width:100%">إغلاق</button>');
+        modal('<h3>دفعات ' + esc(x.name) + '</h3><p class="note">عدّل المبلغ أو الملاحظة، أو احذف الدفعة المسجّلة بالخطأ، حتى تبقى الأرقام والإحصائيات دقيقة.</p>' + (x.payments.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead><tbody>' + x.payments.map(function (p, k) { return '<tr><td>' + fmtDate(p.ts) + '</td><td>' + Number(p.amount).toLocaleString('en') + '</td><td>' + esc(p.note || '') + '</td><td class="nw"><button class="mini" data-ed="' + k + '" title="تعديل">✏</button> <button class="mini" data-del="' + p.id + '" title="حذف">🗑</button></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="note">لا توجد دفعات.</p>') + '<button class="btn ghost mt" id="pl_x" style="width:100%">إغلاق</button>');
         on('pl_x', 'click', closeModal);
         var mb = document.getElementById('modal'); mb.onclick = async function (ev) {
+          var ed = ev.target.closest('[data-ed]');
+          if (ed) {
+            var pp = x.payments[+ed.getAttribute('data-ed')];
+            modal('<h3>تعديل دفعة</h3><label class="field"><span>المبلغ (جنيه)</span><input id="pe_a" class="ltr" inputmode="numeric" value="' + Number(pp.amount) + '"></label><label class="field"><span>ملاحظة</span><input id="pe_n" maxlength="100" value="' + esc(pp.note || '') + '"></label><div class="row2 mt"><button class="btn ghost" id="pe_x">إلغاء</button><button class="btn primary" id="pe_ok">حفظ التعديل</button></div>');
+            on('pe_x', 'click', closeModal);
+            on('pe_ok', 'click', async function () {
+              var v2 = String(document.getElementById('pe_a').value).replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/\D/g, '');
+              if (!v2 || +v2 <= 0) return toast('اكتب المبلغ');
+              try { await db.adminUpdatePayment(code, pp.id, +v2, document.getElementById('pe_n').value.trim()); closeModal(); toast('تم تعديل الدفعة'); viewPayments(); } catch (err) { closeModal(); fail(err); }
+            });
+            return;
+          }
           var dl = ev.target.closest('[data-del]'); if (!dl) return;
+          if (!confirm('حذف هذه الدفعة نهائيًا؟')) return;
           try { await db.adminDeletePayment(code, dl.getAttribute('data-del')); closeModal(); toast('تم حذف الدفعة'); viewPayments(); } catch (err) { closeModal(); fail(err); }
         };
       }
@@ -491,6 +557,25 @@
         else await db.adminSetStatus(code, b.getAttribute('data-id'), 'suspended');
         toast('تم'); render();
       } catch (x) { b.disabled = false; fail(x); }
+    };
+  }
+
+
+  async function openPendingBadges() {
+    var rows;
+    try { rows = await db.adminBadges(code, 'pending', ''); } catch (e) { return fail(e); }
+    modal('<h3>شارات رمادية بانتظار موافقتك</h3>' + (rows.length ? rows.map(function (r) {
+      return '<div class="kv"><span><b>' + esc(r.name) + '</b><br><small class="muted">' + esc(r.phone) + ' · اكتمال الملف ' + r.pct + '%</small></span><span><button class="btn primary" style="padding:6px 10px" data-bok="' + r.id + '">✔</button> <button class="btn danger" style="padding:6px 10px" data-bno="' + r.id + '">✖</button></span></div>';
+    }).join('') : '<p class="note">لا توجد طلبات الآن ✓</p>') + '<button class="btn ghost mt" id="pb_x" style="width:100%">إغلاق</button>');
+    on('pb_x', 'click', closeModal);
+    document.getElementById('modal').onclick = async function (e) {
+      var ok = e.target.closest('[data-bok]'), no = e.target.closest('[data-bno]');
+      try {
+        if (ok) await db.adminBadgeDecide(code, ok.getAttribute('data-bok'), true, '');
+        else if (no) { var note = prompt('سبب الرفض (يصل للصنايعي):', ''); if (note === null) return; await db.adminBadgeDecide(code, no.getAttribute('data-bno'), false, note); }
+        else return;
+        closeModal(); toast('تم'); render();
+      } catch (x) { fail(x); }
     };
   }
 

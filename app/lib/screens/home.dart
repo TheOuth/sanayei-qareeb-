@@ -228,70 +228,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 10, 16, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Column(children: [
-            Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))]),
-              child: ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.asset('assets/icon.png', width: 46, height: 46)),
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          InkWell(
+            onTap: () => _key.currentState?.openDrawer(),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.menu_rounded, color: Colors.white, size: 24),
             ),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () => _key.currentState?.openDrawer(),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: 46, height: 40,
-                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.menu_rounded, color: Colors.white, size: 26),
-              ),
-            ),
-          ]),
-          const SizedBox(width: 12),
-          const Expanded(child: Padding(padding: EdgeInsets.only(top: 10), child: Text('صنايعي قريب', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)))),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+            child: ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.asset('assets/icon.png', width: 34, height: 34)),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(child: Text('صنايعي قريب', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700))),
           if (!Store.loggedIn) _reqBtn(),
           if (Store.loggedIn) const BellBtn(light: true),
           if (Store.loggedIn)
             GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyProfileScreen())).then((_) { if (mounted) setState(() {}); }),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [Colors.white, Color(0xFFBFE0FF)], begin: Alignment.topRight, end: Alignment.bottomLeft),
-                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3))],
-                  ),
-                  child: Avatar(photo: Store.mePhoto, name: Store.meName, size: 50),
-                ),
-                const SizedBox(height: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white70, width: 1)),
-                  child: const Text('الملف الشخصي', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
-                ),
-              ]),
+              onTap: () => openPage('MyProfileScreen', () => const MyProfileScreen()).then((_) { if (mounted) setState(() {}); }),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                child: Avatar(photo: Store.mePhoto, name: Store.meName, size: 38),
+              ),
             )
           else
             GestureDetector(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LoginScreen())).then((_) { if (mounted) setState(() {}); }),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(colors: [Colors.white, Color(0xFFBFE0FF)], begin: Alignment.topRight, end: Alignment.bottomLeft),
-                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3))],
-                  ),
-                  child: const Icon(Icons.person_rounded, color: C.blue, size: 32),
-                ),
-                const SizedBox(height: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white70, width: 1)),
-                  child: const Text('دخول', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
-                ),
-              ]),
+              child: Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(19)),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.person_rounded, color: C.blue, size: 20),
+                  SizedBox(width: 4),
+                  Text('دخول', style: TextStyle(color: C.blue, fontSize: 13, fontWeight: FontWeight.w800)),
+                ]),
+              ),
             ),
         ]),
         const SizedBox(height: 14),
@@ -326,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Icon(_loc?['gps'] == true ? Icons.my_location_rounded : Icons.place_rounded, color: C.blue, size: 24),
                   const SizedBox(height: 1),
-                  const Text('منطقة أخرى', style: TextStyle(fontSize: 9.5, color: C.mute, height: 1.2)),
+                  const Text('اختيار موقعي', style: TextStyle(fontSize: 9.5, color: C.mute, height: 1.2)),
                 ]),
               ),
             ),
@@ -345,27 +323,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return Padding(
             padding: const EdgeInsetsDirectional.only(end: 10),
             child: GestureDetector(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RequestsScreen())).then((_) => Store.refreshReqBadge()),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Stack(clipBehavior: Clip.none, children: [
+              onTap: () => openPage('RequestsScreen', () => const RequestsScreen()).then((_) => Store.refreshReqBadge()),
+              child: Tooltip(
+                message: 'طلباتي',
+                child: Stack(clipBehavior: Clip.none, children: [
                   Container(
-                    width: 46,
-                    height: 46,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(color: Colors.white24, shape: BoxShape.circle, border: Border.all(color: Colors.white70)),
-                    child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 24),
+                    child: const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 22),
                   ),
                   if (v[1] > 0)
-                    Positioned(top: -3, right: -3, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: C.red, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white, width: 1.5)), child: Text('${v[1]}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))))
+                    Positioned(top: -4, right: -4, child: Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1), decoration: BoxDecoration(color: C.red, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white, width: 1.5)), child: Text('${v[1]}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800))))
                   else if (v[2] > 0)
                     Positioned(top: 0, right: 0, child: Container(width: 11, height: 11, decoration: BoxDecoration(color: const Color(0xFFFFB020), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)))),
                 ]),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.white70, width: 1)),
-                  child: const Text('طلباتي', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
-                ),
-              ]),
+              ),
             ),
           );
         },

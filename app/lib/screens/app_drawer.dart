@@ -43,7 +43,7 @@ class BellBtn extends StatelessWidget {
           valueListenable: Store.unread,
           builder: (ctx, n, ___) => IconButton(
             tooltip: 'الرسائل',
-            onPressed: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+            onPressed: () => openPage('NotificationsScreen', () => const NotificationsScreen()),
             icon: Stack(clipBehavior: Clip.none, children: [
               Icon(n > 0 ? Icons.mark_email_unread_rounded : Icons.mail_outline_rounded, size: 27, color: light ? Colors.white : null),
               if (n == 0)
@@ -188,9 +188,9 @@ class _Socials extends StatelessWidget {
   const _Socials();
   static const user = 'SanayeiSD';
 
-  Widget _btn(String label, Widget icon, String url, {Color? color, Gradient? gradient}) => InkWell(
+  Widget _btn(String label, Widget icon, String url, {String? app, Color? color, Gradient? gradient}) => InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => openUrl(url),
+        onTap: () => openSocial(url, app),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -214,11 +214,11 @@ class _Socials extends StatelessWidget {
         const Text('تابعنا على مواقع التواصل الاجتماعي', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
         const SizedBox(height: 10),
         Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-          _btn('فيسبوك', const Text('f', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, height: 1.05)), 'https://www.facebook.com/$user', color: const Color(0xFF1877F2)),
-          _btn('إنستغرام', const CustomPaint(size: Size(24, 24), painter: _GlyphPainter('ig')), 'https://www.instagram.com/$user',
+          _btn('فيسبوك', const Text('f', style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, height: 1.05)), 'https://www.facebook.com/$user', app: 'fb://facewebmodal/f?href=https://www.facebook.com/$user', color: const Color(0xFF1877F2)),
+          _btn('إنستغرام', const CustomPaint(size: Size(24, 24), painter: _GlyphPainter('ig')), 'https://www.instagram.com/$user', app: 'instagram://user?username=$user',
               gradient: const LinearGradient(begin: Alignment.bottomLeft, end: Alignment.topRight, colors: [Color(0xFFFEDA75), Color(0xFFFA7E1E), Color(0xFFD62976), Color(0xFF962FBF), Color(0xFF4F5BD5)])),
-          _btn('تيك توك', const Icon(Icons.music_note_rounded, color: Colors.white, size: 25), 'https://www.tiktok.com/@$user', color: const Color(0xFF111111)),
-          _btn('X', const CustomPaint(size: Size(22, 22), painter: _GlyphPainter('x')), 'https://x.com/$user', color: const Color(0xFF111111)),
+          _btn('تيك توك', const Icon(Icons.music_note_rounded, color: Colors.white, size: 25), 'https://www.tiktok.com/@$user', app: 'snssdk1233://user/profile/$user', color: const Color(0xFF111111)),
+          _btn('X', const CustomPaint(size: Size(22, 22), painter: _GlyphPainter('x')), 'https://x.com/$user', app: 'twitter://user?screen_name=$user', color: const Color(0xFF111111)),
         ]),
         const SizedBox(height: 6),
         const Text('@$user', textDirection: TextDirection.ltr, style: TextStyle(color: C.blue, fontWeight: FontWeight.w700, fontSize: 13)),

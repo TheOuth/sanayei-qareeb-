@@ -180,7 +180,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text('أهلًا ${shortName((me['name'] ?? '').toString())} 👋', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
             if (status == 'approved')
               InkWell(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MyProfileScreen())).then((_) => _load()),
+                onTap: () => openPage('MyProfileScreen', () => const MyProfileScreen()).then((_) => _load()),
                 child: Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Row(children: [
@@ -203,7 +203,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () async {
-            await Navigator.push(context, MaterialPageRoute(builder: (_) => const CommissionScreen()));
+            await openPage('CommissionScreen', () => const CommissionScreen());
             _load();
           },
           child: Container(

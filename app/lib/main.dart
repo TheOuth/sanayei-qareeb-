@@ -30,7 +30,7 @@ class SanayeiApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      navigatorObservers: [_UnfocusObserver()],
+      navigatorObservers: [_UnfocusObserver(), RouteTracker()],
       // لمس أي مكان خارج حقل الكتابة يخفي الكيبورد ويُنهي التركيز
       builder: (context, child) => GestureDetector(
         behavior: HitTestBehavior.translucent,

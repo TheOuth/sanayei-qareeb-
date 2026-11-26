@@ -61,21 +61,22 @@ class _ProviderScreenState extends State<ProviderScreen> {
     setState(() => _sending = true);
     try {
       final l = Store.loc;
-      await Api.rpc('create_request', {'p': {'provider_id': p['id'], 'anon_id': Store.anon, 'service': sid, 'city_id': l?['city_id'] ?? p['city_id']}});
+      final r = await Api.rpc('create_request', {'p': {'provider_id': p['id'], 'anon_id': Store.anon, 'client_pid': Store.pid, 'service': sid, 'city_id': l?['city_id'] ?? p['city_id']}});
+      final existing = r is Map && r['existing'] == true;
       Push.syncClient();
       Store.refreshReqBadge();
       if (!mounted) return;
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('تم إرسال طلبك'),
-          content: const Text('سيظهر لك رقم الصنايعي وواتساب في "طلباتي" بمجرد أن يضغط "قبول". يمكنك طلب الخدمة من أكثر من صنايعي، ومن يرد أولًا تبدأ معه.\n\nتنبيه: لا تحوّل أي مبلغ ولا تدفع قبل انتهاء الخدمة وتسلّمها؛ الدفع وجهًا لوجه.', style: TextStyle(height: 1.6)),
+          title: Text(existing ? 'لديك طلب قائم عند هذا الصنايعي' : 'تم إرسال طلبك'),
+          content: Text(existing ? 'طلبك السابق ما زال قائمًا (قيد الانتظار أو مقبول)، تجده في "طلباتي". يمكنك إرسال طلب جديد بعد إنهائه أو انتهاء مدته.' : 'سيظهر لك رقم الصنايعي وواتساب في "طلباتي" بمجرد أن يضغط "قبول". يمكنك طلب الخدمة من أكثر من صنايعي، ومن يرد أولًا تبدأ معه.\n\nتنبيه: لا تحوّل أي مبلغ ولا تدفع قبل انتهاء الخدمة وتسلّمها؛ الدفع وجهًا لوجه.', style: TextStyle(height: 1.6)),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('البقاء هنا')),
             FilledButton(
               onPressed: () {
                 Navigator.pop(ctx);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const RequestsScreen()));
+                openPage('RequestsScreen', () => const RequestsScreen());
               },
               child: const Text('طلباتي'),
             ),

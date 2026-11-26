@@ -532,6 +532,9 @@
     adminBans: async function () { return { banned: [], matches: [], appeals: [] }; },
     adminCommissions: async function () { return []; },
     adminCommissionPaid: async function () { return 0; },
+    adminRemindCommission: async function () { return true; },
+    adminUpdatePayment: async function (code, pid, amount, note) { this.admin(code); (this.d.payments || []).forEach(function (x) { if (x.id === pid) { x.amount = amount; x.note = note; } }); save(this.d); return true; },
+    adminTotals: async function () { return { services_total: 0, earn_total: 0, earn_paid: 0, earn_due: 0 }; },
     adminCommissionLedger: async function (code) {
       this.admin(code); var self = this, pays = this.d.payments || [], m = {};
       this.d.requests.forEach(function (q) { if (q.status === 'done' && q.pconfirm === 'done') { var p = self.find(q.provider_id); if (p) { m[p.id] = m[p.id] || { provider_id: p.id, name: p.name, phone: p.phone, jobs: 0, paid: 0, pay_count: 0, last_paid: null, payments: [] }; m[p.id].jobs++; } } });
@@ -658,6 +661,9 @@
     adminAppealDecide: function (code, id, accept, note) { return SB.rpc('admin_appeal_decide', { p_code: code, p_appeal: id, p_accept: !!accept, p_note: note || '' }); },
     adminDismissMatch: function (code, id) { return SB.rpc('admin_dismiss_match', { p_code: code, p_id: id }); },
     adminCommissions: function (code, status) { return SB.rpc('admin_commissions', { p_code: code, p_status: status || '' }); },
+    adminRemindCommission: function (code, id) { return SB.rpc('admin_remind_commission', { p_code: code, p_id: id }); },
+    adminUpdatePayment: function (code, pid, amount, note) { return SB.rpc('admin_update_payment', { p_code: code, p_pid: pid, p_amount: amount, p_note: note || '' }); },
+    adminTotals: function (code) { return SB.rpc('admin_totals', { p_code: code }); },
     adminCommissionPaid: function (code, id, all) { return SB.rpc('admin_commission_paid', { p_code: code, p_id: id, p_all: !!all }); },
     setUsername: function (id, t, u) { return SB.rpc('set_username', { p_id: id, p_token: t, p_username: u }); },
     adminSetUsername: function (code, id, u) { return SB.rpc('admin_set_username', { p_code: code, p_id: id, p_username: u }); },

@@ -304,3 +304,4 @@ body.admin .acard .ava{width:44px;height:44px;font-size:18px}
   .tile .ti{width:40px;height:40px;font-size:22px;border-radius:13px}
   .tile .tn{font-size:12.5px}
 }
+.mgrp{border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-top:10px}.mgrp>b{display:block;margin-bottom:6px}

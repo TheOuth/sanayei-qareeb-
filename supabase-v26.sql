@@ -1,0 +1,1 @@
+-- v26 (applied via migration v26_thanks_remind_earnings_selfreq): admin_commission_paid sends thank-you notification (kind commission_thanks); admin_remind_commission (6h cooldown); admin_update_payment; admin_totals; create_request rejects self requests (client_pid).
