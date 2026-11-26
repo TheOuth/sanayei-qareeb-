@@ -220,6 +220,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// اسم المنطقة المعروض؛ «منطقة أخرى» تُعرض باسم الولاية حتى لا تُفهم خطأً
+  String _locLabel() {
+    final id = (_loc?['city_id'] ?? '').toString();
+    final label = (_loc?['label'] ?? '').toString();
+    if (id.endsWith('_other')) {
+      for (final st in Meta.states) {
+        if (st.cities.any((c) => c.id == id)) return 'ولاية ${st.name} (كل المناطق)';
+      }
+    }
+    return label + (_loc?['gps'] == true ? ' (حسب الـ GPS)' : '');
+  }
+
   Widget _hero() {
     return Container(
       decoration: const BoxDecoration(
@@ -310,7 +322,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ]),
         ),
-        if (_loc != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('موقعك: ${_loc!['label']}${_loc!['gps'] == true ? ' (GPS)' : ''}', style: const TextStyle(color: Color(0xFFD6E9FF), fontSize: 11.5))),
+        if (_loc != null) Padding(padding: const EdgeInsets.only(top: 6), child: InkWell(onTap: _pickLoc, child: Row(children: [const Icon(Icons.place_rounded, size: 14, color: Color(0xFFD6E9FF)), const SizedBox(width: 4), Flexible(child: Text('الصنايعية في: ${_locLabel()}', overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFD6E9FF), fontSize: 12))), const Text('  ·  تغيير', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))]))),
       ]),
     );
   }
