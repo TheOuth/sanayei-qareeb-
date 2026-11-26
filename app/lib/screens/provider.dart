@@ -54,10 +54,45 @@ class _ProviderScreenState extends State<ProviderScreen> {
     );
   }
 
+  String _offTitle(Map p) => switch (p['off']) {
+        'hours' => 'الصنايعي خارج وقت عمله',
+        'busy' => 'الصنايعي غير متاح حاليًا',
+        _ => 'الصنايعي غير متصل الآن',
+      };
+
+  String _offMsg(Map p) {
+    final tail = 'يمكنك إرسال الطلب إذا كنت تريد الاتفاق على الخدمة وتنفيذها في وقت آخر، أو اختيار صنايعي آخر متاح للعمل الآن.';
+    switch (p['off']) {
+      case 'hours':
+        return 'ساعات عمله من ${t12(p['from'])} إلى ${t12(p['to'])}.\n\n$tail';
+      case 'busy':
+        return 'حدّد الصنايعي نفسه «غير متاح» في الوقت الحالي، وقد يتأخر في الرد.\n\n$tail';
+      default:
+        return 'لم يفتح الصنايعي التطبيق منذ فترة، وقد يتأخر في رؤية طلبك.\n\n$tail';
+    }
+  }
+
   Future<void> _request() async {
     final p = _p!;
     final sid = await _pickService(p);
     if (sid == null || !mounted) return;
+    if (p['off'] != null) {
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.schedule_rounded, color: Color(0xFFB45309), size: 34),
+          title: Text(_offTitle(p), textAlign: TextAlign.center),
+          content: Text(_offMsg(p), style: const TextStyle(height: 1.7)),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsOverflowAlignment: OverflowBarAlignment.center,
+          actions: [
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('أرسل الطلب لوقت آخر')),
+            OutlinedButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('اختيار صنايعي آخر متاح الآن')),
+          ],
+        ),
+      );
+      if (go != true || !mounted) return;
+    }
     setState(() => _sending = true);
     try {
       final l = Store.loc;
@@ -146,9 +181,9 @@ class _ProviderScreenState extends State<ProviderScreen> {
                 padding: const EdgeInsets.all(12),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                  onPressed: (p['available'] == true && p['state_closed'] != true && !_sending) ? _request : null,
+                  onPressed: (p['state_closed'] != true && !_sending) ? _request : null,
                   icon: _sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.handyman_rounded),
-                  label: Text(p['state_closed'] == true ? 'غير متاحة حاليًا في هذه الولاية' : (p['available'] == true ? 'طلب الخدمة' : 'غير متاح الآن')),
+                  label: Text(p['state_closed'] == true ? 'غير متاحة حاليًا في هذه الولاية' : 'طلب الخدمة'),
                 ),
               ),
             ),
@@ -240,7 +275,7 @@ class _ProviderScreenState extends State<ProviderScreen> {
                 ),
               const SizedBox(height: 10),
               Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
-                _chip(Icons.circle, avail ? 'متاح الآن' : 'غير متاح الآن', avail ? C.green : C.mute),
+                _chip(Icons.circle, avail ? 'متاح الآن' : (p['off'] == 'hours' ? 'خارج وقت العمل' : 'غير متاح الآن'), avail ? C.green : C.mute),
                 if (p['is_new'] == true) _chip(Icons.fiber_new_rounded, 'مستخدم جديد', C.green),
                 _chip(Icons.place_rounded, place, C.blue),
                 if (p['distance_km'] != null) _chip(Icons.near_me_rounded, '${p['distance_km']} كم', C.blue),
@@ -261,6 +296,18 @@ class _ProviderScreenState extends State<ProviderScreen> {
               Icon(Icons.block_rounded, color: C.red),
               SizedBox(width: 8),
               Expanded(child: Text('الخدمة غير متاحة حاليًا في هذه الولاية.', style: TextStyle(color: C.red, fontWeight: FontWeight.w700))),
+            ]),
+          ),
+        ],
+        if (p['off'] != null && p['state_closed'] != true) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: const Color(0xFFFFF4DC), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF3D08A))),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Icon(Icons.schedule_rounded, color: Color(0xFFB45309)),
+              const SizedBox(width: 8),
+              Expanded(child: Text('${_offTitle(p)}. ما زال بإمكانك طلب الخدمة والاتفاق على وقت آخر، أو اختيار صنايعي متاح الآن.', style: const TextStyle(color: Color(0xFF7A3E00), height: 1.5, fontWeight: FontWeight.w600))),
             ]),
           ),
         ],
@@ -378,7 +425,7 @@ class _ProviderScreenState extends State<ProviderScreen> {
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Column(children: [
-            _kv('الحالة', p['available'] == true ? 'متاح الآن' : 'غير متاح الآن'),
+            _kv('الحالة', p['available'] == true ? 'متاح الآن' : (p['off'] == 'hours' ? 'خارج وقت العمل' : 'غير متاح الآن')),
             _kv('المنطقة', '${Meta.cityName((p['city_id'] ?? '').toString())}${(p['hood'] ?? '').toString().isEmpty ? '' : ' - ${p['hood']}'}'),
             if (p['distance_km'] != null) _kv('المسافة', '${p['distance_km']} كم'),
             _kv('ساعات العمل', 'من ${t12(p['from'])} إلى ${t12(p['to'])}'),
