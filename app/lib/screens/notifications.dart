@@ -29,12 +29,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _load() async {
     setState(() => _err = null);
     try {
-      final r = await Api.rpc('provider_notifications', {'p_id': Store.pid, 'p_token': Store.token, 'p_mark': true});
-      Store.unread.value = 0;
+      final r = await Api.rpc('provider_notifications', {'p_id': Store.pid, 'p_token': Store.token});
+      Store.refreshUnread();
       if (mounted) setState(() => _items = (r['items'] as List));
     } catch (e) {
       if (mounted) setState(() => _err = e);
     }
+  }
+
+  /// تعليم رسالة واحدة كمقروءة عند فتحها
+  Future<void> _read(Map n) async {
+    if (n['unread'] != true) return;
+    setState(() => n['unread'] = false);
+    if (Store.unread.value > 0) Store.unread.value = Store.unread.value - 1;
+    try {
+      await Api.rpc('notif_mark_read', {'p_id': Store.pid, 'p_token': Store.token, 'p_ids': [n['id']]});
+    } catch (_) {}
+  }
+
+  Future<void> _readAll() async {
+    setState(() { for (final n in _items ?? []) { (n as Map)['unread'] = false; } });
+    Store.unread.value = 0;
+    try {
+      await Api.rpc('notif_mark_read', {'p_id': Store.pid, 'p_token': Store.token});
+    } catch (_) {}
   }
 
   void _exitSel() => setState(() { _selecting = false; _sel.clear(); });
@@ -68,6 +86,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   PreferredSizeWidget _appBar() {
     if (!_selecting) {
       return bar('الرسائل', bell: false, actions: [
+        if (_items != null && _items!.any((e) => (e as Map)['unread'] == true)) IconButton(tooltip: 'تعليم الكل كمقروء', icon: const Icon(Icons.done_all_rounded), onPressed: _readAll),
         if (_items != null && _items!.isNotEmpty) IconButton(tooltip: 'تحديد', icon: const Icon(Icons.checklist_rounded), onPressed: () => setState(() => _selecting = true)),
       ]);
     }
@@ -232,7 +251,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   ? Checkbox(value: picked, onChanged: (_) => toggle())
                                   : _leading(k),
                               onLongPress: toggle,
-                              title: Text((n['title'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w700)),
+                              title: Row(children: [
+                                if (unread && !_selecting) Container(width: 9, height: 9, margin: const EdgeInsetsDirectional.only(end: 7), decoration: BoxDecoration(color: down ? C.red : C.blue, shape: BoxShape.circle)),
+                                Expanded(child: Text((n['title'] ?? '').toString(), style: TextStyle(fontWeight: unread ? FontWeight.w800 : FontWeight.w600))),
+                                if (unread && !_selecting) Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1), decoration: BoxDecoration(color: down ? C.red : C.blue, borderRadius: BorderRadius.circular(8)), child: const Text('جديد', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700))),
+                              ]),
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -241,7 +264,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   Text(_ago(n['ts'] as int), style: const TextStyle(fontSize: 11, color: C.mute)),
                                 ]),
                               ),
-                              onTap: _selecting ? toggle : _target(k),
+                              onTap: _selecting ? toggle : () { _read(n); _target(k)?.call(); },
                               trailing: (!_selecting && _target(k) != null) ? const Icon(Icons.chevron_left_rounded, color: C.mute) : null,
                             ),
                           );
