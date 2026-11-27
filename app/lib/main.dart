@@ -43,6 +43,7 @@ class SanayeiApp extends StatelessWidget {
       ),
       navigatorKey: navKey,
       // على الويب قد يكون المسار /username؛ نبدأ دائمًا من الشاشة الأولى ثم نفتح الصنايعي منها
+      home: const SplashScreen(),
       onGenerateInitialRoutes: (_) => [MaterialPageRoute(builder: (_) => const SplashScreen())],
     );
   }
