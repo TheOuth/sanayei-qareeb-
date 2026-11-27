@@ -88,7 +88,7 @@
   /* ---------- الهيكل ---------- */
   function shell(inner) {
     var nav = TABS.map(function (t) {
-      var n = t[0] === 'providers' && ov && ov.pending ? ov.pending : t[0] === 'reports' && ov && ov.reports_open ? ov.reports_open : t[0] === 'badges' ? (cn.badges || 0) : t[0] === 'custom' ? (cn.custom || 0) : 0;
+      var n = t[0] === 'providers' && ov && ov.pending ? ov.pending : t[0] === 'reports' && ov && ov.reports_open ? ov.reports_open : t[0] === 'badges' ? (cn.badges || 0) : t[0] === 'custom' ? (cn.custom || 0) : t[0] === 'payments' ? (cn.unpaid != null ? cn.unpaid : (cn.commissions || 0)) : 0;
       return '<button class="' + (tab === t[0] ? 'on' : '') + '" data-tab="' + t[0] + '">' + t[1] + (n ? '<span class="cnt">' + n + '</span>' : '') + '</button>';
     }).join('');
     $app.innerHTML = '<header class="top"><a class="back" href="' + esc(appUrl()) + '" title="فتح التطبيق" aria-label="التطبيق">' + SQ.I('home', 22) + '</a><h1>إدارة صنايعي قريب</h1><button class="back" id="out" title="خروج" aria-label="خروج">' + SQ.I('out', 22) + '</button></header>' +
@@ -103,7 +103,7 @@
     try {
       var o = await db.adminOverview(code), c = await db.adminCounts(code); ov = o; cn = c;
       U.each('.anav button', function (b) {
-        var t = b.getAttribute('data-tab'), n = t === 'providers' ? o.pending : t === 'reports' ? o.reports_open : t === 'badges' ? c.badges : t === 'custom' ? c.custom : 0;
+        var t = b.getAttribute('data-tab'), n = t === 'providers' ? o.pending : t === 'reports' ? o.reports_open : t === 'badges' ? c.badges : t === 'custom' ? c.custom : t === 'payments' ? (c.unpaid != null ? c.unpaid : c.commissions) : 0;
         var sp = b.querySelector('.cnt'); if (n) { if (!sp) { sp = document.createElement('span'); sp.className = 'cnt'; b.appendChild(sp); } sp.textContent = n; } else if (sp) sp.remove();
       });
     } catch (e) { /* تجاهل */ }
@@ -575,24 +575,40 @@
       (list.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>الصنايعي</th><th>أعمال مؤكدة</th><th>المستحق</th><th>المدفوع</th><th>المتبقي</th><th>عدد الدفعات</th><th>آخر دفعة</th><th></th></tr></thead><tbody>' +
         list.map(function (x, i) {
           var rest = due(x) - x.paid;
-          return '<tr><td><b>' + esc(x.name) + '</b><br><small class="ltr muted">' + esc(x.phone) + '</small></td><td>' + x.jobs + '</td><td>' + due(x).toLocaleString('en') + '</td><td>' + x.paid.toLocaleString('en') + '</td><td>' + (rest > 0 ? '<span class="dangertxt">' + rest.toLocaleString('en') + '</span>' : rest < 0 ? '<span class="muted">+' + (-rest).toLocaleString('en') + ' مقدم</span>' : '<span class="okc">مسدد</span>') + '</td><td>' + x.pay_count + '</td><td>' + (x.last_paid ? fmtDate(x.last_paid) : '—') + '</td><td class="nw">' + (x.pay_count > 0 ? '<button class="mini" data-pi="' + i + '" data-pa="log">✏ تعديل</button>' : '<button class="mini" data-pi="' + i + '" data-pa="add">+ دفعة</button>') + '</td></tr>';
+          return '<tr><td><b>' + esc(x.name) + '</b><br><small class="ltr muted">' + esc(x.phone) + '</small></td><td>' + x.jobs + '</td><td>' + due(x).toLocaleString('en') + '</td><td>' + x.paid.toLocaleString('en') + '</td><td>' + (rest > 0 ? '<span class="dangertxt">' + rest.toLocaleString('en') + '</span>' + (fx > 0 ? '<br><small class="muted">' + Math.ceil(rest / fx) + ' خدمة بانتظار الدفع</small>' : '') : rest < 0 ? '<span class="muted">+' + (-rest).toLocaleString('en') + ' مقدم</span>' : '<span class="okc">مسدد</span>') + '</td><td>' + x.pay_count + '</td><td>' + (x.last_paid ? '<b>#' + x.last_seq + '</b> · ' + fmtDate(x.last_paid) + (x.last_note ? '<br><small class="muted">' + esc(x.last_note) + '</small>' : '') : '—') + '</td><td class="nw">' + '<button class="mini" data-pi="' + i + '" data-pa="add">+ دفعة</button>' + (x.pay_count > 0 ? ' <button class="mini" data-pi="' + i + '" data-pa="log">📋 الدفعات (' + x.pay_count + ')</button>' : '') + '</td></tr>';
         }).join('') + '</tbody></table></div>' : '<div class="empty"><div class="big">💰</div>لا توجد أعمال مؤكدة ولا دفعيات بعد</div>');
     box.onclick = async function (e) {
       var rm = e.target.closest('[data-rm]');
       if (rm) { if (!confirm('إرسال تذكير بالعمولة المستحقة لهذا الصنايعي؟')) return; try { await db.adminRemindCommission(code, rm.getAttribute('data-rm')); toast('تم إرسال التذكير'); } catch (err) { toast(/remind_cooldown/.test(String(err && err.message || err)) ? 'أُرسل تذكير قبل أقل من 6 ساعات' : /nothing_due/.test(String(err && err.message || err)) ? 'لا توجد عمولة مستحقة' : U.errMsg(err)); } return; }
       var cp = e.target.closest('[data-cp]');
-      if (cp) { if (!confirm('تأكيد استلام العمولة؟ ستختفي رسالة العمولة من لدى الصنايعي.')) return; try { await db.adminCommissionPaid(code, cp.getAttribute('data-cp'), true); toast('تم تأكيد الاستلام'); viewPayments(); } catch (err) { fail(err); } return; }
+      if (cp) {
+        var cid = cp.getAttribute('data-cp'), g = dueRows.filter(function (r) { return r.id === cid; })[0]; if (!g) return;
+        modal('<h3>تأكيد استلام عمولة ' + esc(g.name) + '</h3><p class="note">تُسجَّل كدفعة جديدة لها رقمها وملاحظتها الخاصة، وتختفي رسالة العمولة من لدى الصنايعي.</p>' +
+          '<label class="field"><span>المبلغ المستلم (جنيه)</span><input id="cf_a" class="ltr" inputmode="numeric" value="' + Math.round(g.total) + '"></label>' +
+          '<label class="field"><span>ملاحظة هذه الدفعة (مطلوبة): رقم العملية، بنكك... ولا تتكرر لنفس الصنايعي</span><input id="cf_n" maxlength="100" placeholder="مثال: بنكك - عملية 123456"></label>' +
+          '<div class="row2 mt"><button class="btn ghost" id="cf_x">إلغاء</button><button class="btn primary" id="cf_ok">تأكيد الاستلام</button></div>');
+        on('cf_x', 'click', closeModal);
+        on('cf_ok', 'click', async function () {
+          var v = String(document.getElementById('cf_a').value).replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/\D/g, '');
+          if (!v || +v <= 0) return toast('اكتب المبلغ');
+          if (!document.getElementById('cf_n').value.trim()) return toast('اكتب ملاحظة هذه الدفعة (رقم العملية)');
+          try { await db.adminAddPayment(code, g.pid, +v, document.getElementById('cf_n').value.trim()); await db.adminCommissionPaid(code, cid, true); closeModal(); toast('تم تأكيد الاستلام وتسجيل الدفعة'); viewPayments(); refreshCounts(); } catch (err) { closeModal(); fail(err); }
+        });
+        return;
+      }
       var b = e.target.closest('[data-pa]'); if (!b) return; var x = list[+b.getAttribute('data-pi')];
       if (b.getAttribute('data-pa') === 'add') {
-        modal('<h3>تسجيل دفعة من ' + esc(x.name) + '</h3><label class="field"><span>المبلغ (جنيه)</span><input id="pm_a" class="ltr" inputmode="numeric" value="' + (fx || '') + '"></label><label class="field"><span>ملاحظة (اختياري: بنكك، كاش، رقم العملية)</span><input id="pm_n" maxlength="100"></label><div class="row2 mt"><button class="btn ghost" id="pm_x">إلغاء</button><button class="btn primary" id="pm_ok">تسجيل</button></div>');
+        modal('<h3>تسجيل دفعة من ' + esc(x.name) + '</h3><label class="field"><span>المبلغ (جنيه)</span><input id="pm_a" class="ltr" inputmode="numeric" value="' + (fx || '') + '"></label><label class="field"><span>ملاحظة هذه الدفعة (مطلوبة): رقم العملية، بنكك، كاش... ولا تتكرر لنفس الصنايعي</span><input id="pm_n" maxlength="100" placeholder="مثال: بنكك - عملية 123456"></label><div class="row2 mt"><button class="btn ghost" id="pm_x">إلغاء</button><button class="btn primary" id="pm_ok">تسجيل</button></div>');
         on('pm_x', 'click', closeModal);
         on('pm_ok', 'click', async function () {
           var v = String(document.getElementById('pm_a').value).replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/\D/g, '');
           if (!v || +v <= 0) return toast('اكتب المبلغ');
+          if (!document.getElementById('pm_n').value.trim()) return toast('اكتب ملاحظة هذه الدفعة (رقم العملية)');
           try { await db.adminAddPayment(code, x.provider_id, +v, document.getElementById('pm_n').value.trim()); closeModal(); toast('تم تسجيل الدفعة'); viewPayments(); } catch (err) { closeModal(); fail(err); }
         });
       } else {
-        modal('<h3>دفعات ' + esc(x.name) + '</h3><p class="note">عدّل المبلغ أو الملاحظة، أو احذف الدفعة المسجّلة بالخطأ، حتى تبقى الأرقام والإحصائيات دقيقة.</p>' + (x.payments.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>التاريخ</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead><tbody>' + x.payments.map(function (p, k) { return '<tr><td>' + fmtDate(p.ts) + '</td><td>' + Number(p.amount).toLocaleString('en') + '</td><td>' + esc(p.note || '') + '</td><td class="nw"><button class="mini" data-ed="' + k + '" title="تعديل">✏</button> <button class="mini" data-del="' + p.id + '" title="حذف">🗑</button></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="note">لا توجد دفعات.</p>') + '<button class="btn ghost mt" id="pl_x" style="width:100%">إغلاق</button>');
+        modal('<h3>دفعات ' + esc(x.name) + '</h3><p class="note">عدّل المبلغ أو الملاحظة، أو احذف الدفعة المسجّلة بالخطأ، حتى تبقى الأرقام والإحصائيات دقيقة.</p>' + (x.payments.length ? '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>رقم الدفعة</th><th>التاريخ</th><th>المبلغ</th><th>ملاحظة</th><th></th></tr></thead><tbody>' + x.payments.map(function (p, k) { return '<tr><td><b>#' + (p.seq || '') + '</b></td><td>' + fmtDate(p.ts) + '</td><td>' + Number(p.amount).toLocaleString('en') + '</td><td>' + esc(p.note || '') + '</td><td class="nw"><button class="mini" data-ed="' + k + '" title="تعديل">✏</button> <button class="mini" data-del="' + p.id + '" title="حذف">🗑</button></td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="note">لا توجد دفعات.</p>') + '<div class="row2 mt"><button class="btn ghost" id="pl_x">إغلاق</button><button class="btn primary" id="pl_add">+ دفعة جديدة</button></div>');
+        on('pl_add', 'click', function () { closeModal(); var pb = document.querySelector('[data-pa="add"][data-pi="' + b.getAttribute('data-pi') + '"]'); if (pb) pb.click(); });
         on('pl_x', 'click', closeModal);
         var mb = document.getElementById('modal'); mb.onclick = async function (ev) {
           var ed = ev.target.closest('[data-ed]');
@@ -603,6 +619,7 @@
             on('pe_ok', 'click', async function () {
               var v2 = String(document.getElementById('pe_a').value).replace(/[٠-٩]/g, function (c) { return '٠١٢٣٤٥٦٧٨٩'.indexOf(c); }).replace(/\D/g, '');
               if (!v2 || +v2 <= 0) return toast('اكتب المبلغ');
+              if (!document.getElementById('pe_n').value.trim()) return toast('اكتب ملاحظة الدفعة');
               try { await db.adminUpdatePayment(code, pp.id, +v2, document.getElementById('pe_n').value.trim()); closeModal(); toast('تم تعديل الدفعة'); viewPayments(); } catch (err) { closeModal(); fail(err); }
             });
             return;
