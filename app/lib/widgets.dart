@@ -482,27 +482,43 @@ class _PhoneBodyFormatter extends TextInputFormatter {
 }
 
 /// تنبيه السلامة المالية في قسم الطلبات
-class SafetyNote extends StatelessWidget {
+class SafetyNote extends StatefulWidget {
   final bool provider;
   const SafetyNote({super.key, this.provider = false});
   @override
+  State<SafetyNote> createState() => _SafetyNoteState();
+}
+
+class _SafetyNoteState extends State<SafetyNote> {
+  bool _open = false;
+  @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(color: const Color(0xFFFFF4D6), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF0C95A))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Row(children: [
-            Icon(Icons.shield_outlined, size: 20, color: Color(0xFF9A6B00)),
-            SizedBox(width: 8),
-            Text('حافظ على حقك', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF6B4A00))),
-          ]),
-          const SizedBox(height: 6),
-          Text(
-            provider
-                ? '• لا تطلب أي مبلغ مقدّمًا.\n• لا تشترِ مواد أو أدوات للخدمة على حسابك قبل الاتفاق مع الزبون وسداد ثمنها.\n• التسليم والدفع يتمّان وجهًا لوجه بعد إنهاء الخدمة.\n• التطبيق غير مسؤول عن أي مشتريات أو تحويلات تتم خارج ذلك.'
-                : '• لا تحوّل أي مبلغ ولا تدفع قبل أن تنتهي الخدمة وتستلمها.\n• تسليم الخدمة ودفع المال يتمّان وجهًا لوجه.\n• التطبيق غير مسؤول عن أي تعامل مالي يتم خارج ذلك.',
-            style: const TextStyle(color: Color(0xFF6B4A00), height: 1.6, fontSize: 13),
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => setState(() => _open = !_open),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              child: Row(children: [
+                const Icon(Icons.shield_outlined, size: 18, color: Color(0xFF9A6B00)),
+                const SizedBox(width: 8),
+                const Expanded(child: Text('حافظ على حقك', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF6B4A00), fontSize: 13.5))),
+                Icon(_open ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: const Color(0xFF9A6B00)),
+              ]),
+            ),
           ),
+          if (_open)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Text(
+                widget.provider
+                    ? '• لا تطلب أي مبلغ مقدّمًا.\n• لا تشترِ مواد أو أدوات للخدمة على حسابك قبل الاتفاق مع الزبون وسداد ثمنها.\n• التسليم والدفع يتمّان وجهًا لوجه بعد إنهاء الخدمة.\n• التطبيق غير مسؤول عن أي مشتريات أو تحويلات تتم خارج ذلك.'
+                    : '• لا تحوّل أي مبلغ ولا تدفع قبل أن تنتهي الخدمة وتستلمها.\n• تسليم الخدمة ودفع المال يتمّان وجهًا لوجه.\n• التطبيق غير مسؤول عن أي تعامل مالي يتم خارج ذلك.',
+                style: const TextStyle(color: Color(0xFF6B4A00), height: 1.6, fontSize: 13),
+              ),
+            ),
         ]),
       );
 }

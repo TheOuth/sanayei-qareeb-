@@ -89,16 +89,22 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(children: [
-            Avatar(photo: me['photo'], name: me['name'] ?? '', size: 84),
-            const SizedBox(height: 4),
-            const SeenLabel(p: {'seen_s': 0}, size: 12),
-            const SizedBox(height: 8),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Flexible(child: Text(me['name'] ?? '', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800))),
-              const SizedBox(width: 6),
-              TierBadge(p: me, size: 24),
+            Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              Avatar(photo: me['photo'], name: me['name'] ?? '', size: 74),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(child: Text(me['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+                    const SizedBox(width: 6),
+                    TierBadge(p: me, size: 22),
+                  ]),
+                  if (user.isNotEmpty) Text('@$user', textDirection: TextDirection.ltr, style: const TextStyle(color: C.blue, fontWeight: FontWeight.w600, fontSize: 13)),
+                  const SizedBox(height: 2),
+                  const SeenLabel(p: {'seen_s': 0}, size: 12),
+                ]),
+              ),
             ]),
-            if (user.isNotEmpty) Text('@$user', textDirection: TextDirection.ltr, style: const TextStyle(color: C.blue, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
             FilledButton.icon(
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),

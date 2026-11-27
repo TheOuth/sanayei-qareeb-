@@ -136,14 +136,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
 
   Widget _stat(IconData i, Color c, String n, String label) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-          decoration: BoxDecoration(color: c.withOpacity(.09), borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
           child: Column(children: [
-            Icon(i, color: c, size: 22),
-            const SizedBox(height: 4),
-            Text(n, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: c)),
-            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: C.mute, height: 1.3)),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(i, color: c, size: 17),
+              const SizedBox(width: 5),
+              Text(n, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: c)),
+            ]),
+            const SizedBox(height: 2),
+            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: C.mute)),
           ]),
         ),
       );
@@ -220,22 +222,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 12),
       ],
       if (status == 'approved') ...[
-        Row(children: [
-          _stat(Icons.notifications_active_rounded, const Color(0xFFE67E22), '${fresh.length}', 'طلبات جديدة'),
-          const SizedBox(width: 8),
-          _stat(Icons.handyman_rounded, C.blue, '${active.length}', 'قيد التنفيذ'),
-          const SizedBox(width: 8),
-          _stat(Icons.verified_rounded, C.green, '$jobs', 'خدمات مكتملة'),
-        ]),
-        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.hair)),
+          child: IntrinsicHeight(
+            child: Row(children: [
+              _stat(Icons.notifications_active_rounded, const Color(0xFFE67E22), '${fresh.length}', 'جديدة'),
+              const VerticalDivider(width: 1, indent: 12, endIndent: 12),
+              _stat(Icons.handyman_rounded, C.blue, '${active.length}', 'قيد التنفيذ'),
+              const VerticalDivider(width: 1, indent: 12, endIndent: 12),
+              _stat(Icons.verified_rounded, C.green, '$jobs', 'مكتملة'),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 10),
         const SafetyNote(provider: true),
-        _section(Icons.notifications_active_rounded, const Color(0xFFE67E22), 'طلبات جديدة', fresh.length),
-        _tip(Icons.lightbulb_outline_rounded, 'اقبل أو اعتذر بسرعة. تنتهي مهلة الطلب بعد ساعتين، وسرعة ردك تظهر للزبائن وتزيد ظهورك.'),
-        if (fresh.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 10), child: Text('لا توجد طلبات جديدة الآن. تأكد أن حالتك «متاح الآن» من «ملفي».', style: TextStyle(color: C.mute, height: 1.5))),
-        for (final r in fresh) _reqCard(r),
-        _section(Icons.handyman_rounded, C.blue, 'قيد التنفيذ', active.length),
-        _tip(Icons.lightbulb_outline_rounded, waitingMe > 0 ? '$waitingMe خدمة أكّد الزبون إنجازها وتنتظر تأكيدك لتُضاف إلى ملفك.' : 'بعد إنهاء الخدمة أكّدها هنا. لا تُحتسب لك ولشارتك إلا بتأكيد الطرفين.', c: waitingMe > 0 ? C.blue : C.mute),
-        if (active.isEmpty) const Padding(padding: EdgeInsets.only(bottom: 10), child: Text('لا توجد خدمات جارية.', style: TextStyle(color: C.mute))),
+        if (fresh.isNotEmpty) ...[
+          _section(Icons.notifications_active_rounded, const Color(0xFFE67E22), 'طلبات جديدة', fresh.length),
+          _tip(Icons.lightbulb_outline_rounded, 'اقبل أو اعتذر بسرعة؛ تنتهي مهلة الطلب بعد ساعتين.'),
+          const SizedBox(height: 6),
+          for (final r in fresh) _reqCard(r),
+        ],
+        if (active.isNotEmpty) ...[
+          _section(Icons.handyman_rounded, C.blue, 'قيد التنفيذ', active.length),
+          if (waitingMe > 0) _tip(Icons.lightbulb_outline_rounded, '$waitingMe خدمة أكّد الزبون إنجازها وتنتظر تأكيدك.', c: C.blue),
+          const SizedBox(height: 6),
+        ],
+        if (fresh.isEmpty && active.isEmpty)
+          Container(
+            margin: const EdgeInsets.only(top: 4, bottom: 8),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.hair)),
+            child: Row(children: [
+              const Icon(Icons.inbox_rounded, color: C.mute),
+              const SizedBox(width: 10),
+              Expanded(child: Text(visible ? 'لا توجد طلبات الآن. سنُنبّهك فور وصول طلب جديد.' : 'لا توجد طلبات. فعّل «متاح الآن» من «ملفي» لتظهر للزبائن.', style: const TextStyle(color: C.mute, height: 1.5, fontSize: 13.5))),
+            ]),
+          ),
         for (final r in active) _reqCard(r),
         if (history.isNotEmpty)
           Theme(
@@ -327,7 +349,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ]);
     } else {
-      final t = const {'declined': 'اعتذرت', 'expired': 'انتهت المهلة دون رد', 'taken': 'بدأ العميل مع صنايعي آخر'}[acc] ?? acc;
+      final t = const {'declined': 'اعتذرت', 'expired': 'انتهت المهلة دون رد', 'lapsed': 'أُغلق لعدم التأكيد', 'taken': 'بدأ العميل مع صنايعي آخر'}[acc] ?? acc;
       body = Row(children: [Expanded(child: title), Text('$t · ${_ago(r['ts'] as int)}', style: const TextStyle(color: C.mute, fontSize: 12))]);
     }
     return Padding(padding: const EdgeInsets.only(bottom: 8), child: Card(color: acc == 'pending' ? const Color(0xFFFFF8E1) : null, child: Padding(padding: const EdgeInsets.all(12), child: body)));

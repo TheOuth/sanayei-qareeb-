@@ -219,6 +219,15 @@ class _ProviderScreenState extends State<ProviderScreen> {
         ),
       );
 
+  Widget _infoRow(IconData i, String t, Color c) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(children: [
+          Icon(i, size: 15, color: c),
+          const SizedBox(width: 6),
+          Expanded(child: Text(t, style: TextStyle(fontSize: 13, color: c, fontWeight: FontWeight.w700))),
+        ]),
+      );
+
   Widget _chip(IconData i, String t, Color c) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(color: c.withOpacity(.10), borderRadius: BorderRadius.circular(12)),
@@ -259,36 +268,42 @@ class _ProviderScreenState extends State<ProviderScreen> {
       child: ListView(physics: const AlwaysScrollableScrollPhysics(), padding: const EdgeInsets.all(16), children: [
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(children: [
-              Avatar(photo: p['photo'], name: p['name'] ?? '', size: 92),
-              const SizedBox(height: 4),
-              SeenLabel(p: p, size: 12),
-              const SizedBox(height: 8),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Flexible(child: Text(p['name'] ?? '', textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
-                const SizedBox(width: 6),
-                TierBadge(p: p, size: 26),
-              ]),
-              if (tier.isNotEmpty)
-                GestureDetector(
-                  onTap: () => trustSheet(context, p),
-                  child: Padding(padding: const EdgeInsets.only(top: 4), child: Text('شارة ${Meta.tierName(tier)}  ›', style: const TextStyle(color: C.blue, fontSize: 12.5, fontWeight: FontWeight.w700))),
-                ),
-              const SizedBox(height: 10),
-              Wrap(alignment: WrapAlignment.center, spacing: 6, runSpacing: 6, children: [
-                _chip(Icons.circle, avail ? 'متاح الآن' : (p['off'] == 'hours' ? 'خارج وقت العمل' : 'غير متاح الآن'), avail ? C.green : C.mute),
-                if (p['is_new'] == true) _chip(Icons.fiber_new_rounded, 'مستخدم جديد', C.green),
-                _chip(Icons.place_rounded, place, C.blue),
-                if (p['distance_km'] != null) _chip(Icons.near_me_rounded, '${p['distance_km']} كم', C.blue),
-              ]),
-              if ((p['bio'] ?? '').toString().isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text(p['bio'].toString(), textAlign: TextAlign.center, style: const TextStyle(height: 1.7, color: Color(0xFF3B4A5A))),
-              ],
+            padding: const EdgeInsets.all(14),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Avatar(photo: p['photo'], name: p['name'] ?? '', size: 78),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Flexible(child: Text(p['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18.5, fontWeight: FontWeight.w800))),
+                    const SizedBox(width: 6),
+                    TierBadge(p: p, size: 24),
+                  ]),
+                  if (tier.isNotEmpty)
+                    GestureDetector(
+                      onTap: () => trustSheet(context, p),
+                      child: Padding(padding: const EdgeInsets.only(top: 2), child: Text('شارة ${Meta.tierName(tier)}  ›', style: const TextStyle(color: C.blue, fontSize: 12.5, fontWeight: FontWeight.w700))),
+                    ),
+                  const SizedBox(height: 6),
+                  SeenLabel(p: p, size: 12),
+                  const SizedBox(height: 8),
+                  _infoRow(Icons.schedule_rounded, avail ? 'متاح الآن' : (p['off'] == 'hours' ? 'خارج وقت العمل' : 'غير متاح الآن'), avail ? C.green : C.mute),
+                  _infoRow(Icons.place_rounded, place + (p['distance_km'] != null ? ' · ${p['distance_km']} كم' : ''), C.blue),
+                  if (p['is_new'] == true) _infoRow(Icons.fiber_new_rounded, 'مستخدم جديد', C.green),
+                ]),
+              ),
             ]),
           ),
         ),
+        if ((p['bio'] ?? '').toString().isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: C.hair)),
+            child: Text(p['bio'].toString(), style: const TextStyle(height: 1.7, color: Color(0xFF3B4A5A), fontSize: 13.5)),
+          ),
+        ],
         if (p['state_closed'] == true) ...[
           const SizedBox(height: 12),
           Container(
@@ -304,12 +319,12 @@ class _ProviderScreenState extends State<ProviderScreen> {
         if (p['off'] != null && p['state_closed'] != true) ...[
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: const Color(0xFFFFF4DC), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xFFF3D08A))),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.schedule_rounded, color: Color(0xFFB45309)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(color: const Color(0xFFFFF4DC), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFF3D08A))),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              const Icon(Icons.schedule_rounded, size: 18, color: Color(0xFFB45309)),
               const SizedBox(width: 8),
-              Expanded(child: Text('${_offTitle(p)}. ما زال بإمكانك طلب الخدمة والاتفاق على وقت آخر، أو اختيار صنايعي متاح الآن.', style: const TextStyle(color: Color(0xFF7A3E00), height: 1.5, fontWeight: FontWeight.w600))),
+              Expanded(child: Text('${_offTitle(p)}. يمكنك الطلب والاتفاق على وقت آخر.', style: const TextStyle(color: Color(0xFF7A3E00), height: 1.4, fontSize: 12.5, fontWeight: FontWeight.w600))),
             ]),
           ),
         ],
