@@ -1,0 +1,93 @@
+/* ============================================================
+   لوحة المدير - بهوية التطبيق (أزرق صنايعي قريب)
+   تُحمَّل بعد theme.css. عرض ثابت، قائمة جانبية على الشاشات الكبيرة
+   ============================================================ */
+html{overflow-y:scroll;scrollbar-gutter:stable}
+body.admin{background:#EEF5FF}
+body.admin #app{width:100%;max-width:1240px;margin:0 auto;background:transparent;min-height:100vh;display:block}
+body.admin .top{position:sticky;top:0;z-index:20;border-radius:0 0 22px 22px;margin:0 0 14px;padding:10px 14px;
+  background:linear-gradient(135deg,#46AAFB,#2379E0);box-shadow:0 8px 22px rgba(30,100,190,.25)}
+body.admin .top h1{font-size:19px;letter-spacing:0}
+body.admin .main{padding:4px 14px 40px;min-width:0}
+
+/* ---------- القائمة ---------- */
+body.admin .anav{position:sticky;top:64px;z-index:15;margin:0 14px 14px;background:#fff;border:1px solid var(--hair);border-radius:18px;
+  box-shadow:var(--shadow-1);padding:6px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+body.admin .anav button{flex:0 0 auto;border-radius:12px;padding:9px 14px;font-size:14.5px;font-weight:600;color:var(--mute);background:transparent;border:0;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+body.admin .anav button:hover{background:#F0F7FF;color:var(--emerald-d)}
+body.admin .anav button.on{background:linear-gradient(135deg,#46AAFB,#2379E0);color:#fff;box-shadow:0 5px 12px rgba(43,140,240,.3)}
+body.admin .anav .cnt{background:#E5484D;color:#fff;border-radius:999px;font-size:11.5px;font-weight:700;min-width:20px;height:20px;line-height:20px;padding:0 6px;text-align:center;margin:0}
+
+@media (min-width:900px){
+  body.admin #app{display:grid;grid-template-columns:232px minmax(0,1fr);grid-template-areas:"top top" "nav main";column-gap:20px;align-items:start;padding:0 20px}
+  body.admin .top{grid-area:top;margin:0 0 18px;border-radius:0 0 24px 24px}
+  body.admin .anav{grid-area:nav;top:84px;margin:0;flex-direction:column;overflow:visible;padding:10px;gap:3px;max-height:calc(100vh - 104px);overflow-y:auto}
+  body.admin .anav button{width:100%;justify-content:space-between;padding:11px 14px;font-size:15px}
+  body.admin .main{grid-area:main;padding:0 0 50px}
+  body.admin .sgrid{grid-template-columns:repeat(4,1fr)}
+}
+
+/* ---------- البطاقات والإحصاءات ---------- */
+body.admin .card{border-radius:18px;margin-bottom:14px;overflow:visible}
+body.admin .sgrid{gap:12px}
+body.admin .sbox{position:relative;overflow:hidden;text-align:start;padding:14px 16px;border-radius:18px}
+body.admin .sbox::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:linear-gradient(#46AAFB,#2379E0)}
+body.admin .sbox b{font-size:28px;color:var(--navy,#0F3A68)}
+body.admin .sbox.warn::before{background:#F2B32E}
+body.admin .sbox.warn b{color:#B97A0A}
+body.admin .tbl th{background:#F3F8FF;color:var(--nile-2);font-size:13px}
+body.admin .tbl tr:hover td{background:#FAFCFF}
+body.admin .toolbar input,body.admin .toolbar select{border:1.5px solid var(--hair);border-radius:14px;min-height:46px;background:#fff}
+body.admin .toolbar input:focus,body.admin .toolbar select:focus{border-color:var(--emerald);outline:0;box-shadow:0 0 0 4px rgba(43,140,240,.12)}
+
+/* ---------- أزرار صغيرة مرتبة داخل البطاقات والصفوف ---------- */
+body.admin .btnrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+body.admin .btnrow .btn,body.admin .prq .btn{min-height:38px;font-size:14px;padding:0 16px;border-radius:12px;flex:0 0 auto;box-shadow:none}
+body.admin .btn.primary{box-shadow:0 4px 12px rgba(43,140,240,.28)}
+body.admin .btn.danger{color:#C0392B;border-color:#F0C9C9;background:#FFF7F7}
+body.admin .btn.danger:hover{background:#FDECEC}
+body.admin .btn.ghost:hover{background:#F0F7FF;border-color:#BFD9F5}
+body.admin .mhead{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+body.admin .mhead .btn{width:auto;flex:none;min-height:38px;font-size:14px}
+body.admin .mgrp{border:1px solid var(--hair);border-radius:16px;padding:12px 14px;margin-top:12px;background:#fff}
+body.admin .mgrp>b{display:block;margin-bottom:6px;color:var(--nile-2)}
+
+/* ---------- قوائم الصفوف (الصنايعية، الأسماء، المعلّقة، غير النشطة) ---------- */
+.plist{display:flex;flex-direction:column;gap:10px}
+.prow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid var(--hair);border-radius:18px;padding:12px 14px;
+  box-shadow:var(--shadow-1);transition:border-color .18s,box-shadow .18s,transform .18s}
+.prow[data-act]{cursor:pointer}
+.prow[data-act]:hover{border-color:#8CC2F8;box-shadow:var(--shadow-2);transform:translateY(-1px)}
+.prow .ava{width:46px;height:46px;font-size:18px;flex:none}
+.pr-main{flex:1 1 220px;min-width:0}
+.pr-name{font-weight:700;font-size:15.5px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;color:var(--ink)}
+.pr-sub{font-size:13px;color:var(--mute);margin-top:3px;line-height:1.55;overflow-wrap:anywhere}
+.prow .btnrow{margin:0;flex:0 0 auto}
+.prq{display:flex;gap:8px;flex:none}
+/* زر «إدارة»: كبسولة واضحة بسهم صغير بدل النص المقلوب */
+.prow .mng{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:700;color:var(--emerald-d);background:#EAF4FF;border:1px solid #CFE4FA;border-radius:999px;padding:7px 14px;line-height:1.2;transition:background .18s,color .18s}
+.prow .mng::after{content:"";width:7px;height:7px;border-inline-start:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-inline-start:2px}
+.prow[data-act]:hover .mng{background:var(--emerald);border-color:var(--emerald);color:#fff}
+.vtag{display:inline-block;background:#E3F6EC;color:#14753F;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700}
+.pill{border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+@media (max-width:560px){
+  .prow{padding:11px 12px;gap:10px}
+  .prow .btnrow,.prow .prq{width:100%;justify-content:flex-start}
+  .prow .mng{margin-inline-start:auto}
+}
+
+/* ---------- باقي عناصر اللوحة ---------- */
+.kvs{margin-top:8px}.kvs .kv{padding:8px 0;border-bottom:1px dashed var(--hair);font-size:14px}.kvs .kv:last-child{border:0}
+.rhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.rsel{border:1.5px solid var(--hair);border-radius:12px;padding:7px 12px;background:#fff;font-size:13.5px;font-family:inherit}
+.rtotal{font-size:14px;margin:4px 0 2px}.rtotal b{font-size:28px;color:var(--navy,#0F3A68)}
+.rtotal .up{color:#1a7f4b;font-size:12.5px;margin-inline-start:8px}.rtotal .down{color:#b42318;font-size:12.5px;margin-inline-start:8px}
+.bars{gap:8px}.bars .bar i{background:linear-gradient(#46AAFB,#2379E0);border-radius:7px 7px 0 0}
+.bars.dense{gap:3px}.bars.dense .bar b{font-size:10px}.bars.dense .bar small{font-size:9.5px;white-space:nowrap}
+.editbtn{width:auto;min-width:0;height:34px;padding:0 14px;font-size:13px;font-weight:700;color:var(--emerald-d)}
+.card.locked input:disabled,.card.locked textarea:disabled,.card.locked select:disabled{background:#F3F6FA;color:#52667d;border-color:transparent;opacity:1;-webkit-text-fill-color:#52667d}
+.rvcard.hid{opacity:.7;border-style:dashed}
+.rv-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rv-c{margin:8px 0;line-height:1.7}
+.paym{border:1px solid var(--hair);border-radius:14px;padding:10px 12px;margin-top:8px;background:#FAFCFF}
+@media (prefers-reduced-motion:reduce){.prow,.prow .mng{transition:none}.prow[data-act]:hover{transform:none}}

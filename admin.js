@@ -329,7 +329,7 @@
   function provCard(p) {
     var st = STATUS[p.status] || ['—', ''];
     var sub = [SQ.cityName(p.city_id) || p.city_id, 'كشف ' + Number(p.price || 0).toLocaleString('en'), (p.jobs || 0) + ' عمل مؤكد', p.rating != null ? '★ ' + p.rating : 'بلا تقييم', U.timeAgo(p.last_seen)].join(' · ');
-    var q = p.status === 'pending' ? '<span class="prq"><button class="btn primary" data-act="approved" data-id="' + p.id + '">موافقة</button><button class="btn danger" data-act="rejected" data-id="' + p.id + '">رفض</button></span>' : '<span class="chev">إدارة</span>';
+    var q = p.status === 'pending' ? '<span class="prq"><button class="btn primary" data-act="approved" data-id="' + p.id + '">موافقة</button><button class="btn danger" data-act="rejected" data-id="' + p.id + '">رفض</button></span>' : '<span class="mng">إدارة</span>';
     return '<div class="prow" data-act="manage" data-id="' + p.id + '">' + U.avatar(p) + '<div class="pr-main"><div class="pr-name">' + esc(p.name) + ' ' + pill(st[0], st[1]) + (p.verified ? ' <span class="vtag">موثّق</span>' : '') + (p.ban_match && p.status !== 'banned' ? ' ' + pill('يتطابق مع محظور', 'bad') : '') + '</div><div class="pr-sub">' + esc(sub) + '</div></div>' + q + '</div>';
   }
 

@@ -115,6 +115,9 @@ class _RequestsScreenState extends State<RequestsScreen> {
       case 'expired':
         tag = _tag('انتهت المهلة دون رد', C.mute, Icons.timer_off_rounded);
         break;
+      case 'lapsed':
+        tag = _tag('أُغلق لعدم التأكيد', C.mute, Icons.event_busy_rounded);
+        break;
       case 'taken':
         tag = _tag('بدأت مع صنايعي آخر', C.mute, Icons.swap_horiz_rounded);
         break;
@@ -206,6 +209,8 @@ class _RequestsScreenState extends State<RequestsScreen> {
       }
     } else if (acc == 'declined') {
       tag = _tag('اعتذرت', C.red, Icons.cancel_rounded);
+    } else if (acc == 'lapsed') {
+      tag = _tag('أُغلق لعدم التأكيد', C.mute, Icons.event_busy_rounded);
     } else {
       tag = _tag('انتهى', C.mute, Icons.timer_off_rounded);
     }
