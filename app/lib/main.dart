@@ -10,10 +10,41 @@ import 'screens/onboarding.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Store.init();
-  await Onboarding.init();
-  await Meta.load();
-  await AppVersion.load();
+  String? fatal;
+  Future<void> step(String name, Future<void> Function() f, {bool critical = false}) async {
+    try {
+      await f().timeout(const Duration(seconds: 12));
+    } catch (e, st) {
+      debugPrint('startup $name failed: $e\n$st');
+      if (critical) fatal ??= '$name: $e';
+    }
+  }
+
+  await step('store', Store.init, critical: true);
+  await step('onboarding', Onboarding.init);
+  await step('meta', Meta.load, critical: true);
+  await step('version', AppVersion.load);
+  if (fatal != null) {
+    // بدل الشاشة الفارغة نعرض سبب العطل ليسهل إصلاحه
+    runApp(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.error_outline_rounded, size: 48, color: Colors.red),
+              const SizedBox(height: 12),
+              const Text('تعذّر تشغيل التطبيق', textDirection: TextDirection.rtl, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              SelectableText(fatal!, textDirection: TextDirection.ltr, style: const TextStyle(fontSize: 12)),
+            ]),
+          ),
+        ),
+      ),
+    ));
+    return;
+  }
   Presence.start();
   Push.init(); // لا ننتظرها حتى لا تؤخر فتح التطبيق
   runApp(const SanayeiApp());
