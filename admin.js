@@ -10,7 +10,7 @@
   try { code = sessionStorage.getItem('sq_admin') || ''; } catch (e) {}
   document.body.classList.add('admin');
 
-  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['reviews', 'التقييمات'], ['requests', 'الطلبات'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['bans', 'الحظر'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
+  var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['reviews', 'التقييمات'], ['names', 'الأسماء المحجوزة'], ['requests', 'الطلبات'], ['stalled', 'معلّقة'], ['inactive', 'غير النشطة'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['bans', 'الحظر'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
   var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'], banned: ['محظور', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
@@ -26,7 +26,7 @@
   }
   /* قوالب الرسائل اليدوية (واتساب / إيميل / نسخ): قصيرة وبلا رموز تعبيرية */
   function msgTemplates(x) {
-    var hi = 'السلام عليكم أخي/أختي ' + x.name + '\n', t = SQ.tierOf(x.jobs), nx = SQ.nextTier(x.jobs), url = appUrl() + (x.username ? '#/u/' + x.username : '');
+    var hi = 'السلام عليكم أخي/أختي ' + x.name + '\n', t = SQ.tierOf(x.jobs), nx = SQ.nextTier(x.jobs), url = appUrl() + (x.username ? x.username : '');
     var next = nx ? ' باقي ' + (nx.min - x.jobs) + ' عمل لشارة «' + nx.name + '».' : ' وصلت لأعلى شارة، شكرا لتميزك.';
     return [
       { id: 'done', label: 'تهنئة بإتمام خدمة', subject: 'مبروك إتمام خدمة جديدة', body: hi + 'مبروك، تم تأكيد إتمامك خدمة جديدة. أعمالك المؤكدة: ' + x.jobs + (t ? '، شارتك: ' + t.name : '') + '.' + next + SIGN },
@@ -114,7 +114,7 @@
     try { ov = await db.adminOverview(code); } catch (e) { if (guard(e)) return; ov = null; }
     try { if (ov) ov.totals = await db.adminTotals(code); } catch (e) {}
     try { cn = await db.adminCounts(code); } catch (e) { cn = { badges: 0, custom: 0 }; }
-    ({ overview: viewOverview, custom: viewCustom, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings, bans: viewBans, reviews: viewReviews })[tab]();
+    ({ overview: viewOverview, custom: viewCustom, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings, bans: viewBans, reviews: viewReviews, names: viewNames, stalled: viewStalled, inactive: viewInactive })[tab]();
   }
 
   /* ---------- نظرة عامة ---------- */
@@ -167,6 +167,96 @@
     on('rf', 'change', function () { rv.filter = this.value; loadReviews(); });
     document.getElementById('rvlist').addEventListener('click', onReviewAct);
     loadReviews();
+  }
+
+
+  /* ---------- طلبات معلّقة + حسابات غير نشطة ---------- */
+  async function viewStalled() {
+    shell('<div class="card"><b>طلبات مقبولة ومعلّقة أكثر من 3 أيام</b><p class="note">النظام يذكّر الطرفين تلقائيا بعد 48 ساعة وعند 3 أيام، ويغلق الطلب تلقائيا عند 7 أيام دون عمولة ولا أثر على التقييم. من هنا يمكنك تذكيرهما يدويا (مرة كل 6 ساعات).</p></div><div id="st_list" class="plist"><div class="spin">جاري التحميل...</div></div>');
+    document.getElementById('st_list').addEventListener('click', async function (e) {
+      var b = e.target.closest('[data-st]'); if (!b) return;
+      try { await db.adminNudgeStalled(code, b.getAttribute('data-st')); toast('تم إرسال التذكير'); loadStalled(); } catch (x) { fail(/cooldown/.test(x.message) ? new Error('أُرسل تذكير قبل أقل من 6 ساعات') : x); }
+    });
+    loadStalled();
+  }
+  async function loadStalled() {
+    var box = document.getElementById('st_list'); if (!box) return;
+    var rows; try { rows = await db.adminStalled(code); } catch (e) { return fail(e); }
+    box.innerHTML = rows.length ? rows.map(function (r) {
+      return '<div class="card prow"><div class="pr-main"><div class="pr-name">' + esc(r.provider || '') + '</div><div class="pr-sub">' + esc(r.service || '') + ' · <span class="ltr">' + esc(r.phone || '') + '</span></div></div>' +
+        pill('منذ ' + r.days + ' أيام', r.days >= 6 ? 'bad' : 'warn') + '<div class="btnrow"><button class="btn ghost" data-st="' + r.id + '">تذكير الطرفين</button></div></div>';
+    }).join('') : '<div class="empty"><div class="big">✅</div>لا توجد طلبات معلّقة</div>';
+  }
+  async function viewInactive() {
+    shell('<div class="card"><b>حسابات لم تدخل منذ 5 أشهر فأكثر</b><p class="note">تُحذف الحسابات بعد 6 أشهر (180 يوما) من آخر ظهور. أرسل تذكيرا بالبريد وبإشعار داخل التطبيق قبل الموعد بـ 10 أيام (عند بقاء 10 أيام أو أقل). الحذف يدوي منك.</p></div><div id="in_list" class="plist"><div class="spin">جاري التحميل...</div></div>');
+    document.getElementById('in_list').addEventListener('click', async function (e) {
+      var b = e.target.closest('[data-in]'); if (!b) return;
+      var id = b.getAttribute('data-id'), a = b.getAttribute('data-in');
+      try {
+        if (a === 'mail') { var r = await db.adminInactiveRemind(code, id); toast(r.emailed ? 'أُرسل البريد والإشعار' : 'أُرسل الإشعار داخل التطبيق فقط' + (r.why === 'no_email' ? ' (لا بريد)' : '')); return loadInactive(); }
+        if (!confirm('حذف هذا الحساب نهائيا؟')) return;
+        await db.adminDeleteProvider(code, id); toast('تم الحذف'); loadInactive();
+      } catch (x) { fail(/cooldown/.test(x.message) ? new Error('أُرسل تذكير قبل أقل من 3 أيام') : x); }
+    });
+    loadInactive();
+  }
+  async function loadInactive() {
+    var box = document.getElementById('in_list'); if (!box) return;
+    var rows; try { rows = await db.adminInactive(code, 150); } catch (e) { return fail(e); }
+    box.innerHTML = rows.length ? rows.map(function (r) {
+      var left = r.left, tone = left <= 0 ? 'bad' : (left <= 10 ? 'warn' : 'ok');
+      return '<div class="card prow"><div class="pr-main"><div class="pr-name">' + esc(r.name || '') + '</div><div class="pr-sub">آخر ظهور قبل ' + r.days + ' يوما · <span class="ltr">' + esc(r.phone || '') + '</span>' + (r.email ? ' · ✉' : ' · بلا بريد') + (r.reminded_at ? ' · ذُكّر ' + fmtDate(r.reminded_at) : '') + '</div></div>' +
+        pill(left <= 0 ? 'انتهت المهلة' : 'تبقى ' + left + ' يوما', tone) +
+        '<div class="btnrow"><button class="btn ghost" data-in="mail" data-id="' + r.id + '">تذكير</button><button class="btn danger" data-in="del" data-id="' + r.id + '">حذف</button></div></div>';
+    }).join('') : '<div class="empty"><div class="big">🌿</div>كل الحسابات نشطة</div>';
+  }
+
+  /* ---------- الأسماء المحجوزة ---------- */
+  async function viewNames() {
+    shell('<div class="card"><b>حجز أسماء مستخدمين</b><p class="note">أسماء لا يستطيع أي مستخدم اختيارها بنفسه، وتمنحها أنت وحدك لمن تشاء. الصق عدة أسماء مفصولة بسطر أو فاصلة أو مسافة (حروف إنجليزية صغيرة وأرقام و _ من 3 إلى 20).</p>' +
+      '<label class="field"><span>الأسماء</span><textarea id="rs_n" rows="4" class="ltr" placeholder="electrician&#10;plumber&#10;carpenter"></textarea></label>' +
+      '<label class="field"><span>ملاحظة (اختياري)</span><input id="rs_note" maxlength="120" placeholder="مثال: أسماء مهن"></label>' +
+      '<button class="btn primary" id="rs_add" style="width:100%">حجز الأسماء</button></div>' +
+      '<div class="toolbar"><input id="rs_q" type="search" placeholder="ابحث في الأسماء المحجوزة"></div><div id="rs_list" class="plist"></div>');
+    on('rs_add', 'click', async function () {
+      var n = document.getElementById('rs_n').value.trim(); if (!n) return toast('اكتب اسما واحدا على الأقل');
+      try { var r = await db.adminReservedAdd(code, n, document.getElementById('rs_note').value.trim()); document.getElementById('rs_n').value = ''; toast('تم حجز ' + r.added + ' اسم' + (r.invalid ? ' (وتجاهلنا ' + r.invalid + ' غير صالح)' : '')); loadNames(); } catch (e) { fail(e); }
+    });
+    on('rs_q', 'input', function () { loadNames(); });
+    document.getElementById('rs_list').addEventListener('click', onNameAct);
+    loadNames();
+  }
+  var nmRows = [];
+  async function loadNames() {
+    var box = document.getElementById('rs_list'); if (!box) return;
+    try { nmRows = await db.adminReservedList(code); } catch (e) { return fail(e); }
+    var q = (document.getElementById('rs_q').value || '').trim().toLowerCase();
+    var rows = nmRows.filter(function (r) { return !q || r.name.indexOf(q) >= 0 || (r.note || '').toLowerCase().indexOf(q) >= 0; });
+    box.innerHTML = rows.length ? rows.map(function (r) {
+      return '<div class="card prow"><div class="pr-main"><div class="pr-name ltr">@' + esc(r.name) + '</div><div class="pr-sub">' + (r.assigned_to ? 'ممنوح لـ ' + esc(r.assigned_name || '') : (r.note ? esc(r.note) : 'غير ممنوح')) + '</div></div>' +
+        (r.assigned_to ? pill('ممنوح', 'ok') : pill('محجوز', 'warn')) +
+        '<div class="btnrow"><button class="btn ghost" data-nm="give" data-n="' + esc(r.name) + '">منح</button><button class="btn danger" data-nm="del" data-n="' + esc(r.name) + '">فك الحجز</button></div></div>';
+    }).join('') : '<div class="empty"><div class="big">🔒</div>لا توجد أسماء محجوزة</div>';
+  }
+  async function onNameAct(e) {
+    var b = e.target.closest('[data-nm]'); if (!b) return;
+    var n = b.getAttribute('data-n'), a = b.getAttribute('data-nm');
+    try {
+      if (a === 'del') { if (!confirm('فك حجز @' + n + '؟ سيستطيع أي مستخدم اختياره.')) return; await db.adminReservedRemove(code, n); toast('تم فك الحجز'); return loadNames(); }
+      modal('<h3>منح @' + esc(n) + '</h3><p class="note">اكتب رقم هاتف الصنايعي (أو اسم مستخدمه الحالي) وسيتغير اسمه فورا إلى هذا الاسم.</p>' +
+        '<label class="field"><span>رقم الهاتف أو اسم المستخدم</span><input id="gv_q" class="ltr" placeholder="9XXXXXXXX"></label><div id="gv_r" class="note"></div>' +
+        '<div class="row2 mt"><button class="btn ghost" id="gv_x">إلغاء</button><button class="btn primary" id="gv_ok">منح</button></div>');
+      on('gv_x', 'click', closeModal);
+      on('gv_ok', 'click', async function () {
+        var q = document.getElementById('gv_q').value.trim(); if (!q) return toast('اكتب رقم الهاتف');
+        try {
+          var rs = await db.adminProviders(code, { q: q, status: '', service: '', city: '', limit: 5, offset: 0 }), items = rs.items || [];
+          if (items.length !== 1) return toast(items.length ? 'يوجد أكثر من نتيجة، اكتب الرقم كاملا' : 'لم نجد صنايعيا بهذه البيانات');
+          if (!confirm('منح @' + n + ' إلى ' + items[0].name + '؟')) return;
+          await db.adminReservedAssign(code, n, items[0].id); closeModal(); toast('تم المنح'); loadNames();
+        } catch (x) { closeModal(); fail(x); }
+      });
+    } catch (x) { fail(x); }
   }
   var rvRows = {};
   async function loadReviews() {
@@ -305,7 +395,7 @@
     if (a === 'edit') return openProvForm(p);
     if (a === 'msg') return msgModal({ id: p.id, name: p.name, phone: p.whatsapp || p.phone, jobs: p.jobs || 0, verified: p.verified, username: p.username, email: p.email || '' });
     if (a === 'uname') {
-      modal('<h3>اسم المستخدم لـ ' + esc(p.name) + '</h3><p class="note">للتعديل بعد تواصل الصنايعي مع الدعم. لا يستهلك مرته الواحدة. رابطه: <span class="ltr">' + esc(appUrl()) + '#/u/' + esc(p.username || '') + '</span></p>' +
+      modal('<h3>اسم المستخدم لـ ' + esc(p.name) + '</h3><p class="note">للتعديل بعد تواصل الصنايعي مع الدعم. لا يستهلك مرته الواحدة. رابطه: <span class="ltr">' + esc(appUrl()) + esc(p.username || '') + '</span></p>' +
         '<label class="field"><span>الاسم (حروف إنجليزية صغيرة وأرقام و _)</span><input id="un_v" class="ltr" maxlength="20" autocapitalize="none" value="' + esc(p.username || '') + '"></label>' +
         '<div class="row2 mt"><button class="btn ghost" id="un_x">إلغاء</button><button class="btn primary" id="un_ok">حفظ</button></div>');
       on('un_x', 'click', closeModal);
@@ -739,6 +829,16 @@
   }
 
   /* ---------- الإعدادات ---------- */
+  var PAY_DEF = [['bankak', 'بنكك'], ['fawry', 'فوري'], ['ocash', 'أوكاش'], ['mashreq', 'المشرق'], ['sahl', 'ساهل']];
+  function payRows(cfg) {
+    var cur = (cfg && cfg.pay_methods) || [], by = {};
+    cur.forEach(function (m) { by[m.id] = m; });
+    return PAY_DEF.map(function (d) {
+      var m = by[d[0]] || {};
+      return '<div class="paym" data-pid="' + d[0] + '"><label class="kv" style="cursor:pointer"><b>' + d[1] + '</b><input type="checkbox" class="pm_on"' + (m.on ? ' checked' : '') + ' style="width:auto"></label>' +
+        '<div class="row2"><label class="field"><span>رقم الحساب</span><input class="ltr pm_no" maxlength="40" value="' + esc(m.account_no || '') + '"></label><label class="field"><span>اسم صاحب الحساب</span><input class="pm_nm" maxlength="60" value="' + esc(m.account_name || '') + '"></label></div></div>';
+    }).join('');
+  }
   async function viewSettings() {
     var cfg = {};
     try { cfg = await db.adminGetSettings(code); } catch (e) { return fail(e); }
@@ -754,6 +854,12 @@
       '<label class="field"><span>اسم الحساب</span><input id="m_nm" maxlength="120" value="' + esc(cfg.commission_account_name || '') + '"></label>' +
       '<label class="field"><span>واتساب استلام الإشعار (بصيغة دولية بدون +)</span><input id="m_wa" class="ltr" inputmode="tel" placeholder="249912345678" value="' + esc(cfg.commission_whatsapp || '') + '"></label>' +
       '<button class="btn primary" id="m_save" style="width:100%">حفظ رسالة العمولة</button></div>' +
+      '<div class="card"><b>طرق دفع العمولة</b><p class="note">تظهر للصنايعي في شاشة العمولة كأيقونات، وبالضغط على واحدة يظهر رقم حسابها واسم صاحبه. فعّل ما تستقبل عليه فقط. إن لم تفعّل أي طريقة يظهر الحساب العام أعلاه.</p><div id="pm_box">' + payRows(cfg) + '</div>' +
+      '<button class="btn primary" id="pm_save" style="width:100%">حفظ طرق الدفع</button></div>' +
+      '<div class="card"><b>نصوص الشروط والخصوصية</b><p class="note">تظهر في التطبيق فورًا دون تحديثه. العنوان سطر يبدأ بـ ## والباقي فقرات؛ ويبدأ السطر بـ - لنقطة في قائمة. اترك الخانة فارغة لاستخدام النص الافتراضي المضمّن في التطبيق.</p>' +
+      '<label class="field"><span>سياسة الخصوصية</span><textarea id="lg_p" rows="8" maxlength="30000" placeholder="## من نحن&#10;نص الفقرة...">' + esc(cfg.legal_privacy || '') + '</textarea></label>' +
+      '<label class="field"><span>قوانين الاستخدام والشروط</span><textarea id="lg_t" rows="8" maxlength="30000" placeholder="## الاستخدام العام&#10;- نقطة...">' + esc(cfg.legal_terms || '') + '</textarea></label>' +
+      '<button class="btn primary" id="lg_save" style="width:100%">حفظ النصوص</button></div>' +
       '<div class="card"><b>حدود أسعار الخدمات</b><p class="note">أقل وأعلى سعر يستطيع الصنايعي كتابته في ملفه. أي رقم خارج الحدين (مثل 10 جنيه أو مليار) يُرفض عند التسجيل والتعديل. غيّرها متى تغيّر السوق؛ لا تتأثر الأسعار المحفوظة حاليًا حتى يعدّلها صاحبها.</p>' +
       '<div class="row2"><label class="field"><span>أقل سعر (جنيه)</span><input id="p_floor" class="ltr" inputmode="numeric" value="' + esc(String(cfg.price_floor == null ? 10000 : cfg.price_floor)) + '"></label><label class="field"><span>أعلى سعر (جنيه)</span><input id="p_cap" class="ltr" inputmode="numeric" value="' + esc(String(cfg.price_cap == null ? 1000000 : cfg.price_cap)) + '"></label></div>' +
       '<button class="btn primary" id="p_save" style="width:100%">حفظ حدود الأسعار</button></div>' +
@@ -761,12 +867,27 @@
       SQ.COUNTRY.states.map(function (s) { return '<label class="kv" style="cursor:pointer"><span>' + esc(s.name) + '</span><input type="checkbox" data-st="' + esc(s.id) + '"' + (closedSet.indexOf(s.id) < 0 ? ' checked' : '') + ' style="width:22px;height:22px"></label>'; }).join('') + '</div>' +
       '<button class="btn primary mt" id="st_save" style="width:100%">حفظ الولايات</button></div>' +
       '<div class="card"><b>تحديث التطبيق</b><p class="note">رقم النسخة يظهر في صفحة «عن التطبيق». «الحد الأدنى» أي نسخة أقل منه تُمنع من العمل حتى تتحدث (استخدمه للتحديثات الحرجة فقط). «الأحدث» يعرض تنبيهًا يمكن تجاوزه.</p><div class="row2"><label class="field"><span>الحد الأدنى الإجباري</span><input id="u_min" class="ltr" inputmode="numeric" value="' + esc(String(cfg.min_build || 0)) + '"></label><label class="field"><span>أحدث نسخة</span><input id="u_last" class="ltr" inputmode="numeric" value="' + esc(String(cfg.latest_build || 0)) + '"></label></div><label class="field"><span>رابط التحديث (https)</span><input id="u_url" class="ltr" value="' + esc(cfg.update_url || '') + '" placeholder="https://github.com/TheOuth/sanayei-qareeb-/releases/latest/download/sanayei-qareeb-native.apk"></label><label class="field"><span>رسالة للمستخدم (اختياري)</span><input id="u_msg" maxlength="300" value="' + esc(cfg.update_msg || '') + '"></label><button class="btn primary" id="u_save" style="width:100%">حفظ إعدادات التحديث</button></div>' +
-      '<div class="card"><b>إشعار لجميع الصنايعية</b><p class="note">يصل إلى جرس الرسائل في تطبيق كل صنايعي (تحديث جديد، تنبيه، إعلان).</p><label class="field"><span>العنوان</span><input id="bc_t" maxlength="100"></label><label class="field"><span>النص</span><textarea id="bc_b" rows="3" maxlength="500"></textarea></label><button class="btn primary" id="bc_send" style="width:100%">🔔 إرسال للجميع</button></div>' +
+      '<div class="card"><b>إشعار لجميع الصنايعية</b><p class="note">يصل إلى جرس الرسائل في تطبيق كل صنايعي (تحديث جديد، تنبيه، إعلان).</p><label class="field"><span>العنوان</span><input id="bc_t" maxlength="100"></label><label class="field"><span>النص</span><textarea id="bc_b" rows="3" maxlength="500"></textarea></label><label class="chk"><input type="checkbox" id="bc_up"> رسالة تحديث: يظهر فيها زر «تحديث الآن» يفتح رابط التحديث المحفوظ في الإعدادات</label><button class="btn primary" id="bc_send" style="width:100%">🔔 إرسال للجميع</button></div>' +
       '<div class="card"><div class="rhead"><b>سجل النشاط</b><button class="mini" id="au_hide" style="display:none;width:auto;padding:0 12px" title="تصغير">▲ تصغير</button></div><p class="note">آخر تغييرات الحالة والتوثيق وحذف الحسابات.</p><button class="btn ghost" id="au_show" style="width:100%">عرض السجل</button><div id="au_list"></div></div>' +
       '<div class="card"><b>تغيير رمز المدير</b>' + U.pwHtml('k_new', 'الرمز الجديد', '8 أحرف على الأقل، لا تشاركه') + U.pwHtml('k_new2', 'أعد كتابته') + '<button class="btn primary" id="k_save" style="width:100%">تغيير الرمز</button></div>' +
       '<div class="card"><b>نسخة احتياطية</b><p class="note">نزّل بيانات كل الصنايعية في ملف يفتح في Excel. أنصح بفعل ذلك أسبوعيا.</p><button class="btn ghost" id="c_csv" style="width:100%">⬇ تنزيل كل الصنايعية (CSV)</button></div>' +
       '<div class="card"><b>روابط</b><div class="kv"><span>التطبيق</span><a href="' + esc(appUrl()) + '" target="_blank" rel="noopener">فتح</a></div><div class="kv"><span>سياسة الخصوصية</span><a href="' + esc(appUrl()) + 'privacy-policy.html" target="_blank" rel="noopener">فتح</a></div></div></div>');
     function baseCfg() { return { support_whatsapp: cfg.support_whatsapp || '', support_email: cfg.support_email || '', commission_pct: cfg.commission_pct || 0, commission_fixed: cfg.commission_fixed || 0 }; }
+    on('pm_save', 'click', async function () {
+      var arr = [];
+      document.querySelectorAll('#pm_box .paym').forEach(function (r) {
+        var id = r.getAttribute('data-pid'), nm = (PAY_DEF.filter(function (d) { return d[0] === id; })[0] || [id, id])[1];
+        arr.push({ id: id, name: nm, on: r.querySelector('.pm_on').checked, account_no: r.querySelector('.pm_no').value.trim(), account_name: r.querySelector('.pm_nm').value.trim() });
+      });
+      var bad = arr.filter(function (m) { return m.on && !m.account_no; });
+      if (bad.length) return toast('اكتب رقم الحساب لـ ' + bad[0].name + ' أو ألغِ تفعيله');
+      var o = baseCfg(); o.pay_methods = arr;
+      try { await db.adminSaveSettings(code, o); toast('تم حفظ طرق الدفع'); viewSettings(); } catch (e) { fail(e); }
+    });
+    on('lg_save', 'click', async function () {
+      var o = baseCfg(); o.legal_privacy = document.getElementById('lg_p').value.trim(); o.legal_terms = document.getElementById('lg_t').value.trim();
+      try { await db.adminSaveSettings(code, o); toast('تم حفظ النصوص وستظهر في التطبيق فورًا'); viewSettings(); } catch (e) { fail(e); }
+    });
     on('m_save', 'click', async function () {
       var o = baseCfg(); o.commission_text = document.getElementById('m_txt').value.trim(); o.commission_account_no = document.getElementById('m_no').value.trim(); o.commission_account_name = document.getElementById('m_nm').value.trim(); o.commission_whatsapp = document.getElementById('m_wa').value.replace(/\D/g, '');
       try { await db.adminSaveSettings(code, o); toast('تم حفظ رسالة العمولة'); viewSettings(); } catch (e) { fail(e); }
@@ -788,12 +909,12 @@
       } catch (e) { toast('تعذر تحميل السجل'); }
     });
     on('au_hide', 'click', function () { document.getElementById('au_list').innerHTML = ''; document.getElementById('au_hide').style.display = 'none'; var sh = document.getElementById('au_show'); sh.style.display = ''; sh.textContent = 'عرض السجل'; });
-    lockCards([['c_save', 'c_fx'], 'p_save', 'm_save', 'st_save', 'u_save', 'k_save']);
+    lockCards([['c_save', 'c_fx'], 'p_save', 'm_save', 'pm_save', 'lg_save', 'st_save', 'u_save', 'k_save']);
     on('bc_send', 'click', async function () {
       var t = document.getElementById('bc_t').value.trim(), b = document.getElementById('bc_b').value.trim();
       if (!t) return toast('اكتب عنوانا للإشعار');
       if (!confirm('إرسال هذا الإشعار لجميع الصنايعية؟')) return;
-      try { await db.adminSendNotification(code, null, t, b); document.getElementById('bc_t').value = ''; document.getElementById('bc_b').value = ''; toast('تم الإرسال للجميع'); } catch (e) { toast('تعذر الإرسال'); }
+      try { await db.adminSendNotification(code, null, t, b, document.getElementById('bc_up').checked ? 'update' : null); document.getElementById('bc_t').value = ''; document.getElementById('bc_up').checked = false; document.getElementById('bc_b').value = ''; toast('تم الإرسال للجميع'); } catch (e) { toast('تعذر الإرسال'); }
     });
     on('c_save', 'click', async function () {
       try { await db.adminSaveSettings(code, { support_whatsapp: document.getElementById('c_wa').value.replace(/\D/g, ''), support_email: document.getElementById('c_em').value.trim(), commission_pct: document.getElementById('c_pc').value, commission_fixed: document.getElementById('c_fx').value }); toast('تم الحفظ'); viewSettings(); } catch (e) { fail(e); }

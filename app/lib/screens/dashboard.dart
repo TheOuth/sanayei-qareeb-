@@ -372,9 +372,9 @@ class _EditScreenState extends State<_EditScreen> {
       builder: (_) => AlertDialog(
         title: const Text('تغيير اسم المستخدم'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('يمكن تغييره مرة واحدة فقط. حروف إنجليزية وأرقام، يبدأ بحرف.', style: TextStyle(fontSize: 12)),
+          const Text('يمكن تغييره مرة واحدة فقط. حروف إنجليزية وأرقام و _ فقط (3 إلى 20)، يبدأ بحرف، وتتحول تلقائيًا إلى حروف صغيرة.', style: TextStyle(fontSize: 12)),
           const SizedBox(height: 8),
-          TextField(controller: c, textDirection: TextDirection.ltr),
+          TextField(controller: c, textDirection: TextDirection.ltr, autocorrect: false, enableSuggestions: false, keyboardType: TextInputType.visiblePassword, inputFormatters: [UsernameFormatter()], decoration: const InputDecoration(prefixText: 'saqapp.net/', hintText: 'username')),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),

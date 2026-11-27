@@ -586,6 +586,14 @@
       this.admin(code); this.d.settings.support_whatsapp = o.support_whatsapp || ''; this.d.settings.support_email = o.support_email || ''; this.d.settings.commission_pct = Math.max(0, Math.min(30, +o.commission_pct || 0)); this.d.settings.commission_fixed = Math.max(0, Math.min(100000, +o.commission_fixed || 0)); ['min_build','latest_build','update_url','update_msg','price_floor','price_cap'].forEach(function (k) { if (k in o) this.d.settings[k] = o[k]; }, this); save(this.d); return true;
     },
     adminSendNotification: async function (code) { this.admin(code); return true; },
+    adminStalled: async function (code) { this.admin(code); return []; },
+    adminNudgeStalled: async function (code) { this.admin(code); return true; },
+    adminInactive: async function (code) { this.admin(code); return []; },
+    adminInactiveRemind: async function (code) { this.admin(code); return { ok: true, emailed: false }; },
+    adminReservedList: async function (code) { this.admin(code); return []; },
+    adminReservedAdd: async function (code) { this.admin(code); return { added: 0, invalid: 0 }; },
+    adminReservedRemove: async function (code) { this.admin(code); return true; },
+    adminReservedAssign: async function (code) { this.admin(code); return ''; },
     adminAudit: async function (code) { this.admin(code); return []; },
     adminCounts: async function (code) { this.admin(code); return { badges: 0, custom: 0 }; },
     adminBadges: async function (code) { this.admin(code); return []; },
@@ -694,7 +702,22 @@
     adminCustomServices: function (code, status) { return SB.rpc('admin_custom_services', { p_code: code, p_status: status || 'pending' }); },
     adminDecideCustom: function (code, id, o) { o = o || {}; return SB.rpc('admin_decide_custom', { p_code: code, p_id: id, p_action: o.action, p_name: o.name || null, p_icon: o.icon || null, p_cat: o.cat || null, p_existing: o.existing || null, p_note: o.note || null, p_suggest: o.suggest || null }); },
     adminAudit: function (code, n) { return SB.rpc('admin_audit', { p_code: code, p_limit: n || 100 }); },
-    adminSendNotification: function (code, id, title, body) { return SB.rpc('admin_send_notification', { p_code: code, p_id: id, p_title: title, p_body: body }); }
+    adminStalled: function (code) { return SB.rpc('admin_stalled', { p_code: code }); },
+    adminNudgeStalled: function (code, id) { return SB.rpc('admin_nudge_stalled', { p_code: code, p_request: id }); },
+    adminInactive: function (code, days) { return SB.rpc('admin_inactive', { p_code: code, p_min_days: days || 150 }); },
+    adminInactiveRemind: async function (code, id) {
+      var h = { 'Content-Type': 'application/json', apikey: C.supabaseKey };
+      if (/^eyJ/.test(C.supabaseKey)) h.Authorization = 'Bearer ' + C.supabaseKey;
+      var r = await fetch(C.supabaseUrl.replace(/\/$/, '') + '/functions/v1/send-inactive-reminder', { method: 'POST', headers: h, body: JSON.stringify({ code: code, id: id }) });
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok) throw new Error(j.error || 'failed');
+      return j;
+    },
+    adminReservedList: function (code) { return SB.rpc('admin_reserved_list', { p_code: code }); },
+    adminReservedAdd: function (code, names, note) { return SB.rpc('admin_reserved_add', { p_code: code, p_names: names, p_note: note || '' }); },
+    adminReservedRemove: function (code, name) { return SB.rpc('admin_reserved_remove', { p_code: code, p_name: name }); },
+    adminReservedAssign: function (code, name, pid) { return SB.rpc('admin_reserved_assign', { p_code: code, p_name: name, p_provider: pid }); },
+    adminSendNotification: function (code, id, title, body, kind) { return SB.rpc('admin_send_notification', { p_code: code, p_id: id, p_title: title, p_body: body, p_kind: kind || null }); }
   };
 
   if (C.mode === 'supabase' && C.supabaseUrl && C.supabaseKey) {

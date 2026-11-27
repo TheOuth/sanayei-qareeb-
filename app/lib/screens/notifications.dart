@@ -7,6 +7,7 @@ import 'app_drawer.dart';
 import 'dashboard.dart';
 import 'commission.dart';
 import 'my_profile.dart';
+import 'notification_detail.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -153,6 +154,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  /// رسائل الإدارة والرسائل الطويلة تُفتح في صفحة كاملة؛ ورسائل الأقسام تنقلك مباشرة
+  void _open(Map n, String k) {
+    final base = k.split(':')[0];
+    final t = _target(k);
+    final body = (n['body'] ?? '').toString();
+    const direct = {'commission', 'request', 'confirm', 'review', 'badge', 'badge_down', 'account', 'service', 'verify'};
+    if (t != null && direct.contains(base) && body.length <= 110 && !NotificationDetailScreen.urlRe.hasMatch(body)) return t();
+    Navigator.push(context, MaterialPageRoute(builder: (_) => NotificationDetailScreen(n: n, target: t)));
+  }
+
   IconData _icon(String k) => switch (k) {
         'request' => Icons.call_received_rounded,
         'confirm' => Icons.task_alt_rounded,
@@ -165,6 +176,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'commission' => Icons.account_balance_wallet_rounded,
         'commission_thanks' => Icons.favorite_rounded,
         'completed' => Icons.celebration_rounded,
+        'update' => Icons.system_update_rounded,
         _ => Icons.mail_rounded,
       };
 
@@ -179,6 +191,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         'commission' => const Color(0xFFE67E22),
         'commission_thanks' => C.green,
         'completed' => C.green,
+        'update' => C.blue,
         _ => const Color(0xFF6D5BEF),
       };
 
@@ -259,13 +272,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               subtitle: Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                  Text((n['body'] ?? '').toString(), style: const TextStyle(height: 1.45)),
+                                  Text((n['body'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(height: 1.45)),
                                   const SizedBox(height: 4),
                                   Text(_ago(n['ts'] as int), style: const TextStyle(fontSize: 11, color: C.mute)),
                                 ]),
                               ),
-                              onTap: _selecting ? toggle : () { _read(n); _target(k)?.call(); },
-                              trailing: (!_selecting && _target(k) != null) ? const Icon(Icons.chevron_left_rounded, color: C.mute) : null,
+                              onTap: _selecting ? toggle : () { _read(n); _open(n, k); },
+                              trailing: !_selecting ? const Icon(Icons.chevron_left_rounded, color: C.mute) : null,
                             ),
                           );
                         },

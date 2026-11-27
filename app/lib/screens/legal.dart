@@ -8,6 +8,35 @@ class LegalScreen extends StatelessWidget {
   final int initial;
   const LegalScreen({super.key, this.initial = 0});
 
+  /// نص المدير: سطر يبدأ بـ ## عنوان، وكل سطر بعده فقرة أو نقطة (- اختيارية). فارغ => النص المضمّن.
+  static List<(String, List<String>)>? _parse(dynamic raw) {
+    final t = (raw ?? '').toString().trim();
+    if (t.isEmpty) return null;
+    final out = <(String, List<String>)>[];
+    String title = '';
+    var items = <String>[];
+    void flush() {
+      if (title.isNotEmpty || items.isNotEmpty) out.add((title, items));
+      title = '';
+      items = <String>[];
+    }
+    for (final l in t.split('\n')) {
+      final x = l.trim();
+      if (x.isEmpty) continue;
+      if (x.startsWith('##')) {
+        flush();
+        title = x.replaceFirst(RegExp(r'^#+\s*'), '');
+      } else {
+        items.add(x.replaceFirst(RegExp(r'^-\s*'), ''));
+      }
+    }
+    flush();
+    return out.isEmpty ? null : out;
+  }
+
+  static List<(String, List<String>)> get _p => _parse(Meta.legal['privacy']) ?? _privacy;
+  static List<(String, List<String>)> get _t => _parse(Meta.legal['terms']) ?? _terms;
+
   static const _privacy = <(String, List<String>)>[
     ('من نحن', ['صنايعي قريب تطبيق يربط طالب الخدمة بأقرب صنايعي في منطقته، ويتم التواصل بينهما بالاتصال أو الواتساب مباشرة. نحترم خصوصيتك، وهذه الصفحة توضح ما نجمعه ولماذا.']),
     ('البيانات التي نجمعها', [
@@ -59,6 +88,10 @@ class LegalScreen extends StatelessWidget {
     ('الحظر والطعن', [
       'يجوز للإدارة إيقاف أو حظر أي حساب يخالف هذه القوانين. المحظور لا يستطيع التسجيل مجددًا برقمه أو بريده أو ببياناته.',
       'يستطيع صاحب الحساب المحظور تقديم طعن من صفحة الحظر، وتراجعه الإدارة، وقد يُستعاد الحساب إذا لم تكن المخالفة جسيمة.',
+    ]),
+    ('الحسابات غير النشطة', [
+      'يُحذف الحساب الذي لا يُسجَّل الدخول إليه لمدة 6 أشهر متواصلة (180 يومًا).',
+      'قبل الحذف بـ 10 أيام نرسل تذكيرًا إلى بريدك المسجّل (إن وُجد) وإشعارًا داخل التطبيق؛ يكفي أن تفتح التطبيق وتسجّل الدخول ليبقى حسابك.',
     ]),
     ('تعديل القوانين', ['قد نحدّث هذه القوانين عند الحاجة، واستمرارك في استخدام التطبيق يعني موافقتك على النسخة المحدّثة.']),
   ];
@@ -113,7 +146,7 @@ class LegalScreen extends StatelessWidget {
                 ]),
               ),
               const TabBar(tabs: [Tab(text: 'سياسة الخصوصية'), Tab(text: 'قوانين التطبيق')]),
-              Expanded(child: TabBarView(children: [_sections(_privacy), _sections(_terms)])),
+              Expanded(child: TabBarView(children: [_sections(_p), _sections(_t)])),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                 child: SizedBox(width: double.infinity, child: FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('تم، رجوع'))),
@@ -132,7 +165,7 @@ class LegalScreen extends StatelessWidget {
             title: const Text('الخصوصية والقوانين'),
             bottom: const TabBar(tabs: [Tab(text: 'سياسة الخصوصية'), Tab(text: 'قوانين التطبيق')]),
           ),
-          body: TabBarView(children: [_sections(_privacy), _sections(_terms)]),
+          body: TabBarView(children: [_sections(_p), _sections(_t)]),
         ),
       );
 }

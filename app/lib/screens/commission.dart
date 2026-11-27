@@ -15,6 +15,7 @@ class CommissionScreen extends StatefulWidget {
 class _CommissionScreenState extends State<CommissionScreen> {
   Map? _d;
   Object? _err;
+  String? _pick;
 
   @override
   void initState() {
@@ -66,6 +67,63 @@ class _CommissionScreenState extends State<CommissionScreen> {
     );
   }
 
+
+  static const _tints = {'bankak': Color(0xFFE67E22), 'fawry': Color(0xFFF5C518), 'ocash': Color(0xFF1FA463), 'mashreq': Color(0xFFD64545), 'sahl': Color(0xFF6D5BEF)};
+
+  Widget _tile(Map m) {
+    final id = (m['id'] ?? '').toString(), name = (m['name'] ?? '').toString();
+    final on = _pick == id;
+    final tint = _tints[id] ?? C.blue;
+    return GestureDetector(
+      onTap: () => setState(() => _pick = on ? null : id),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 78,
+        padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
+        decoration: BoxDecoration(color: on ? C.blue.withOpacity(.08) : Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: on ? C.blue : C.hair, width: on ? 2 : 1)),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SizedBox(
+            width: 46, height: 46,
+            child: Image.asset('assets/pay/$id.png', fit: BoxFit.contain, errorBuilder: (_, __, ___) => Container(
+              decoration: BoxDecoration(color: tint.withOpacity(.16), borderRadius: BorderRadius.circular(12)),
+              alignment: Alignment.center,
+              child: Text(name.isEmpty ? '؟' : name.characters.first, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: tint)),
+            )),
+          ),
+          const SizedBox(height: 6),
+          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? C.blue : C.ink)),
+        ]),
+      ),
+    );
+  }
+
+  /// طريقة الدفع: صف أيقونات، والضغط على واحدة ينسدل رقم الحساب والاسم المطابق
+  Widget _payMethods(List methods) {
+    Map? cur;
+    for (final m in methods) { if ((m as Map)['id'] == _pick) cur = m; }
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      const Text('طريقة الدفع', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+      const SizedBox(height: 4),
+      const Text('اختر التطبيق الذي ستحوّل منه ليظهر لك رقم الحساب', style: TextStyle(color: C.mute, fontSize: 12.5)),
+      const SizedBox(height: 10),
+      Wrap(spacing: 8, runSpacing: 8, children: [for (final m in methods) _tile(m as Map)]),
+      AnimatedSize(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        alignment: Alignment.topCenter,
+        child: cur == null
+            ? const SizedBox(width: double.infinity)
+            : Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Column(children: [
+                  _field('رقم الحساب (${cur['name']})', (cur['account_no'] ?? '').toString()),
+                  _field('اسم الحساب', (cur['account_name'] ?? '').toString()),
+                ]),
+              ),
+      ),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = _d;
@@ -82,6 +140,7 @@ class _CommissionScreenState extends State<CommissionScreen> {
 
   Widget _body(Map d) {
     final due = (d['due'] as List?) ?? [];
+    final methods = (d['methods'] as List?) ?? [];
     final total = (d['total'] ?? 0) as num;
     final amt = (d['amount'] ?? 0) as num;
     final acct = (d['account_no'] ?? '').toString(), name = (d['account_name'] ?? '').toString(), wa = _waNumber((d['whatsapp'] ?? '').toString());
@@ -112,9 +171,11 @@ class _CommissionScreenState extends State<CommissionScreen> {
         ]),
       ),
       const SizedBox(height: 16),
-      _field('رقم الحساب', acct),
-      _field('اسم الحساب', name),
-      const SizedBox(height: 4),
+      if (methods.isNotEmpty) _payMethods(methods) else ...[
+        _field('رقم الحساب', acct),
+        _field('اسم الحساب', name),
+      ],
+      const SizedBox(height: 14),
       FilledButton.icon(
         style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1FA463), minimumSize: const Size.fromHeight(52)),
         onPressed: wa.isEmpty

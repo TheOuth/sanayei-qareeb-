@@ -290,7 +290,7 @@
     if (res.tier === 'other_city') head = '<div class="banner">لا يوجد مقدم خدمة في مدينتك الآن. هؤلاء أقرب الموجودين في مدن أخرى، تحب تطلب منهم؟</div>';
     var body = demoNote() + head;
     if (!items.length) {
-      body += '<div class="empty"><div class="big">🔎</div><p>لا يوجد ' + esc(svc(sid).name) + ' متاح في مدينتك الآن.</p><p class="note">جرب خدمة أخرى أو ارجع لاحقا.</p></div>';
+      body += '<div class="empty"><div class="big">🔎</div><p>لا يوجد ' + esc(svc(sid).name) + ' في مدينتك بعد.</p><p class="note">جرب خدمة أخرى أو ارجع لاحقا.</p></div>';
     } else {
       body += items.map(function (p) { return pCard(p); }).join('');
     }
@@ -322,7 +322,7 @@
       (dist ? '<span class="mi">' + SQ.I('pin', 15) + ' ' + dist + '</span>' : '') + (eta ? '<span class="mi">' + SQ.I('clock', 15) + ' ' + eta + '</span>' : '') + (p.age ? '<span class="mi">' + SQ.I('user', 15) + ' ' + p.age + ' سنة</span>' : '') +
       '<span>' + (p.rating != null ? '<span class="star">★ ' + p.rating + '</span> (' + p.rating_n + ')' : '<span class="new">جديد</span>') + '</span>' +
       (priceTxt(p) ? '<span>' + esc(priceTxt(p)) + '</span>' : '') +
-      '<span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span>' + ring(p) +
+      '<span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'غير متاح الآن') + '</span>' + ring(p) +
       '</div></div></div></div>';
   }
 
@@ -349,7 +349,7 @@
         '<div class="stat"><b>' + p.ok + ' - ' + p.fail + '</b><small>ناجحة - فاشلة</small></div>' +
         '<div class="stat"><b>' + p.experience + '</b><small>سنة خبرة</small></div></div>' + (p.age ? '<div class="card"><div class="kv"><span>العمر</span><span>' + p.age + ' سنة</span></div></div>' : '') +
         '<div class="card">' +
-        '<div class="kv"><span>الحالة</span><span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'مشغول') + '</span></div>' +
+        '<div class="kv"><span>الحالة</span><span><i class="dot' + (p.available ? '' : ' off') + '"></i>' + (p.available ? 'متاح الآن' : 'غير متاح الآن') + '</span></div>' +
         '<div class="kv"><span>المسافة</span><span>' + dist + '</span></div>' +
         (priceTxt(p) ? '<div class="kv"><span>السعر</span><span>' + esc(priceTxt(p)) + '</span></div><div class="note" style="margin:2px 0 6px">السعر النهائي يُتفق عليه مع الصنايعي بعد معرفة حجم الخدمة، ويكون ضمن هذا النطاق.</div>' : '') +
         '<div class="kv"><span>المنطقة</span><span>' + esc((p.hood ? p.hood + '، ' : '') + SQ.cityName(p.city_id)) + '</span></div>' +
@@ -360,7 +360,7 @@
           return '<div class="rev"><span class="star">' + '★'.repeat(r.stars || 0) + '</span> <small class="muted">' + (r.success ? 'شغلانة ناجحة' : 'شغلانة فاشلة') + ' · ' + timeAgo(r.ts) + '</small>' + (r.comment ? '<div>' + esc(r.comment) + '</div>' : '') + '</div>';
         }).join('') : '<p class="muted">لا توجد تقييمات بعد</p>') + '</div>' +
         '<div class="center"><button class="linkbtn" id="rep">🚩 إبلاغ عن هذا الصنايعي</button></div>',
-      foot: '<button class="btn primary" id="reqsvc"' + (p.available ? '' : ' disabled') + '>' + (p.available ? 'طلب الخدمة' : 'غير متاح الآن') + '</button>'
+      foot: '<button class="btn primary" id="reqsvc">طلب الخدمة</button>'
     });
     async function sendReq(service) {
       try { await db.createRequest({ provider_id: p.id, anon_id: anon, service: service, city_id: loc ? loc.city_id : p.city_id }); }
@@ -828,6 +828,7 @@
       modal('<h3>اسم المستخدم</h3><p class="note">يُستخدم في رابط ملفك للمشاركة. <b>يمكنك تغييره مرة واحدة فقط</b>، وبعدها لا يغيّره إلا فريق الدعم.</p>' +
         '<label class="field"><span>الاسم الجديد (حروف إنجليزية صغيرة وأرقام و _)</span><input id="unv" class="ltr" maxlength="20" autocapitalize="none" autocomplete="off" value="' + esc(me.username || '') + '"></label>' +
         '<div class="row2 mt"><button class="btn ghost" id="unx">إلغاء</button><button class="btn primary" id="unk">حفظ</button></div>');
+      on('unv', 'input', function () { var a = this.value, b = a.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20); if (a !== b) this.value = b; });
       on('unx', 'click', closeModal);
       on('unk', 'click', async function () {
         var v = document.getElementById('unv').value.trim().toLowerCase();

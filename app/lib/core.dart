@@ -93,7 +93,8 @@ String errMsg(Object e) {
     'no_verified_email': 'وثّق بريدك أولًا من تعديل الملف',
     'invalid_email': 'البريد الإلكتروني غير صحيح',
     'invalid_username': 'اسم المستخدم: حروف إنجليزية وأرقام (3 إلى 20) ويبدأ بحرف',
-    'taken': 'اسم المستخدم محجوز',
+    'taken': 'اسم المستخدم مستخدم، جرّب غيره',
+    'reserved': 'هذا الاسم محجوز للإدارة، اختر اسمًا آخر',
     'already': 'تم هذا الإجراء من قبل',
     'duplicate': 'هذا الرقم مسجّل من قبل',
     'invalid': 'بيانات غير صحيحة',
@@ -322,6 +323,7 @@ class Meta {
   static List<Service> services = [];
   static Map<String, String> keywords = {};
   static Map<String, dynamic> cfg = {};
+  static Map<String, dynamic> legal = {};
 
   static Future<void> load() async {
     final g = jsonDecode(await rootBundle.loadString('assets/geo.json')) as List;
@@ -370,6 +372,17 @@ class Meta {
     } catch (_) {
       final c = Store.cacheGet('cfg');
       if (c is Map) cfg = Map<String, dynamic>.from(c);
+    }
+    // نصوص الشروط والخصوصية التي يحررها المدير (تظهر بلا تحديث للتطبيق)
+    try {
+      final l = await Api.rpc('legal_texts');
+      if (l is Map) {
+        legal = Map<String, dynamic>.from(l);
+        await Store.cachePut('legal', legal);
+      }
+    } catch (_) {
+      final l = Store.cacheGet('legal');
+      if (l is Map) legal = Map<String, dynamic>.from(l);
     }
   }
 

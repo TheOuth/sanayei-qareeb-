@@ -280,7 +280,7 @@ class ProviderCard extends StatelessWidget {
             Column(children: [
               Container(width: 10, height: 10, decoration: BoxDecoration(color: avail ? C.green : Colors.grey, shape: BoxShape.circle)),
               const SizedBox(height: 4),
-              Text(avail ? 'متاح' : 'غير متاح', style: TextStyle(fontSize: 11, color: avail ? C.green : C.mute)),
+              Text(avail ? 'متاح' : (p['off'] == 'hours' ? 'خارج وقت العمل' : 'غير متاح الآن'), style: TextStyle(fontSize: 11, color: avail ? C.green : C.mute)),
             ]),
           ]),
         ),
@@ -326,7 +326,7 @@ class ProviderGridCard extends StatelessWidget {
             Stars(rating: p['rating'] as num?, n: (p['rating_n'] ?? 0) as int, isNew: p['is_new'] == true),
             if (p['reply_pct'] != null) Padding(padding: const EdgeInsets.only(top: 4), child: ReplyRing(p: p, size: 30)),
             const SizedBox(height: 2),
-            Text(avail ? (d != null ? 'متاح · $d كم' : 'متاح') : 'غير متاح', style: TextStyle(fontSize: 11, color: avail ? C.green : C.mute)),
+            Text(avail ? (d != null ? 'متاح · $d كم' : 'متاح') : (p['off'] == 'hours' ? 'خارج وقت العمل' : 'غير متاح الآن'), style: TextStyle(fontSize: 11, color: avail ? C.green : C.mute)),
           ]),
         ),
       ),
@@ -503,4 +503,16 @@ class SafetyNote extends StatelessWidget {
           ),
         ]),
       );
+}
+
+
+/// اسم المستخدم: إنجليزي فقط، يتحول تلقائيًا إلى حروف صغيرة، ولا يقبل النقطة أو المسافة أو الحروف العربية
+class UsernameFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue o, TextEditingValue n) {
+    final t = n.text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9_]'), '');
+    final cut = t.length > 20 ? t.substring(0, 20) : t;
+    final off = n.selection.baseOffset.clamp(0, cut.length);
+    return TextEditingValue(text: cut, selection: TextSelection.collapsed(offset: off));
+  }
 }

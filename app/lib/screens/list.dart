@@ -74,7 +74,7 @@ class _ListScreenState extends State<ListScreen> {
         final items = (_res?['items'] as List?) ?? [];
         String note = '';
         if (tier == 'nearest_city') note = 'لا يوجد صنايعي ضمن نطاقك الآن، هذه أقرب النتائج في مدينتك.';
-        if (tier == 'other_city') note = 'لا يوجد في مدينتك الآن، هؤلاء أقرب المتاحين في مدن أخرى.';
+        if (tier == 'other_city') note = 'لا يوجد في مدينتك الآن، هؤلاء أقرب الصنايعية في مدن أخرى.';
         return RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -90,7 +90,7 @@ class _ListScreenState extends State<ListScreen> {
             ),
             const SizedBox(height: 10),
             if (items.isEmpty)
-              SizedBox(height: 300, child: Empty(Meta.stateClosed((Meta.stateOf((_loc?['city_id'] ?? '').toString())?.id) ?? '') ? 'الخدمة غير متاحة حاليًا في ولايتك. اختر ولاية أخرى من «موقعي».' : 'لا يوجد صنايعي متاح لهذه الخدمة الآن. جرّب لاحقًا أو غيّر المدينة'))
+              SizedBox(height: 300, child: Empty(Meta.stateClosed((Meta.stateOf((_loc?['city_id'] ?? '').toString())?.id) ?? '') ? 'الخدمة غير متاحة حاليًا في ولايتك. اختر ولاية أخرى من «موقعي».' : 'لا يوجد صنايعي مسجّل لهذه الخدمة في منطقتك بعد. جرّب غيّر المدينة'))
             else ...[
               if (note.isNotEmpty) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(note, style: const TextStyle(color: C.mute, fontSize: 13))),
               for (final p in items)
