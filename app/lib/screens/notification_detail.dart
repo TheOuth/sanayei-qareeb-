@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'app_drawer.dart' show bar;
 
 /// صفحة كاملة لرسالة واحدة (نص طويل، روابط كأزرار، وزر تحديث إن كانت رسالة تحديث)
 class NotificationDetailScreen extends StatelessWidget {
