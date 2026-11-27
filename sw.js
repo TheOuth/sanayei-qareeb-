@@ -1,22 +1,9 @@
-/* خدمة العمل دون إنترنت: الملفات الثابتة من الذاكرة، وطلبات Supabase دائما من الشبكة */
-var CACHE = 'sq-v34';
-var FILES = ['./', 'index.html', 'styles.css', 'data.js', 'db.js', 'icons.js', 'theme.css', 'admin.css', 'common.js', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png'];
-
-self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); }));
-});
+/* نسخة الويب القديمة كانت تخزّن الصفحات؛ هذا الملف يمسح كل شيء ويلغي نفسه حتى يظهر التطبيق الجديد */
+self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) {
-  e.waitUntil(caches.keys().then(function (ks) {
-    return Promise.all(ks.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
-  }).then(function () { return self.clients.claim(); }));
-});
-self.addEventListener('fetch', function (e) {
-  var r = e.request;
-  if (r.method !== 'GET' || new URL(r.url).origin !== location.origin) return;
-  // الشبكة أولا ثم الذاكرة: يحصل المستخدم على آخر نسخة ويعمل دون إنترنت
-  e.respondWith(fetch(r, { cache: 'no-cache' }).then(function (res) {
-    var copy = res.clone();
-    caches.open(CACHE).then(function (c) { c.put(r, copy); });
-    return res;
-  }).catch(function () { return caches.match(r).then(function (m) { return m || caches.match('index.html'); }); }));
+  e.waitUntil((async function () {
+    try { var ks = await caches.keys(); await Promise.all(ks.map(function (k) { return caches.delete(k); })); } catch (x) {}
+    try { await self.registration.unregister(); } catch (x) {}
+    try { var cs = await self.clients.matchAll({ type: 'window' }); cs.forEach(function (c) { c.navigate(c.url); }); } catch (x) {}
+  })());
 });

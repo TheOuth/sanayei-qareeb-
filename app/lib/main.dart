@@ -42,7 +42,8 @@ class SanayeiApp extends StatelessWidget {
         child: UpdateGate(child: child ?? const SizedBox.shrink()),
       ),
       navigatorKey: navKey,
-      home: const SplashScreen(),
+      // على الويب قد يكون المسار /username؛ نبدأ دائمًا من الشاشة الأولى ثم نفتح الصنايعي منها
+      onGenerateInitialRoutes: (_) => [MaterialPageRoute(builder: (_) => const SplashScreen())],
     );
   }
 }

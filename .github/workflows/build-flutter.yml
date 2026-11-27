@@ -2,7 +2,7 @@ name: build-flutter
 on:
   workflow_dispatch:
   push:
-    paths: ['app/**', '.github/workflows/build-flutter.yml']
+    paths: ['app/**', '.github/workflows/build-flutter.yml', 'admin.*', 'styles.css', 'theme.css', 'common.js', 'data.js', 'db.js', 'icons.js', 'sw.js', '.htaccess']
 permissions:
   contents: write
 jobs:
@@ -96,6 +96,37 @@ jobs:
       - name: Build APK
         working-directory: app
         run: flutter build apk --release --split-per-abi --build-number=${{ github.run_number }}
+      - name: Build web (same app as website)
+        working-directory: app
+        run: |
+          flutter create --platforms=web --org sd.sanayei --project-name qareeb /tmp/genweb
+          rm -rf web && cp -r /tmp/genweb/web web
+          cp ../icon-192.png web/icons/Icon-192.png
+          cp ../icon-512.png web/icons/Icon-512.png
+          cp ../icon-maskable-512.png web/icons/Icon-maskable-512.png
+          cp ../icon-192.png web/favicon.png
+          python3 - <<'PY3'
+          import re,json
+          p='web/index.html'
+          s=open(p,encoding='utf8').read()
+          s=re.sub(r'<html[^>]*>','<html lang="ar" dir="rtl">',s,count=1)
+          s=re.sub(r'<title>.*?</title>','<title>صنايعي قريب</title>',s,flags=re.S)
+          s=re.sub(r'<meta name="description"[^>]*>','<meta name="description" content="صنايعي قريب - اطلب الخدمة من أقرب صنايعي ليك">',s)
+          s=s.replace('<head>','<head>\n  <meta name="theme-color" content="#2B8CF0">',1)
+          s=re.sub(r'<meta name="apple-mobile-web-app-title"[^>]*>','<meta name="apple-mobile-web-app-title" content="صنايعي قريب">',s)
+          open(p,'w',encoding='utf8').write(s)
+          m=json.load(open('web/manifest.json',encoding='utf8'))
+          m.update({'name':'صنايعي قريب','short_name':'صنايعي قريب','lang':'ar','dir':'rtl','theme_color':'#2B8CF0','background_color':'#F3F8FF','description':'اطلب الخدمة من أقرب صنايعي ليك'})
+          m['icons']=[{'src':'icons/Icon-192.png','sizes':'192x192','type':'image/png'},{'src':'icons/Icon-512.png','sizes':'512x512','type':'image/png'},{'src':'icons/Icon-maskable-512.png','sizes':'512x512','type':'image/png','purpose':'maskable'}]
+          json.dump(m,open('web/manifest.json','w',encoding='utf8'),ensure_ascii=False,indent=2)
+          PY3
+          flutter build web --release --base-href / --pwa-strategy=none
+      - name: Assemble website zip
+        run: |
+          rm -rf site && mkdir site && cp -r app/build/web/. site/
+          cp admin.html admin.js admin.css styles.css theme.css common.js data.js db.js icons.js privacy-policy.html sw.js icon.svg .htaccess site/
+          (cd site && zip -qr ../saqapp-site.zip .)
+          ls -la saqapp-site.zip
       - uses: actions/upload-artifact@v4
         with: { name: sanayei-native-apk, path: app/build/app/outputs/flutter-apk/*.apk }
       - name: Publish release
@@ -103,4 +134,4 @@ jobs:
         run: |
           cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk sanayei-qareeb-native.apk
           cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk sanayei-qareeb-native-32bit.apk
-          gh release create "native-${{ github.run_number }}" sanayei-qareeb-native.apk sanayei-qareeb-native-32bit.apk --title "التطبيق الأصلي #${{ github.run_number }}" --notes "تطبيق أندرويد أصلي (Flutter) للتجربة."
+          gh release create "native-${{ github.run_number }}" sanayei-qareeb-native.apk sanayei-qareeb-native-32bit.apk saqapp-site.zip --title "التطبيق الأصلي #${{ github.run_number }}" --notes "تطبيق أندرويد أصلي (Flutter) للتجربة."

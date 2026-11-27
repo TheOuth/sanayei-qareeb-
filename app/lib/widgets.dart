@@ -220,8 +220,10 @@ class SeenLabel extends StatelessWidget {
     if (m < 60) return 'آخر ظهور قبل $m د';
     final h = m ~/ 60;
     if (h < 24) return h == 1 ? 'آخر ظهور قبل ساعة' : (h == 2 ? 'آخر ظهور قبل ساعتين' : (h <= 10 ? 'آخر ظهور قبل $h ساعات' : 'آخر ظهور قبل $h ساعة'));
-    final d = h ~/ 24;
-    if (d == 1) return 'آخر ظهور أمس';
+    if (h < 36) return 'آخر ظهور أمس';
+    final d = (h / 24).round();
+    if (d == 2) return 'آخر ظهور قبل يومين';
+    if (d <= 10) return 'آخر ظهور قبل $d أيام';
     if (d < 30) return 'آخر ظهور قبل $d يوم';
     return 'آخر ظهور منذ مدة';
   }

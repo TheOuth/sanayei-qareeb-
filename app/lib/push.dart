@@ -1,5 +1,6 @@
 import 'package:app_settings/app_settings.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'core.dart';
@@ -24,6 +25,7 @@ class Push with WidgetsBindingObserver {
   }
 
   static Future<void> refreshStatus() async {
+    if (kIsWeb) return;
     try {
       final st = await FirebaseMessaging.instance.getNotificationSettings();
       allowed.value = st.authorizationStatus == AuthorizationStatus.authorized || st.authorizationStatus == AuthorizationStatus.provisional;
@@ -32,6 +34,7 @@ class Push with WidgetsBindingObserver {
 
   /// يطلب الإذن؛ وإن كان مرفوضًا نهائيًا يفتح إعدادات الإشعارات للتطبيق
   static Future<void> enable() async {
+    if (kIsWeb) return;
     try {
       final r = await FirebaseMessaging.instance.requestPermission();
       await refreshStatus();
@@ -49,6 +52,7 @@ class Push with WidgetsBindingObserver {
   static String _registered = '';
 
   static Future<void> init() async {
+    if (kIsWeb) return; // الإشعارات الفورية للتطبيق فقط
     try {
       await Firebase.initializeApp();
       final m = FirebaseMessaging.instance;

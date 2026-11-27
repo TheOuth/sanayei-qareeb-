@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../core.dart';
 import '../push.dart';
 import '../theme.dart';
 import 'home.dart';
 import 'onboarding.dart';
+import 'provider.dart';
 
 /// شاشة البداية: الشعار ثم الاسم ثم العبارة، ثم تنتقل للرئيسية بتلاشٍ هادئ.
 class SplashScreen extends StatefulWidget {
@@ -24,14 +27,30 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _t = Timer(const Duration(milliseconds: 2600), _go);
   }
 
-  void _go() {
+  Future<void> _go() async {
     if (!mounted) return;
+    String? deepId;
+    if (kIsWeb) {
+      final seg = Uri.base.pathSegments.where((x) => x.isNotEmpty).toList();
+      if (seg.length == 1 && RegExp(r'^[A-Za-z][A-Za-z0-9_]{2,19}$').hasMatch(seg[0]) && !RegExp(r'^(index|admin)$', caseSensitive: false).hasMatch(seg[0])) {
+        try {
+          final r = await Api.rpc('provider_id_by_username', {'p': seg[0].toLowerCase()});
+          if (r != null && r.toString().isNotEmpty) deepId = r.toString();
+        } catch (_) {}
+      }
+      if (!mounted) return;
+    }
     Navigator.of(context).pushReplacement(PageRouteBuilder(
       transitionDuration: const Duration(milliseconds: 450),
       pageBuilder: (_, __, ___) => Onboarding.needed ? const OnboardingScreen() : const HomeScreen(),
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
     ));
     Push.openInitial();
+    if (deepId != null) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted || navKey.currentState != null) navKey.currentState?.push(MaterialPageRoute(builder: (_) => ProviderScreen(id: deepId!)));
+      });
+    }
   }
 
   @override
