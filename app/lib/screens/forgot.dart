@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import 'app_drawer.dart' show bar;
 
 /// استعادة كلمة السر برمز من 6 أرقام يصل إلى البريد الموثّق، ثم دخول مباشر بكلمة السر الجديدة.
 class ForgotPasswordScreen extends StatefulWidget {
@@ -119,7 +120,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: bar('استعادة كلمة السر'),
+      appBar: bar('استعادة كلمة السر', menu: false, bell: false),
       body: ListView(padding: const EdgeInsets.all(20), children: [
         const Text('اكتب رقم هاتفك أو اسم المستخدم أو بريدك، وسنرسل رمزًا من 6 أرقام إلى بريدك الموثّق.', style: TextStyle(height: 1.7, color: C.mute)),
         const SizedBox(height: 14),
