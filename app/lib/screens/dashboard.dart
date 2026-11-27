@@ -186,7 +186,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Row(children: [
                     Icon(Icons.circle, size: 9, color: visible ? C.green : C.mute),
                     const SizedBox(width: 5),
-                    Text(visible ? 'ملفك ظاهر للزبائن' : (me['flag'] == true ? 'ملفك غير ظاهر الآن لأنك خارج ساعات العمل (${t12(me['from'])} - ${t12(me['to'])})' : 'ملفك غير ظاهر لأن حالتك «غير متاح» — فعّلها من «ملفي»'), style: TextStyle(color: visible ? C.green : const Color(0xFFB45309), fontSize: 12.5, fontWeight: FontWeight.w600)),
+                    Expanded(child: Text(visible ? 'ملفك ظاهر للزبائن' : (me['flag'] == true ? 'ملفك غير ظاهر الآن لأنك خارج ساعات العمل (${t12(me['from'])} - ${t12(me['to'])})' : 'ملفك غير ظاهر لأن حالتك «غير متاح» — فعّلها من «ملفي»'), style: TextStyle(color: visible ? C.green : const Color(0xFFB45309), fontSize: 12.5, fontWeight: FontWeight.w600)))),
                   ]),
                 ),
               ),

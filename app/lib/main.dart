@@ -36,11 +36,23 @@ class SanayeiApp extends StatelessWidget {
       ],
       navigatorObservers: [_UnfocusObserver(), RouteTracker()],
       // لمس أي مكان خارج حقل الكتابة يخفي الكيبورد ويُنهي التركيز
-      builder: (context, child) => GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: UpdateGate(child: child ?? const SizedBox.shrink()),
-      ),
+      builder: (context, child) {
+        // أندرويد 15 يرسم التطبيق تحت شريط التنقل؛ نترك مساحة للأسفل فقط (والأعلى تتولاه كل شاشة)
+        final v = MediaQueryData.fromView(View.of(context));
+        final bottom = (v.viewPadding.bottom - v.viewInsets.bottom).clamp(0.0, 200.0);
+        final mq = MediaQuery.of(context);
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottom),
+          child: MediaQuery(
+            data: mq.copyWith(padding: mq.padding.copyWith(bottom: 0), viewPadding: mq.viewPadding.copyWith(bottom: 0)),
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+              child: UpdateGate(child: child ?? const SizedBox.shrink()),
+            ),
+          ),
+        );
+      },
       navigatorKey: navKey,
       // على الويب قد يكون المسار /username؛ نبدأ دائمًا من الشاشة الأولى ثم نفتح الصنايعي منها
       home: const SplashScreen(),

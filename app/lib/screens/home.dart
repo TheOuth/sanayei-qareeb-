@@ -238,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         gradient: LinearGradient(colors: [C.navy, C.blue], begin: Alignment.topRight, end: Alignment.bottomLeft),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
       ),
-      padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 10, 16, 20),
+      padding: EdgeInsets.fromLTRB(16, MediaQueryData.fromView(View.of(context)).padding.top + 10, 16, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           InkWell(
