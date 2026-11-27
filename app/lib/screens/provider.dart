@@ -162,7 +162,7 @@ class _ProviderScreenState extends State<ProviderScreen> {
           if (p != null && p.isNotEmpty && p['username'] != null)
             IconButton(
               icon: const Icon(Icons.share_rounded),
-              onPressed: () => Share.share('${p['name']} على صنايعي قريب\n${Config.siteUrl}/#/u/${p['username']}'),
+              onPressed: () => Share.share('${p['name']} على صنايعي قريب\n${Config.siteUrl}/${p['username']}'),
             ),
           if (p != null && p.isNotEmpty) IconButton(icon: const Icon(Icons.flag_outlined), onPressed: _report),
         ],

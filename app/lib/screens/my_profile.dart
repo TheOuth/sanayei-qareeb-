@@ -83,7 +83,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     final pct = (me['pct'] ?? 0) as int;
     final missing = (me['missing'] as List?) ?? [];
     final user = (me['username'] ?? '').toString();
-    final link = '${Config.siteUrl}/#/u/$user';
+    final link = '${Config.siteUrl}/$user';
     return ListView(padding: const EdgeInsets.all(16), children: [
       Card(
         child: Padding(

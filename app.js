@@ -333,7 +333,7 @@
     if (!id) { toast('لم نجد صنايعيا بهذا الاسم'); return go('#/'); }
     return viewClientProvider(id, 'other');
   }
-  function shareUrl(p) { return location.href.split('#')[0] + '#/u/' + (p.username || ('c/p/' + p.id)); }
+  function shareUrl(p) { return p.username ? location.origin + '/' + p.username : location.href.split('#')[0] + '#/c/p/' + p.id; }
 
   async function viewClientProvider(id, sid) {
     loading('ملف الصنايعي');
@@ -934,6 +934,9 @@
     closeModal(); document.body.classList.remove('is-home');
     var h = (location.hash || '#/').replace(/^#/, ''), p = h.split('/').filter(Boolean);
     try {
+      // رابط نظيف: saqapp.net/username (يُعاد توجيهه إلى index.html من .htaccess)
+      var pm = !location.hash && location.pathname.match(/^\/([A-Za-z][A-Za-z0-9_]{2,19})\/?$/);
+      if (pm && !/^(index|admin)$/i.test(pm[1])) return viewByUsername(pm[1].toLowerCase());
       if (!p.length) return viewHome();
       if (p[0] === 'u' && p[1]) return viewByUsername(decodeURIComponent(p[1]));
       if (p[0] === 'c') {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core.dart';
 import 'push.dart';
+import 'presence.dart';
 import 'update_gate.dart';
 import 'theme.dart';
 import 'screens/splash.dart';
@@ -13,6 +14,7 @@ Future<void> main() async {
   await Onboarding.init();
   await Meta.load();
   await AppVersion.load();
+  Presence.start();
   Push.init(); // لا ننتظرها حتى لا تؤخر فتح التطبيق
   runApp(const SanayeiApp());
 }

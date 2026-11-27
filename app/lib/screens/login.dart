@@ -4,6 +4,7 @@ import '../core.dart';
 import '../widgets.dart';
 import 'register.dart';
 import 'dashboard.dart';
+import 'forgot.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -94,7 +95,10 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 10),
         OutlinedButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RegisterScreen())), child: const Text('ما عندي حساب؟ إنشاء حساب صنايعي')),
         const SizedBox(height: 10),
-        const Text('نسيت كلمة السر؟ تواصل مع الدعم من قائمة "عن التطبيق".', style: TextStyle(fontSize: 12), textAlign: TextAlign.center),
+        TextButton(
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ForgotPasswordScreen(initial: _byPhone ? (_ph.text.trim().isEmpty ? '' : '0${_ph.text.trim()}') : _id.text.trim()))),
+          child: const Text('نسيت كلمة السر؟'),
+        ),
       ])),
     );
   }

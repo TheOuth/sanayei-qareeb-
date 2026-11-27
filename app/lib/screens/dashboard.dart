@@ -363,7 +363,7 @@ class _EditScreenState extends State<_EditScreen> {
   late String _user = (widget.me['username'] ?? '').toString();
   late bool _changed = widget.me['username_changed'] == true;
 
-  String get _link => '${Config.siteUrl}/#/u/$_user';
+  String get _link => '${Config.siteUrl}/$_user';
 
   Future<void> _rename() async {
     final c = TextEditingController(text: _user);
