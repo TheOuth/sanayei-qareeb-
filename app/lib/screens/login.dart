@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'app_drawer.dart';
 import '../core.dart';
 import '../widgets.dart';
-import 'register.dart';
+import 'account.dart';
 import 'dashboard.dart';
 import 'forgot.dart';
 
@@ -37,15 +37,15 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_pw.text.isEmpty) return toast(context, 'اكتب كلمة السر');
     setState(() => _busy = true);
     try {
-      final r = await Api.rpc('provider_login', {'p_phone': ph, 'p_password': _pw.text});
+      final r = await Api.rpc('account_login', {'p_login': ph, 'p_password': _pw.text, 'p_anon': Store.anon});
       if (r['ok'] == true) {
         if (_byPhone) await Store.setLastPhone(localPhone(ph));
-        await Store.signIn(r['id'], r['token']);
+        await Store.signInAccount(r);
         Store.refreshMe();
         if (!mounted) return;
         Navigator.of(context).popUntil((r) => r.isFirst);
         var banned = false;
-        try {
+        if (Store.loggedIn) try {
           final me = await Api.rpc('provider_self', {'p_id': Store.pid, 'p_token': Store.token});
           banned = me is Map && me['status'] == 'banned';
         } catch (_) {}
@@ -69,10 +69,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: const AppDrawer(current: 'login'),
-      appBar: bar('تسجيل دخول الصنايعي'),
+      appBar: bar('تسجيل الدخول'),
       body: AutofillGroup(child: ListView(padding: const EdgeInsets.all(20), children: [
-        const RegistrationNote(),
-        const SizedBox(height: 10),
+        const SizedBox(height: 4),
         if (_byPhone)
           PhoneField(controller: _ph, label: 'رقم الهاتف', autofill: const [AutofillHints.username, AutofillHints.telephoneNumber], action: TextInputAction.next)
         else
@@ -93,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 18),
         FilledButton(onPressed: _busy ? null : _go, child: Text(_busy ? 'جارٍ الدخول…' : 'دخول')),
         const SizedBox(height: 10),
-        OutlinedButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RegisterScreen())), child: const Text('ما عندي حساب؟ إنشاء حساب صنايعي')),
+        OutlinedButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AccountRegisterScreen())), child: const Text('ما عندي حساب؟ إنشاء حساب جديد')),
         const SizedBox(height: 10),
         TextButton(
           onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ForgotPasswordScreen(initial: _byPhone ? (_ph.text.trim().isEmpty ? '' : '0${_ph.text.trim()}') : _id.text.trim()))),

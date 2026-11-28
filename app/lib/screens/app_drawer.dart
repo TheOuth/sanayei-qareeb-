@@ -6,6 +6,7 @@ import '../theme.dart';
 import 'requests.dart';
 import 'login.dart';
 import 'register.dart';
+import 'account.dart';
 import 'dashboard.dart';
 import 'my_profile.dart';
 import 'about.dart';
@@ -134,23 +135,31 @@ class AppDrawer extends StatelessWidget {
             }
           }),
           const Divider(),
+          if (!Store.hasAccount) ...[
+            _item(context, 'login', Icons.login_rounded, 'تسجيل الدخول', build: () => const LoginScreen()),
+            _item(context, 'signup', Icons.person_add_alt_1_rounded, 'إنشاء حساب', subtitle: 'احفظ طلباتك وتابعها من أي جهاز', build: () => const AccountRegisterScreen()),
+            const Divider(),
+          ] else if (Store.aName.isNotEmpty || Store.aid != null)
+            Padding(padding: const EdgeInsets.fromLTRB(16, 6, 16, 6), child: Row(children: [
+              const Icon(Icons.account_circle_rounded, color: C.blue),
+              const SizedBox(width: 8),
+              Expanded(child: Text(Store.aName.isNotEmpty ? Store.aName : 'حسابي', style: const TextStyle(fontWeight: FontWeight.w700))),
+            ])),
           const Padding(padding: EdgeInsets.fromLTRB(16, 4, 16, 4), child: Text('أنا صنايعي', style: TextStyle(color: C.mute, fontWeight: FontWeight.w600))),
           if (Store.loggedIn)
             ...[
               _item(context, 'dash', Icons.dashboard_rounded, 'لوحة الخدمات', build: () => const DashboardScreen()),
               _item(context, 'me', Icons.person_rounded, 'ملفي', build: () => const MyProfileScreen()),
             ]
-          else ...[
-            _item(context, 'login', Icons.login_rounded, 'تسجيل الدخول', build: () => const LoginScreen()),
-            _item(context, 'register', Icons.app_registration_rounded, 'إنشاء حساب صنايعي', subtitle: 'اعرض خدمتك حسب المهارات العندك', build: () => const RegisterScreen()),
-          ],
+          else
+            _item(context, 'register', Icons.app_registration_rounded, Store.aid != null ? 'التسجيل كصنايعي' : 'إنشاء حساب صنايعي', subtitle: 'اعرض خدمتك حسب المهارات العندك', build: () => const RegisterScreen()),
           const Divider(),
           _item(context, 'about', Icons.info_outline_rounded, 'عن التطبيق والدعم', build: () => const AboutScreen()),
           const Divider(),
           const _Socials(),
           const SizedBox(height: 8),
         ])),
-          if (Store.loggedIn) ...[
+          if (Store.hasAccount) ...[
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout_rounded, color: C.red),
@@ -163,7 +172,7 @@ class AppDrawer extends StatelessWidget {
                   context: root,
                   builder: (dctx) => AlertDialog(
                     title: const Text('تسجيل الخروج'),
-                    content: const Text('إذا سجّلت الخروج فلن تصلك إشعارات الطلبات، ولن تعرف أن عميلًا طلب خدمتك، وسيضيع عليك العمل ويتأخر ردّك (وتنخفض نسبة سرعة الرد).\n\nالأفضل لك البقاء مسجّلًا. هل تريد الخروج فعلًا؟', style: TextStyle(height: 1.6)),
+                    content: Text(Store.loggedIn ? 'إذا سجّلت الخروج فلن تصلك إشعارات الطلبات، ولن تعرف أن عميلًا طلب خدمتك، وسيضيع عليك العمل ويتأخر ردّك (وتنخفض نسبة سرعة الرد).\n\nالأفضل لك البقاء مسجّلًا. هل تريد الخروج فعلًا؟' : 'هل تريد تسجيل الخروج من حسابك؟', style: TextStyle(height: 1.6)),
                     actions: [
                       FilledButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('البقاء مسجّلًا')),
                       TextButton(style: TextButton.styleFrom(foregroundColor: C.red), onPressed: () => Navigator.pop(dctx, true), child: const Text('خروج')),

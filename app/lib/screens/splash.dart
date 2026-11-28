@@ -32,6 +32,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     String? deepId;
     if (kIsWeb) {
       final seg = Uri.base.pathSegments.where((x) => x.isNotEmpty).toList();
+      if (seg.isNotEmpty && seg.first.toLowerCase() == 'sanayei') seg.removeAt(0);
       if (seg.length == 1 && RegExp(r'^[A-Za-z][A-Za-z0-9_]{2,19}$').hasMatch(seg[0]) && !RegExp(r'^(index|admin)$', caseSensitive: false).hasMatch(seg[0])) {
         try {
           final r = await Api.rpc('provider_id_by_username', {'p': seg[0].toLowerCase()});

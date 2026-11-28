@@ -44,7 +44,7 @@ Future<void> openPage(String name, Widget Function() build) async {
 class Config {
   static const apiUrl = String.fromEnvironment('API_URL', defaultValue: 'https://pwqtvixjkpvyajqmfqpa.supabase.co');
   static const apiKey = String.fromEnvironment('API_KEY', defaultValue: 'sb_publishable_sFHW2864oPilfQvjs3txaA__QjKY0sG');
-  static const siteUrl = 'https://saqapp.net';
+  static const siteUrl = 'https://saqapp.net/sanayei';
   static const commissionNote = 5000;
 }
 
@@ -68,6 +68,9 @@ String errMsg(Object e) {
     'forbidden': 'غير مسموح. سجّل الدخول من جديد',
     'invalid_phone': 'رقم الهاتف غير صحيح',
     'weak': 'كلمة السر قصيرة (6 أحرف على الأقل)',
+    'phone_taken': 'هذا الرقم مسجّل من قبل. سجّل الدخول بدل إنشاء حساب جديد',
+    'email_taken': 'هذا البريد مسجّل من قبل. سجّل الدخول',
+    'already_provider': 'حسابك مسجّل كصنايعي من قبل',
     'birth_required': 'تاريخ الميلاد مطلوب',
     'invalid_birth': 'تاريخ الميلاد غير صحيح',
     'underage': 'التطبيق لمن هم 18 سنة فأكثر',
@@ -230,6 +233,28 @@ class Store {
   static String? get pid => p.getString('pid');
   static String? get token => p.getString('token');
   static bool get loggedIn => pid != null && token != null;
+  // الحساب الموحّد (عميل أو صنايعي)
+  static String? get aid => p.getString('aid');
+  static String? get atoken => p.getString('atoken');
+  static bool get hasAccount => (aid != null && atoken != null) || loggedIn;
+  static String get aName => p.getString('a_name') ?? '';
+  static String get aPhone => p.getString('a_phone') ?? '';
+  static bool get accountNeedsPhone => aid != null && aPhone.isEmpty;
+
+  /// نتيجة account_login / account_register
+  static Future<void> signInAccount(Map r) async {
+    await p.setString('aid', r['account_id'].toString());
+    await p.setString('atoken', r['account_token'].toString());
+    await p.setString('a_name', (r['name'] ?? '').toString());
+    await p.setString('a_phone', (r['phone'] ?? '').toString());
+    if (r['provider_id'] != null && r['provider_token'] != null) {
+      await signIn(r['provider_id'].toString(), r['provider_token'].toString());
+    } else {
+      await p.remove('pid');
+      await p.remove('token');
+      tick.value++;
+    }
+  }
   /// آخر رقم دخل به الصنايعي (يبقى بعد تسجيل الخروج لتسهيل الدخول القادم)
   static String get lastPhone => p.getString('last_phone') ?? '';
   static Future<void> setLastPhone(String v) => p.setString('last_phone', v);
@@ -250,6 +275,10 @@ class Store {
     } catch (_) {}
     await p.remove('pid');
     await p.remove('token');
+    await p.remove('aid');
+    await p.remove('atoken');
+    await p.remove('a_name');
+    await p.remove('a_phone');
     await p.remove('me_photo');
     await p.remove('me_name');
     unread.value = 0;

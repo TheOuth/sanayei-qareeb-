@@ -10,11 +10,13 @@ import '../widgets.dart';
 
 class ProfileForm extends StatefulWidget {
   final bool isRegister;
+  /// التسجيل من حساب موجود: لا نطلب كلمة سر، ولا الهاتف إن كان موجودًا بالحساب
+  final bool fromAccount;
   final Map? initial;
   final Widget? header;
   final Widget? footer;
   final Future<void> Function(Map<String, dynamic>) onSubmit;
-  const ProfileForm({super.key, required this.isRegister, this.initial, this.header, this.footer, required this.onSubmit});
+  const ProfileForm({super.key, required this.isRegister, this.fromAccount = false, this.initial, this.header, this.footer, required this.onSubmit});
   @override
   State<ProfileForm> createState() => _ProfileFormState();
 }
@@ -343,10 +345,13 @@ class _ProfileFormState extends State<ProfileForm> {
     final reg = widget.isRegister;
     if (_name.text.trim().length < 3) return toast(context, 'اكتب اسمك الكامل');
     String ph = '';
+    final askPhone = reg && (!widget.fromAccount || Store.accountNeedsPhone);
     if (reg) {
-      ph = normalizePhone('0${_phone.text}');
-      if (ph.isEmpty) return toast(context, 'رقم الهاتف غير صحيح. اكتب 9 أرقام تبدأ بـ 9 أو 1');
-      if (_pw.text.length < 6) return toast(context, 'كلمة السر 6 أحرف على الأقل');
+      if (askPhone) {
+        ph = normalizePhone('0${_phone.text}');
+        if (ph.isEmpty) return toast(context, 'رقم الهاتف غير صحيح. اكتب 9 أرقام تبدأ بـ 9 أو 1');
+      }
+      if (!widget.fromAccount && _pw.text.length < 6) return toast(context, 'كلمة السر 6 أحرف على الأقل');
       if (!_ok18) return toast(context, 'أقرّ بأن عمرك 18 سنة فأكثر ووافق على الشروط والأحكام');
     }
     if (_d == null || _m == null || _y == null) return toast(context, 'اختر تاريخ ميلادك الحقيقي');
@@ -376,8 +381,8 @@ class _ProfileFormState extends State<ProfileForm> {
       'birth_date': '${_y!.toString().padLeft(4, '0')}-${_m!.toString().padLeft(2, '0')}-${_d!.toString().padLeft(2, '0')}',
     };
     if (reg) {
-      body['phone'] = ph;
-      body['password'] = _pw.text;
+      if (ph.isNotEmpty) body['phone'] = ph;
+      if (!widget.fromAccount) body['password'] = _pw.text;
       if (_customName.isNotEmpty) { body['custom_service'] = _customName; body['custom_note'] = _customNote; }
     } else {
       final em = _email.text.trim();
@@ -420,7 +425,7 @@ class _ProfileFormState extends State<ProfileForm> {
       Center(child: _need(_photo.isEmpty, 'ناقص: أضف صورة شخصية (30% من اكتمال الملف)')),
       sec('بياناتك'),
       TextField(controller: _name, decoration: const InputDecoration(labelText: 'الاسم الكامل')),
-      if (reg) ...[
+      if (reg && (!widget.fromAccount || Store.accountNeedsPhone)) ...[
         const SizedBox(height: 10),
         PhoneField(controller: _phone, label: 'رقم الهاتف', autofill: const [AutofillHints.username]),
       ],
@@ -431,7 +436,7 @@ class _ProfileFormState extends State<ProfileForm> {
         TextField(controller: _email, keyboardType: TextInputType.emailAddress, textDirection: TextDirection.ltr, decoration: const InputDecoration(labelText: 'البريد الإلكتروني (اختياري)', helperText: 'للرسائل المهمة مثل التهنئة والتوثيق'), onChanged: (_) => setState(() {})),
         _emailStatus(),
       ],
-      if (reg) ...[
+      if (reg && !widget.fromAccount) ...[
         const SizedBox(height: 10),
         TextField(controller: _pw, obscureText: true, autofillHints: const [AutofillHints.newPassword], decoration: const InputDecoration(labelText: 'كلمة السر (6 أحرف على الأقل)')),
       ],

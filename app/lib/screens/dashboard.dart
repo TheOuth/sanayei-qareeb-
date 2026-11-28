@@ -396,7 +396,7 @@ class _EditScreenState extends State<_EditScreen> {
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('يمكن تغييره مرة واحدة فقط. حروف إنجليزية وأرقام و _ فقط (3 إلى 20)، يبدأ بحرف، وتتحول تلقائيًا إلى حروف صغيرة.', style: TextStyle(fontSize: 12)),
           const SizedBox(height: 8),
-          TextField(controller: c, textDirection: TextDirection.ltr, autocorrect: false, enableSuggestions: false, keyboardType: TextInputType.visiblePassword, inputFormatters: [UsernameFormatter()], decoration: const InputDecoration(prefixText: 'saqapp.net/', hintText: 'username')),
+          TextField(controller: c, textDirection: TextDirection.ltr, autocorrect: false, enableSuggestions: false, keyboardType: TextInputType.visiblePassword, inputFormatters: [UsernameFormatter()], decoration: const InputDecoration(prefixText: 'saqapp.net/sanayei/', hintText: 'username')),
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),

@@ -96,7 +96,7 @@ class _ProviderScreenState extends State<ProviderScreen> {
     setState(() => _sending = true);
     try {
       final l = Store.loc;
-      final r = await Api.rpc('create_request', {'p': {'provider_id': p['id'], 'anon_id': Store.anon, 'client_pid': Store.pid, 'service': sid, 'city_id': l?['city_id'] ?? p['city_id']}});
+      final r = await Api.rpc('create_request', {'p': {'provider_id': p['id'], 'anon_id': Store.anon, 'client_pid': Store.pid, 'account_id': Store.aid, 'account_token': Store.atoken, 'service': sid, 'city_id': l?['city_id'] ?? p['city_id']}});
       final existing = r is Map && r['existing'] == true;
       Push.syncClient();
       Store.refreshReqBadge();
