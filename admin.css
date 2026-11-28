@@ -91,3 +91,18 @@ body.admin .mgrp>b{display:block;margin-bottom:6px;color:var(--nile-2)}
 .rv-c{margin:8px 0;line-height:1.7}
 .paym{border:1px solid var(--hair);border-radius:14px;padding:10px 12px;margin-top:8px;background:#FAFCFF}
 @media (prefers-reduced-motion:reduce){.prow,.prow .mng{transition:none}.prow[data-act]:hover{transform:none}}
+
+/* مبدّل الخدمات: لكل خدمة قسم مستقل */
+body.admin .svcsw{display:flex;gap:8px;flex:0 0 auto;padding-inline-end:10px;margin-inline-end:4px;border-inline-end:1px solid var(--hair)}
+body.admin .svcsw button{display:flex;flex-direction:column;align-items:flex-start;gap:0;border:1.5px solid var(--hair);background:#fff;border-radius:14px;padding:7px 14px;cursor:pointer;color:var(--mute);white-space:nowrap}
+body.admin .svcsw button b{font-size:14.5px}
+body.admin .svcsw button small{font-size:11px;opacity:.8}
+body.admin .svcsw button.on{border-color:#2379E0;background:#EAF3FE;color:#0F3A68}
+@media (min-width:900px){
+  body.admin .svcsw{flex-direction:column;border-inline-end:0;padding-inline-end:0;margin:0 0 8px;padding-bottom:10px;border-bottom:1px solid var(--hair)}
+  body.admin .svcsw button{width:100%}
+}
+body.admin .bars{display:flex;align-items:flex-end;gap:6px;height:110px;margin-top:10px}
+body.admin .bar-c{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px}
+body.admin .bar-c i{display:block;width:100%;max-width:26px;background:linear-gradient(#46AAFB,#2379E0);border-radius:6px 6px 0 0}
+body.admin .bar-c small{font-size:10px;color:var(--mute)}

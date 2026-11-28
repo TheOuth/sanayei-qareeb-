@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0C3076">
+<title>الصفحة غير موجودة | سبيل</title>
+<link rel="icon" href="/favicon.png" type="image/png">
+<script>
+/* لكل خدمة مسارها: مسارات /sanayei/ تبقى داخل صنايعي قريب (الرابط الاحتياطي للملفات الشخصية)، وغيرها تبقى في سبيل */
+(function () {
+  var p = location.pathname;
+  if (/^\/sanayei(\/|$)/i.test(p)) {
+    var m = p.match(/^\/sanayei\/([^\/]+)\/?$/i);
+    document.documentElement.className = 'go';
+    if (m && /^[A-Za-z][A-Za-z0-9_]{2,19}$/.test(m[1])) location.replace('/sanayei/?u=' + encodeURIComponent(m[1]));
+    else location.replace('/sanayei/');
+  }
+})();
+</script>
+<style>.go body{display:none}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/portal.css?v=2">
+<style>
+.nf{min-height:calc(100vh - 240px);display:flex;align-items:center;justify-content:center;text-align:center;padding:40px 20px;background:linear-gradient(180deg,#EAF3FF,#fff)}
+.nf .code{font-size:clamp(70px,16vw,120px);font-weight:700;color:var(--navy);line-height:1}
+.nf .code span{color:var(--orange)}
+.nf h1{margin:10px 0 8px;font-size:26px;color:var(--navy)}
+.nf p{margin:0 auto 22px;max-width:420px;color:var(--mute)}
+.nf .go-home{display:inline-block;background:var(--navy);color:#fff;text-decoration:none;font-weight:600;padding:12px 28px;border-radius:999px}
+.nf .go-home:hover{background:var(--navy-d)}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="/" aria-label="سبيل"><img src="/logo-navy.png" alt="سبيل"></a>
+</div></header>
+<main class="nf"><div>
+  <div class="code">4<span>0</span>4</div>
+  <h1>الصفحة غير موجودة</h1>
+  <p>الرابط الذي كتبته غير صحيح أو لم يعد موجودًا. يمكنك العودة إلى الصفحة الرئيسية لسبيل.</p>
+  <a class="go-home" href="/">الصفحة الرئيسية</a>
+</div></main>
+<footer><div class="wrap"><a class="fb" href="/" aria-label="سبيل"><img src="/logo-blue.png" alt="سبيل"></a><div class="ft">طرق أكثر لحياة أسهل</div><nav><a href="/sanayei/">صنايعي قريب</a><a href="/account.html">حسابي</a><a href="/privacy-policy.html">سياسة الخصوصية</a></nav><small>© سبيل</small></div></footer>
+</body>
+</html>

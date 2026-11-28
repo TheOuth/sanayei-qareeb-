@@ -44,6 +44,7 @@ flutter:
     - assets/geo.json
     - assets/meta.json
     - assets/icon.png
+    - assets/sabil-logo.png
     - assets/badges/
     - assets/sounds/
     - assets/pay/

@@ -1,9 +1,8 @@
-# الجذر: صفحة البوابة. التطبيق داخل /sanayei/
+# الجذر: بوابة سبيل. كل خدمة داخل مجلدها (صنايعي قريب في /sanayei/) ولا يُخلط بينها.
 RewriteEngine On
-# روابط الصنايعية القديمة saqapp.net/اسم → saqapp.net/sanayei/اسم (الملفات والمجلدات الموجودة لا تتأثر)
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^([a-zA-Z][a-zA-Z0-9_]{2,19})/?$ /sanayei/$1 [R=302,L]
+
+# أي مسار غير موجود: صفحة 404 (تحوّل مسارات /sanayei/ إلى الخدمة نفسها، وغيرها تبقى في سبيل)
+ErrorDocument 404 /404.html
 
 # الصفحات والسكربتات تُراجَع مع كل فتح حتى يصل التحديث فورًا
 <IfModule mod_headers.c>

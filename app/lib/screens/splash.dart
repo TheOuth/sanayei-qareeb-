@@ -7,6 +7,7 @@ import '../theme.dart';
 import 'home.dart';
 import 'onboarding.dart';
 import 'provider.dart';
+import 'not_found.dart';
 
 /// شاشة البداية: الشعار ثم الاسم ثم العبارة، ثم تنتقل للرئيسية بتلاشٍ هادئ.
 class SplashScreen extends StatefulWidget {
@@ -29,14 +30,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   Future<void> _go() async {
     if (!mounted) return;
-    String? deepId;
+    String? deepId, missing;
     if (kIsWeb) {
+      // رابط الملف الشخصي: /sanayei/اسم  أو  /sanayei/?u=اسم (احتياطي إن لم تعمل إعادة الكتابة)
       final seg = Uri.base.pathSegments.where((x) => x.isNotEmpty).toList();
       if (seg.isNotEmpty && seg.first.toLowerCase() == 'sanayei') seg.removeAt(0);
-      if (seg.length == 1 && RegExp(r'^[A-Za-z][A-Za-z0-9_]{2,19}$').hasMatch(seg[0]) && !RegExp(r'^(index|admin)$', caseSensitive: false).hasMatch(seg[0])) {
+      String? name = Uri.base.queryParameters['u'];
+      if ((name == null || name.isEmpty) && seg.length == 1) name = seg[0];
+      if (name != null && RegExp(r'^[A-Za-z][A-Za-z0-9_]{2,19}$').hasMatch(name) && !RegExp(r'^(index|admin)$', caseSensitive: false).hasMatch(name)) {
         try {
-          final r = await Api.rpc('provider_id_by_username', {'p': seg[0].toLowerCase()});
-          if (r != null && r.toString().isNotEmpty) deepId = r.toString();
+          final r = await Api.rpc('provider_id_by_username', {'p': name.toLowerCase()});
+          if (r != null && r.toString().isNotEmpty) {
+            deepId = r.toString();
+          } else {
+            missing = name;
+          }
         } catch (_) {}
       }
       if (!mounted) return;
@@ -50,6 +58,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (deepId != null) {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted || navKey.currentState != null) navKey.currentState?.push(MaterialPageRoute(builder: (_) => ProviderScreen(id: deepId!)));
+      });
+    } else if (missing != null) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        navKey.currentState?.push(MaterialPageRoute(builder: (_) => UserNotFoundScreen(name: missing!)));
       });
     }
   }

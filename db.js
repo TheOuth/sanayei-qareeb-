@@ -590,6 +590,8 @@
     adminNudgeStalled: async function (code) { this.admin(code); return true; },
     adminInactive: async function (code) { this.admin(code); return []; },
     adminInactiveRemind: async function (code) { this.admin(code); return { ok: true, emailed: false }; },
+    adminSabilOverview: async function (code) { this.admin(code); return { accounts: 0, clients_only: 0, providers: 0, with_email: 0, new_7d: 0, active_7d: 0, by_day: [] }; },
+    adminAccounts: async function (code) { this.admin(code); return { total: 0, items: [] }; },
     adminReservedList: async function (code) { this.admin(code); return []; },
     adminReservedAdd: async function (code) { this.admin(code); return { added: 0, invalid: 0 }; },
     adminReservedRemove: async function (code) { this.admin(code); return true; },
@@ -713,6 +715,8 @@
       if (!r.ok) throw new Error(j.error || 'failed');
       return j;
     },
+    adminSabilOverview: function (code) { return SB.rpc('admin_sabil_overview', { p_code: code }); },
+    adminAccounts: function (code, o) { o = o || {}; return SB.rpc('admin_accounts', { p_code: code, p_q: o.q || '', p_limit: o.limit || 30, p_offset: o.offset || 0 }); },
     adminReservedList: function (code) { return SB.rpc('admin_reserved_list', { p_code: code }); },
     adminReservedAdd: function (code, names, note) { return SB.rpc('admin_reserved_add', { p_code: code, p_names: names, p_note: note || '' }); },
     adminReservedRemove: function (code, name) { return SB.rpc('admin_reserved_remove', { p_code: code, p_name: name }); },

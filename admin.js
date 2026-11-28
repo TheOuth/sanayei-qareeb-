@@ -11,6 +11,16 @@
   document.body.classList.add('admin');
 
   var TABS = [['overview', 'نظرة عامة'], ['providers', 'الصنايعية'], ['reviews', 'التقييمات'], ['names', 'الأسماء المحجوزة'], ['requests', 'الطلبات'], ['stalled', 'معلّقة'], ['inactive', 'غير النشطة'], ['confirmed', 'المؤكدة'], ['payments', 'الدفعيات'], ['services', 'الخدمات'], ['custom', 'خدمات مقترحة'], ['bans', 'الحظر'], ['reports', 'البلاغات'], ['settings', 'الإعدادات']];
+  /* الخدمات: كل خدمة جديدة تُضاف هنا بقسمها وتبويباتها المستقلة (ثم دوال العرض في render) */
+  var SERVICES = [
+    { id: 'sabil', name: 'سبيل', sub: 'المنصة والحسابات', home: 's_overview', tabs: [['s_overview', 'نظرة عامة'], ['s_accounts', 'الحسابات']] },
+    { id: 'sanayei', name: 'صنايعي قريب', sub: 'خدمة', home: 'overview', tabs: TABS }
+  ];
+  var svc = 'sanayei';
+  try { svc = sessionStorage.getItem('sq_admin_svc') || 'sanayei'; } catch (e) {}
+  if (!SERVICES.some(function (x) { return x.id === svc; })) svc = 'sanayei';
+  function curSvc() { return SERVICES.filter(function (x) { return x.id === svc; })[0]; }
+  function setSvc(id) { svc = id; try { sessionStorage.setItem('sq_admin_svc', id); } catch (e) {} tab = curSvc().home; mp = null; }
   var STATUS = { pending: ['بانتظار الموافقة', 'warn'], approved: ['معتمد', ''], suspended: ['موقوف', 'bad'], rejected: ['مرفوض', 'bad'], banned: ['محظور', 'bad'] };
   var REQ = { 'new': 'بانتظار رأي الزبون', done: 'ناجحة', failed: 'فاشلة', not_agreed: 'ما اتفقنا' };
 
@@ -87,22 +97,24 @@
 
   /* ---------- الهيكل ---------- */
   function shell(inner) {
-    var nav = TABS.map(function (t) {
+    var sw = '<div class="svcsw">' + SERVICES.map(function (x) { return '<button class="' + (svc === x.id ? 'on' : '') + '" data-svc="' + x.id + '"><b>' + esc(x.name) + '</b><small>' + esc(x.sub) + '</small></button>'; }).join('') + '</div>';
+    var nav = sw + curSvc().tabs.map(function (t) {
       var n = t[0] === 'providers' && ov && ov.pending ? ov.pending : t[0] === 'reports' && ov && ov.reports_open ? ov.reports_open : t[0] === 'badges' ? (cn.badges || 0) : t[0] === 'custom' ? (cn.custom || 0) : t[0] === 'payments' ? (cn.unpaid != null ? cn.unpaid : (cn.commissions || 0)) : 0;
       return '<button class="' + (tab === t[0] ? 'on' : '') + '" data-tab="' + t[0] + '">' + t[1] + (n ? '<span class="cnt">' + n + '</span>' : '') + '</button>';
     }).join('');
-    $app.innerHTML = '<header class="top"><a class="back" href="' + esc(appUrl()) + '" title="فتح التطبيق" aria-label="التطبيق">' + SQ.I('home', 22) + '</a><h1>إدارة صنايعي قريب</h1><button class="back" id="out" title="خروج" aria-label="خروج">' + SQ.I('out', 22) + '</button></header>' +
+    $app.innerHTML = '<header class="top"><a class="back" href="' + esc(svc === 'sabil' ? location.origin + '/' : appUrl() + 'sanayei/') + '" title="' + (svc === 'sabil' ? 'فتح بوابة سبيل' : 'فتح التطبيق') + '" aria-label="فتح">' + SQ.I('home', 22) + '</a><h1>إدارة ' + esc(curSvc().name) + '</h1><button class="back" id="out" title="خروج" aria-label="خروج">' + SQ.I('out', 22) + '</button></header>' +
       '<nav class="anav">' + nav + '</nav><main class="main">' + inner + '</main>';
     on('out', 'click', logout);
-    U.each('.anav button', function (b) { b.addEventListener('click', function () { tab = b.getAttribute('data-tab'); mp = null; render(); }); });
+    U.each('.anav button[data-tab]', function (b) { b.addEventListener('click', function () { tab = b.getAttribute('data-tab'); mp = null; render(); }); });
+    U.each('.anav button[data-svc]', function (b) { b.addEventListener('click', function () { setSvc(b.getAttribute('data-svc')); render(); }); });
   }
 
   /* تحديث تلقائي لعدّادات التبويبات كل دقيقة دون إزعاج ما تعمل عليه */
   setInterval(async function () {
-    if (!code) return;
+    if (!code || svc !== 'sanayei') return;
     try {
       var o = await db.adminOverview(code), c = await db.adminCounts(code); ov = o; cn = c;
-      U.each('.anav button', function (b) {
+      U.each('.anav button[data-tab]', function (b) {
         var t = b.getAttribute('data-tab'), n = t === 'providers' ? o.pending : t === 'reports' ? o.reports_open : t === 'badges' ? c.badges : t === 'custom' ? c.custom : t === 'payments' ? (c.unpaid != null ? c.unpaid : c.commissions) : 0;
         var sp = b.querySelector('.cnt'); if (n) { if (!sp) { sp = document.createElement('span'); sp.className = 'cnt'; b.appendChild(sp); } sp.textContent = n; } else if (sp) sp.remove();
       });
@@ -111,10 +123,41 @@
 
   async function render() {
     if (!code) return login();
+    if (svc === 'sabil') return ({ s_overview: viewSabilOverview, s_accounts: viewSabilAccounts }[tab] || viewSabilOverview)();
+    if (!curSvc().tabs.some(function (t) { return t[0] === tab; })) tab = curSvc().home;
     try { ov = await db.adminOverview(code); } catch (e) { if (guard(e)) return; ov = null; }
     try { if (ov) ov.totals = await db.adminTotals(code); } catch (e) {}
     try { cn = await db.adminCounts(code); } catch (e) { cn = { badges: 0, custom: 0 }; }
     ({ overview: viewOverview, custom: viewCustom, providers: viewProviders, requests: viewRequests, confirmed: viewConfirmed, payments: viewPayments, services: viewServices, reports: viewReports, settings: viewSettings, bans: viewBans, reviews: viewReviews, names: viewNames, stalled: viewStalled, inactive: viewInactive })[tab]();
+  }
+
+
+  /* ---------- سبيل: المنصة والحسابات الموحّدة ---------- */
+  async function viewSabilOverview() {
+    shell('<div class="spin">جاري التحميل...</div>');
+    var o; try { o = await db.adminSabilOverview(code); } catch (e) { return fail(e); }
+    var days = o.by_day || [], max = Math.max.apply(null, days.map(function (d) { return d.n; }).concat([1]));
+    document.querySelector('.main').innerHTML = '<div class="sgrid">' + [
+      ['إجمالي الحسابات', o.accounts], ['حسابات عملاء فقط', o.clients_only], ['حسابات صنايعية', o.providers], ['لديها بريد إلكتروني', o.with_email], ['جديدة هذا الأسبوع', o.new_7d], ['نشطة هذا الأسبوع', o.active_7d]
+    ].map(function (x) { return '<div class="sbox"><b>' + x[1] + '</b><small>' + x[0] + '</small></div>'; }).join('') + '</div>' +
+      '<div class="card"><b>الحسابات الجديدة (آخر 14 يوما)</b>' + (days.length ? '<div class="bars">' + days.map(function (d) { return '<div class="bar-c" title="' + esc(d.d) + ': ' + d.n + '"><i style="height:' + Math.max(6, Math.round(d.n / max * 100)) + '%"></i><small>' + esc(String(d.d).slice(5)) + '</small></div>'; }).join('') + '</div>' : '<p class="muted">لا حسابات جديدة</p>') + '</div>' +
+      '<div class="card"><b>عن هذا القسم</b><p class="note">الحساب الموحّد يخص منصة سبيل ويُستخدم في كل خدماتها. إعدادات كل خدمة وطلباتها وبياناتها في قسمها المستقل من الأعلى.</p></div>';
+  }
+  var af = { q: '', offset: 0 };
+  async function viewSabilAccounts() {
+    shell('<div class="toolbar"><input id="ac_q" type="search" placeholder="ابحث بالاسم أو الهاتف أو البريد" value="' + esc(af.q) + '"></div><div id="ac_list" class="plist"><div class="spin">جاري التحميل...</div></div>');
+    var t; on('ac_q', 'input', function () { clearTimeout(t); t = setTimeout(function () { af.q = document.getElementById('ac_q').value.trim(); af.offset = 0; loadAccounts(); }, 300); });
+    loadAccounts();
+  }
+  async function loadAccounts() {
+    var box = document.getElementById('ac_list'); if (!box) return;
+    var r; try { r = await db.adminAccounts(code, { q: af.q, limit: 30, offset: af.offset }); } catch (e) { return fail(e); }
+    var items = r.items || [];
+    box.innerHTML = items.length ? items.map(function (a) {
+      var kind = a.provider_id ? pill('صنايعي', a.provider_status === 'approved' ? '' : 'warn') : pill('عميل', '');
+      return '<div class="card prow"><div class="pr-main"><div class="pr-name">' + esc(a.name || '') + '</div><div class="pr-sub"><span class="ltr">' + esc(a.phone || '—') + '</span>' + (a.email ? ' · <span class="ltr">' + esc(a.email) + '</span>' : '') + ' · سُجّل ' + fmtDate(a.created_at) + (a.last_seen ? ' · آخر ظهور ' + fmtDate(a.last_seen) : '') + ' · طلبات: ' + (a.requests || 0) + '</div></div>' + kind + '</div>';
+    }).join('') + '<p class="note" style="text-align:center">' + items.length + ' من ' + r.total + '</p>' + (r.total > af.offset + items.length ? '<div class="btnrow" style="justify-content:center"><button class="btn ghost" id="ac_more">عرض المزيد</button></div>' : '') : '<div class="empty"><div class="big">👤</div>لا توجد حسابات</div>';
+    var m = document.getElementById('ac_more'); if (m) m.onclick = function () { af.offset += 30; loadAccounts(); };
   }
 
   /* ---------- نظرة عامة ---------- */

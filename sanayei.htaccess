@@ -1,4 +1,4 @@
-# روابط نظيفة للصنايعية: saqapp.net/sanayei/اسم_المستخدم
+# روابط نظيفة لملفات الصنايعية: saqapp.net/sanayei/اسم_المستخدم (تبقى داخل خدمة صنايعي قريب)
 RewriteEngine On
 RewriteBase /sanayei/
 RewriteCond %{REQUEST_FILENAME} !-d
@@ -6,6 +6,9 @@ RewriteRule ^([a-zA-Z][a-zA-Z0-9_]{2,19})/$ /sanayei/$1 [R=301,L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^([a-zA-Z][a-zA-Z0-9_]{2,19})$ /sanayei/index.html [L]
+
+# احتياطي: إن لم تعمل إعادة الكتابة تتولى صفحة 404 تحويل الرابط داخل الخدمة نفسها
+ErrorDocument 404 /404.html
 
 <IfModule mod_headers.c>
   <FilesMatch "\.(html|js|json)$">

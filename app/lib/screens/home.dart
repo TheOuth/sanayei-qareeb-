@@ -14,6 +14,7 @@ import 'my_profile.dart';
 import 'dart:async';
 import 'about.dart';
 import 'app_drawer.dart';
+import '../parent_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -155,6 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ] else
             for (final c in Meta.cats) ..._catSection(c),
+          const SliverToBoxAdapter(child: ParentPlatformBar()),
           const SliverToBoxAdapter(child: SizedBox(height: 30)),
         ]),
       ),
