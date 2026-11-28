@@ -19,29 +19,27 @@ class ParentPlatformBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           onTap: () => launchUrl(Uri.base.resolve('/'), webOnlyWindowName: '_self'),
           child: Ink(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [Color(0xFF0C3076), Color(0xFF123F95)]),
               boxShadow: [BoxShadow(color: const Color(0xFF0C3076).withOpacity(.25), blurRadius: 14, offset: const Offset(0, 6))],
             ),
-            child: Row(children: [
-              Image.asset('assets/sabil-logo.png', height: 46),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text('أحد خدمات منصة سبيل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
-                  SizedBox(height: 2),
-                  Text('طرق أكثر لحياة أسهل', style: TextStyle(color: Color(0xFFFFA733), fontWeight: FontWeight.w600, fontSize: 12.5)),
-                ]),
-              ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Image.asset('assets/sabil-logo.png', height: 44),
+              const SizedBox(height: 12),
+              const Text('أحد خدمات منصة سبيل', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15.5)),
+              const SizedBox(height: 4),
+              const Text('طرق أكثر لحياة أسهل', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFFFFA733), fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(height: 14),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
                 decoration: BoxDecoration(color: const Color(0xFFFF8A00), borderRadius: BorderRadius.circular(999)),
                 child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text('زيارة سبيل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12.5)),
-                  SizedBox(width: 4),
-                  Icon(Icons.arrow_back_rounded, color: Colors.white, size: 16),
+                  Text('زيارة سبيل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13.5)),
+                  SizedBox(width: 6),
+                  Icon(Icons.arrow_back_rounded, color: Colors.white, size: 17),
                 ]),
               ),
             ]),

@@ -14,6 +14,12 @@ String shortName(String n) {
   return parts.take(2).join(' ');
 }
 
+/// الاسم الرباعي: أربع كلمات على الأقل
+bool isFullName(String n) {
+  final parts = n.trim().split(RegExp(r'\s+'));
+  return parts.length >= 4 && parts.every((x) => x.length >= 2);
+}
+
 void toast(BuildContext c, String m) {
   ScaffoldMessenger.of(c)
     ..hideCurrentSnackBar()

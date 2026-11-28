@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../core.dart';
 import '../theme.dart';
@@ -12,7 +13,8 @@ class Onboarding {
     if (!Store.p.containsKey(_k) && (Store.p.containsKey('anon') || Store.p.containsKey('pid'))) await done();
   }
 
-  static bool get needed => !(Store.p.getBool(_k) ?? false) && !Store.loggedIn;
+  /// الترحيب للتطبيق فقط، ولا يظهر على الموقع
+  static bool get needed => !kIsWeb && !(Store.p.getBool(_k) ?? false) && !Store.loggedIn;
   static Future<void> done() => Store.p.setBool(_k, true);
 }
 

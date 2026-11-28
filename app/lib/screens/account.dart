@@ -21,7 +21,7 @@ class _AccountRegisterScreenState extends State<AccountRegisterScreen> {
     final name = _name.text.trim();
     final ph = _ph.text.trim().isEmpty ? '' : normalizePhone('0${_ph.text}');
     final em = _em.text.trim();
-    if (name.length < 2) return toast(context, 'اكتب اسمك');
+    if (!isFullName(name)) return toast(context, 'اكتب اسمك الرباعي كاملًا (أربع كلمات)');
     if (_ph.text.trim().isEmpty && em.isEmpty) return toast(context, 'اكتب رقم هاتفك أو بريدك الإلكتروني');
     if (_ph.text.trim().isNotEmpty && ph.isEmpty) return toast(context, 'رقم الهاتف غير صحيح. اكتب 9 أرقام تبدأ بـ 9 أو 1');
     if (em.isNotEmpty && !RegExp(r'^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$').hasMatch(em)) return toast(context, 'البريد الإلكتروني غير صحيح');
@@ -55,7 +55,7 @@ class _AccountRegisterScreenState extends State<AccountRegisterScreen> {
           child: const Text('حساب واحد لكل خدمات صنايعي قريب. تحفظ طلباتك وتراها من أي جهاز، وتقدر لاحقًا تسجّل كصنايعي بنفس الحساب. الحساب اختياري ويمكنك طلب الخدمة بدونه.', style: TextStyle(height: 1.6, fontWeight: FontWeight.w600)),
         ),
         const SizedBox(height: 14),
-        TextField(controller: _name, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'الاسم')),
+        TextField(controller: _name, textInputAction: TextInputAction.next, decoration: const InputDecoration(labelText: 'الاسم الرباعي', helperText: 'اسمك الحقيقي كما في الهوية. لا يمكن تغييره بعد التسجيل')),
         const SizedBox(height: 10),
         PhoneField(controller: _ph, label: 'رقم الهاتف', autofill: const [AutofillHints.username, AutofillHints.telephoneNumber]),
         const SizedBox(height: 10),

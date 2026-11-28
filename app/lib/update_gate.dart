@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -66,6 +67,8 @@ class _UpdateGateState extends State<UpdateGate> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    // التحديث الإجباري والتنبيه للتطبيق فقط، والموقع يتحدث تلقائيًا
+    if (kIsWeb) return widget.child;
     final msg = (Meta.cfg['update_msg'] ?? '').toString();
     return Stack(children: [
       widget.child,

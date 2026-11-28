@@ -75,11 +75,21 @@ class AppDrawer extends StatelessWidget {
   /// home | requests | dash | login | register | about
   final String current;
   final Future<void> Function()? onLocation;
-  const AppDrawer({super.key, required this.current, this.onLocation});
+  /// عند الضغط على الصفحة الحالية: تحديثها فقط (بدل الرجوع)
+  final Future<void> Function()? onRefresh;
+  const AppDrawer({super.key, required this.current, this.onLocation, this.onRefresh});
 
   void _go(BuildContext context, String key, Widget Function() build) {
     Navigator.pop(context); // يغلق القائمة
-    if (key == current) return;
+    if (key == current) {
+      // الصفحة الحالية: تحديث فقط ولا انتقال
+      if (key == 'home') {
+        onRefresh?.call();
+      } else {
+        Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_, __, ___) => build(), transitionDuration: Duration.zero, reverseTransitionDuration: Duration.zero));
+      }
+      return;
+    }
     if (key == 'home') {
       Navigator.of(context).popUntil((r) => r.isFirst);
       return;

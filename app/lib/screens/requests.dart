@@ -133,7 +133,7 @@ class _RequestsScreenState extends State<RequestsScreen> {
           padding: const EdgeInsets.all(14),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Expanded(child: Text(shortName((r['provider_name'] ?? '').toString()), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
+              Expanded(child: Text((r['provider_name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
               tag,
             ]),
             const SizedBox(height: 4),

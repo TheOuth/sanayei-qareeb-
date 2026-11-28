@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'about.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import '../core.dart';
@@ -50,6 +51,7 @@ class _ProfileFormState extends State<ProfileForm> {
   void initState() {
     super.initState();
     if (!widget.isRegister) _loadCustom();
+    if (widget.isRegister && widget.fromAccount) _name.text = Store.aName;
     final i = widget.initial;
     if (i != null) {
       _name.text = (i['name'] ?? '').toString();
@@ -343,7 +345,7 @@ class _ProfileFormState extends State<ProfileForm> {
 
   Future<void> _submit() async {
     final reg = widget.isRegister;
-    if (_name.text.trim().length < 3) return toast(context, 'اكتب اسمك الكامل');
+    if (reg && !isFullName(_name.text)) return toast(context, 'اكتب اسمك الرباعي كاملًا (أربع كلمات)');
     String ph = '';
     final askPhone = reg && (!widget.fromAccount || Store.accountNeedsPhone);
     if (reg) {
@@ -424,7 +426,22 @@ class _ProfileFormState extends State<ProfileForm> {
       const Center(child: Text('صورة شخصية واضحة (تزيد ثقة الزبائن)', style: TextStyle(color: C.mute, fontSize: 12))),
       Center(child: _need(_photo.isEmpty, 'ناقص: أضف صورة شخصية (30% من اكتمال الملف)')),
       sec('بياناتك'),
-      TextField(controller: _name, decoration: const InputDecoration(labelText: 'الاسم الكامل')),
+      TextField(
+        controller: _name,
+        readOnly: !reg || widget.fromAccount,
+        textInputAction: TextInputAction.next,
+        decoration: InputDecoration(labelText: 'الاسم الرباعي', helperText: reg && !widget.fromAccount ? 'اسمك الحقيقي كما في الهوية. لا يمكن تغييره بعد التسجيل' : null, suffixIcon: (!reg || widget.fromAccount) ? const Icon(Icons.lock_outline_rounded, size: 18) : null),
+      ),
+      if (!reg || widget.fromAccount)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 30), tapTargetSize: MaterialTapTargetSize.shrinkWrap, textStyle: const TextStyle(fontSize: 12)),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen())),
+            icon: const Icon(Icons.support_agent_rounded, size: 16),
+            label: const Text('لتعديل الاسم تواصل مع الدعم'),
+          ),
+        ),
       if (reg && (!widget.fromAccount || Store.accountNeedsPhone)) ...[
         const SizedBox(height: 10),
         PhoneField(controller: _phone, label: 'رقم الهاتف', autofill: const [AutofillHints.username]),

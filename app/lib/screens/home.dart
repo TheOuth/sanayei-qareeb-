@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core.dart';
@@ -108,7 +109,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final found = Meta.search(_query);
     return PopScope(
-      canPop: false,
+      // على الموقع: زر الرجوع يعمل كما في المتصفح، وسؤال الخروج للتطبيق فقط
+      canPop: kIsWeb,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
         if (_key.currentState?.isDrawerOpen ?? false) {
@@ -134,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       },
       child: Scaffold(
       key: _key,
-      drawer: AppDrawer(current: 'home', onLocation: _pickLoc),
+      drawer: AppDrawer(current: 'home', onLocation: _pickLoc, onRefresh: () async { await _load(); await Meta.refresh(); if (mounted) setState(() {}); }),
       onDrawerChanged: (open) { if (open) setState(() {}); },
       body: RefreshIndicator(
         onRefresh: () async { await _load(); await Meta.refresh(); setState(() {}); },
