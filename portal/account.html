@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0C3076">
+<title>حسابي | سبيل</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="portal.css?v=1">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="/" aria-label="سبيل"><img src="logo-navy.png" alt="سبيل"></a>
+  <a class="login" href="/" style="margin-inline-start:auto">الرئيسية</a>
+</div></header>
+
+<div class="acc">
+  <div class="card" id="guest">
+    <div class="tabs"><button class="on" id="tl" type="button">تسجيل الدخول</button><button id="tr" type="button">حساب جديد</button></div>
+    <form id="fl" autocomplete="on">
+      <label for="l1">رقم الهاتف أو البريد أو اسم المستخدم</label>
+      <input class="f" id="l1" name="username" autocomplete="username" dir="ltr" inputmode="email">
+      <label for="l2">كلمة السر</label>
+      <input class="f" id="l2" name="password" type="password" autocomplete="current-password">
+      <button class="btn" type="submit">دخول</button>
+    </form>
+    <form id="fr" autocomplete="on" style="display:none">
+      <label for="r1">الاسم</label><input class="f" id="r1" autocomplete="name">
+      <label for="r2">رقم الهاتف</label><input class="f" id="r2" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="09XXXXXXXX">
+      <label for="r3">البريد الإلكتروني (اختياري)</label><input class="f" id="r3" dir="ltr" type="email" autocomplete="email">
+      <label for="r4">كلمة السر (6 أحرف على الأقل)</label><input class="f" id="r4" type="password" autocomplete="new-password">
+      <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400"><input id="r5" type="checkbox" style="margin-top:6px"> عمري 18 سنة فأكثر وأوافق على <a href="/privacy-policy.html" style="color:#0C3076">الشروط وسياسة الخصوصية</a></label>
+      <button class="btn" type="submit">إنشاء الحساب</button>
+    </form>
+    <div class="msg" id="m"></div>
+    <p class="hint">حساب واحد يصلح لكل خدمات سبيل، وللتسجيل كصنايعي أيضًا.</p>
+  </div>
+
+  <div class="card who" id="user" style="display:none">
+    <div class="av" id="av"></div>
+    <h2 id="nm"></h2><p id="ph" dir="ltr"></p>
+    <a class="btn" href="/sanayei/">فتح صنايعي قريب</a>
+    <button class="btn out" id="out" type="button">تسجيل الخروج</button>
+    <p class="hint">الدخول هنا يشمل تطبيق صنايعي قريب على الموقع.</p>
+  </div>
+</div>
+<div class="bar"></div>
+<footer><div><b>سبيل</b> .. طرق أكثر لحياة أسهل</div></footer>
+<script src="portal.js?v=1"></script>
+<script>
+(function () {
+  var $ = function (i) { return document.getElementById(i); }, m = $('m');
+  function say(t, ok) { m.className = 'msg ' + (ok ? 'ok' : 'err'); m.textContent = t; }
+  function render() {
+    var a = Sabil.current();
+    $('guest').style.display = a ? 'none' : ''; $('user').style.display = a ? '' : 'none';
+    if (a) { $('nm').textContent = a.name || 'حسابي'; $('ph').textContent = a.phone || ''; $('av').textContent = (a.name || 'س').trim().charAt(0); }
+  }
+  function tab(l) { $('fl').style.display = l ? '' : 'none'; $('fr').style.display = l ? 'none' : ''; $('tl').className = l ? 'on' : ''; $('tr').className = l ? '' : 'on'; m.className = 'msg'; }
+  $('tl').onclick = function () { tab(true); }; $('tr').onclick = function () { tab(false); };
+  if (location.hash === '#new') tab(false);
+  $('fl').onsubmit = function (e) { e.preventDefault(); var l = $('l1').value.trim(), p = $('l2').value; if (!l || !p) return say('اكتب بياناتك وكلمة السر');
+    var b = e.target.querySelector('button'); b.disabled = true; Sabil.login(l, p).then(render).catch(function (x) { say(Sabil.msg(x)); }).then(function () { b.disabled = false; }); };
+  $('fr').onsubmit = function (e) { e.preventDefault(); var n = $('r1').value.trim(), ph = $('r2').value.trim(), em = $('r3').value.trim(), pw = $('r4').value;
+    if (n.length < 2) return say('اكتب اسمك'); if (!ph && !em) return say('اكتب رقم هاتفك أو بريدك'); if (pw.length < 6) return say('كلمة السر 6 أحرف على الأقل'); if (!$('r5').checked) return say('أقرّ بأن عمرك 18 سنة فأكثر ووافق على الشروط');
+    var b = e.target.querySelector('button'); b.disabled = true; Sabil.register(n, ph, em, pw).then(render).catch(function (x) { say(Sabil.msg(x)); }).then(function () { b.disabled = false; }); };
+  $('out').onclick = function () { Sabil.logout(); render(); };
+  render(); Sabil.refresh().then(render);
+})();
+</script>
+</body>
+</html>

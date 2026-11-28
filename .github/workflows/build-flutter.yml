@@ -2,7 +2,7 @@ name: build-flutter
 on:
   workflow_dispatch:
   push:
-    paths: ['app/**', '.github/workflows/build-flutter.yml', 'admin.*', 'styles.css', 'theme.css', 'common.js', 'data.js', 'db.js', 'icons.js', 'sw.js', '.htaccess', 'sanayei.htaccess', 'portal.html', 'web_boot.html']
+    paths: ['app/**', '.github/workflows/build-flutter.yml', 'admin.*', 'styles.css', 'theme.css', 'common.js', 'data.js', 'db.js', 'icons.js', 'sw.js', '.htaccess', 'sanayei.htaccess', 'portal/**', 'web_boot.html']
 permissions:
   contents: write
 jobs:
@@ -127,9 +127,8 @@ jobs:
       - name: Assemble website zip
         run: |
           rm -rf site && mkdir -p site/sanayei && cp -r app/build/web/. site/sanayei/
-          cp portal.html site/index.html
+          cp -r portal/. site/
           cp sanayei.htaccess site/sanayei/.htaccess
-          cp icon-192.png site/
           cp admin.html admin.js admin.css styles.css theme.css common.js data.js db.js icons.js privacy-policy.html sw.js icon.svg .htaccess site/
           (cd site && zip -qr ../saqapp-site.zip .)
           ls -la saqapp-site.zip
