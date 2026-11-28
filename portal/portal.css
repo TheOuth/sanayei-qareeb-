@@ -94,3 +94,17 @@ input.f:focus{border-color:var(--navy)}
   .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .feats{grid-template-columns:1fr}
 }
+
+.idc{background:linear-gradient(135deg,#0C3076,#2B8CF0);color:#fff;border-radius:20px;padding:18px 20px;text-align:center;position:relative}
+.idc .idh{display:flex;align-items:center;gap:8px;font-size:13px;opacity:.9;justify-content:center;margin-bottom:10px}
+.idc .idh img{height:22px;filter:brightness(0) invert(1)}
+.idc .av{margin:0 auto 8px}
+.idc h2{margin:0 0 12px;font-size:20px}
+.idc dl{margin:0;text-align:right;background:rgba(255,255,255,.14);border-radius:14px;padding:6px 14px}
+.idc dl div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.18);font-size:14px}
+.idc dl div:last-child{border:0}.idc dt{opacity:.8}.idc dd{margin:0;font-weight:600;word-break:break-all}
+.sec{margin:22px 0 0;font-size:15px;color:var(--navy)}
+.btn.dng{background:#D64545}.btn.dng:hover{background:#b93636}
+.ov{position:fixed;inset:0;background:rgba(10,20,40,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.ov .box{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:400px;max-height:92vh;overflow:auto}
+.ov h3{margin:0 0 8px;color:#D64545}

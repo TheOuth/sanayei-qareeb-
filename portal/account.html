@@ -8,7 +8,7 @@
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="portal.css?v=2">
+<link rel="stylesheet" href="portal.css?v=3">
 </head>
 <body>
 <header class="top"><div class="wrap">
@@ -27,7 +27,7 @@
       <button class="btn" type="submit">دخول</button>
     </form>
     <form id="fr" autocomplete="on" style="display:none">
-      <label for="r1">الاسم</label><input class="f" id="r1" autocomplete="name">
+      <label for="r1">الاسم الرباعي (لا يتغير لاحقًا)</label><input class="f" id="r1" autocomplete="name" placeholder="الأول الثاني الثالث الرابع">
       <label for="r2">رقم الهاتف</label><input class="f" id="r2" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="09XXXXXXXX">
       <label for="r3">البريد الإلكتروني (اختياري)</label><input class="f" id="r3" dir="ltr" type="email" autocomplete="email">
       <label for="r4">كلمة السر (6 أحرف على الأقل)</label><input class="f" id="r4" type="password" autocomplete="new-password">
@@ -39,16 +39,47 @@
   </div>
 
   <div class="card who" id="user" style="display:none">
-    <div class="av" id="av"></div>
-    <h2 id="nm"></h2><p id="ph" dir="ltr"></p>
+    <div class="idc">
+      <div class="idh"><img src="mark-navy.png" alt=""><span>بطاقة تعريف · سبيل</span></div>
+      <div class="av" id="av"></div>
+      <h2 id="nm"></h2>
+      <dl>
+        <div><dt>تاريخ الميلاد</dt><dd id="bd">—</dd></div>
+        <div><dt>الهاتف</dt><dd id="ph" dir="ltr">—</dd></div>
+        <div><dt>البريد</dt><dd id="em" dir="ltr">—</dd></div>
+      </dl>
+    </div>
     <a class="btn" href="/sanayei/">فتح صنايعي قريب</a>
+    <h3 class="sec">إدارة الحساب</h3>
+    <a class="btn out" href="/sanayei/" id="sup">طلب تعديل الاسم أو تاريخ الميلاد (عبر الدعم)</a>
     <button class="btn out" id="out" type="button">تسجيل الخروج</button>
-    <p class="hint">الدخول هنا يشمل تطبيق صنايعي قريب على الموقع.</p>
+    <button class="btn dng" id="del" type="button">حذف الحساب</button>
+    <p class="hint">الاسم وتاريخ الميلاد لا يتغيران إلا عبر إدارة المنصة.</p>
   </div>
 </div>
+
+<div class="ov" id="dlg" style="display:none"><div class="box">
+  <h3>حذف الحساب نهائيًا</h3>
+  <p class="hint" style="margin:0 0 6px">سيُحذف حسابك وكل بياناتك في جميع خدمات سبيل ولا يمكن التراجع.</p>
+  <div id="s1">
+    <label for="dp">كلمة السر</label><input class="f" id="dp" type="password" autocomplete="current-password">
+    <div id="cw" style="display:none">
+      <label for="dc">رمز التأكيد (4 أرقام) المرسل لبريدك</label>
+      <input class="f" id="dc" inputmode="numeric" maxlength="4" dir="ltr">
+      <button class="btn out" id="sc" type="button" style="margin-top:8px">إرسال الرمز</button>
+    </div>
+    <button class="btn dng" id="dn" type="button">متابعة</button>
+  </div>
+  <div id="s2" style="display:none">
+    <p><b>تأكيد أخير</b><br>هل أنت متأكد من حذف حسابك نهائيًا؟</p>
+    <button class="btn dng" id="dy" type="button">احذف نهائيًا</button>
+  </div>
+  <button class="btn out" id="dx" type="button">إلغاء</button>
+  <div class="msg" id="dm"></div>
+</div></div>
 <div class="bar"></div>
 <footer><div class="wrap"><a class="fb" href="/" aria-label="سبيل"><img src="/logo-blue.png" alt="سبيل"></a><div class="ft">طرق أكثر لحياة أسهل</div><nav><a href="/sanayei/">صنايعي قريب</a><a href="/account.html">حسابي</a><a href="/privacy-policy.html">سياسة الخصوصية</a></nav><small>© سبيل</small></div></footer>
-<script src="portal.js?v=1"></script>
+<script src="portal.js?v=2"></script>
 <script>
 (function () {
   var $ = function (i) { return document.getElementById(i); }, m = $('m');
@@ -56,7 +87,7 @@
   function render() {
     var a = Sabil.current();
     $('guest').style.display = a ? 'none' : ''; $('user').style.display = a ? '' : 'none';
-    if (a) { $('nm').textContent = a.name || 'حسابي'; $('ph').textContent = a.phone || ''; $('av').textContent = (a.name || 'س').trim().charAt(0); }
+    if (a) { $('nm').textContent = a.name || 'حسابي'; $('ph').textContent = a.phone || '—'; $('em').textContent = a.email || '—'; $('bd').textContent = a.birth || '—'; $('av').textContent = (a.name || 'س').trim().charAt(0); }
   }
   function tab(l) { $('fl').style.display = l ? '' : 'none'; $('fr').style.display = l ? 'none' : ''; $('tl').className = l ? 'on' : ''; $('tr').className = l ? '' : 'on'; m.className = 'msg'; }
   $('tl').onclick = function () { tab(true); }; $('tr').onclick = function () { tab(false); };
@@ -64,9 +95,22 @@
   $('fl').onsubmit = function (e) { e.preventDefault(); var l = $('l1').value.trim(), p = $('l2').value; if (!l || !p) return say('اكتب بياناتك وكلمة السر');
     var b = e.target.querySelector('button'); b.disabled = true; Sabil.login(l, p).then(render).catch(function (x) { say(Sabil.msg(x)); }).then(function () { b.disabled = false; }); };
   $('fr').onsubmit = function (e) { e.preventDefault(); var n = $('r1').value.trim(), ph = $('r2').value.trim(), em = $('r3').value.trim(), pw = $('r4').value;
-    if (n.length < 2) return say('اكتب اسمك'); if (!ph && !em) return say('اكتب رقم هاتفك أو بريدك'); if (pw.length < 6) return say('كلمة السر 6 أحرف على الأقل'); if (!$('r5').checked) return say('أقرّ بأن عمرك 18 سنة فأكثر ووافق على الشروط');
+    if (n.split(/\s+/).length < 4) return say('اكتب اسمك الرباعي كاملًا'); if (!ph && !em) return say('اكتب رقم هاتفك أو بريدك'); if (pw.length < 6) return say('كلمة السر 6 أحرف على الأقل'); if (!$('r5').checked) return say('أقرّ بأن عمرك 18 سنة فأكثر ووافق على الشروط');
     var b = e.target.querySelector('button'); b.disabled = true; Sabil.register(n, ph, em, pw).then(render).catch(function (x) { say(Sabil.msg(x)); }).then(function () { b.disabled = false; }); };
   $('out').onclick = function () { Sabil.logout(); render(); };
+  var dm = $('dm'); function dsay(t) { dm.className = 'msg err'; dm.textContent = t; }
+  var needCode = false, cd = 0, ct = null;
+  function tick() { var b = $('sc'); if (cd > 0) { b.disabled = true; b.textContent = 'إعادة الإرسال بعد ' + cd + ' ث'; cd--; ct = setTimeout(tick, 1000); } else { b.disabled = false; b.textContent = 'إرسال الرمز'; } }
+  $('del').onclick = function () { var a = Sabil.current(); needCode = !!(a && a.email && a.emailVerified); $('cw').style.display = needCode ? '' : 'none';
+    $('dp').value = ''; $('dc').value = ''; $('s1').style.display = ''; $('s2').style.display = 'none'; dm.className = 'msg'; $('dlg').style.display = ''; };
+  $('dx').onclick = function () { $('dlg').style.display = 'none'; };
+  $('sc').onclick = function () { $('sc').disabled = true; Sabil.sendCode().then(function () { cd = 60; tick(); dm.className = 'msg ok'; dm.textContent = 'تم إرسال الرمز إلى بريدك'; })
+    .catch(function (e) { $('sc').disabled = false; dsay(Sabil.msg(e)); }); };
+  $('dn').onclick = function () { if (!$('dp').value) return dsay('اكتب كلمة السر'); if (needCode && $('dc').value.trim().length !== 4) return dsay('اكتب الرمز المكوّن من 4 أرقام');
+    dm.className = 'msg'; $('s1').style.display = 'none'; $('s2').style.display = ''; };
+  $('dy').onclick = function () { var b = $('dy'); b.disabled = true;
+    Sabil.del($('dp').value, $('dc').value.trim()).then(function () { $('dlg').style.display = 'none'; render(); location.href = '/'; })
+      .catch(function (e) { b.disabled = false; $('s2').style.display = 'none'; $('s1').style.display = ''; dsay(Sabil.msg(e)); }); };
   render(); Sabil.refresh().then(render);
 })();
 </script>

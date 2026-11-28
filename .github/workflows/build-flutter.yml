@@ -127,6 +127,12 @@ jobs:
       - name: Assemble website zip
         run: |
           rm -rf site && mkdir -p site/sanayei && cp -r app/build/web/. site/sanayei/
+          # كسر الكاش: رقم البناء يُضاف لروابط ملفات التطبيق حتى لا يبقى الموقع القديم
+          V=${{ github.run_number }}
+          sed -i "s#main.dart.js#main.dart.js?v=$V#g" site/sanayei/flutter_bootstrap.js
+          sed -i "s#flutter_bootstrap.js#flutter_bootstrap.js?v=$V#g" site/sanayei/index.html
+          echo "build $V" > site/sanayei/BUILD.txt
+          grep -c "v=$V" site/sanayei/flutter_bootstrap.js site/sanayei/index.html
           cp -r portal/. site/
           cp sanayei.htaccess site/sanayei/.htaccess
           cp admin.html admin.js admin.css styles.css theme.css common.js data.js db.js icons.js privacy-policy.html sw.js icon.svg .htaccess site/
